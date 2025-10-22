@@ -783,20 +783,22 @@ export default function LoansPage() {
                                     </>
                                   )}
                                 </div>
-                                <button
-                                  onClick={() => handleEditPayment(loan.id, payment)}
-                                  className="text-blue-500 hover:text-blue-700 mr-2"
-                                  title="সম্পাদনা করুন"
-                                >
-                                  ✏️
-                                </button>
-                                <button
-                                  onClick={() => handleDeletePayment(loan.id, payment.id)}
-                                  className="text-red-500 hover:text-red-700"
-                                  title="মুছুন"
-                                >
-                                  ✕
-                                </button>
+                                <div className="flex items-center gap-3">
+                                  <button
+                                    onClick={() => handleEditPayment(loan.id, payment)}
+                                    className="text-blue-500 hover:text-blue-700"
+                                    title="সম্পাদনা করুন"
+                                  >
+                                    ✏️
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeletePayment(loan.id, payment.id)}
+                                    className="text-red-500 hover:text-red-700"
+                                    title="মুছুন"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
                               </div>
                             ))}
                           </div>
