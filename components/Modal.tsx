@@ -49,22 +49,22 @@ export default function Modal({ isOpen, onClose, title, children, className = ''
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-50 p-4">
       <div
         className={`
-          bg-white rounded-lg shadow-xl border-2 border-gray-200 w-full max-w-md max-h-[90vh] overflow-y-auto
+          bg-white rounded-lg shadow-xl border border-gray-200 w-full max-w-md max-h-[90vh] overflow-y-auto
           transform transition-all duration-300 ease-in-out
           ${isVisible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-4 opacity-0 scale-95'}
           ${className}
         `}
       >
         {/* Modal Header */}
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">{title}</h2>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-full p-2 transition-all duration-200 group"
+            className="text-gray-400 hover:text-gray-600 rounded-full p-1 transition-colors duration-200"
             aria-label="Close modal"
           >
             <svg
-              className="w-5 h-5 group-hover:rotate-90 transition-transform duration-200"
+              className="w-6 h-6"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -80,7 +80,7 @@ export default function Modal({ isOpen, onClose, title, children, className = ''
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 pb-4">
+        <div className="p-6">
           {children}
         </div>
 
@@ -116,13 +116,13 @@ export function ActionButton({
   const getVariantStyles = () => {
     switch (variant) {
       case 'primary':
-        return 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl'
+        return 'bg-blue-600 hover:bg-blue-700 text-white'
       case 'secondary':
-        return 'bg-gray-200 hover:bg-gray-300 text-gray-800 shadow-md hover:shadow-lg'
+        return 'bg-gray-200 hover:bg-gray-300 text-gray-900'
       case 'danger':
-        return 'bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl'
+        return 'bg-red-600 hover:bg-red-700 text-white'
       default:
-        return 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl'
+        return 'bg-blue-600 hover:bg-blue-700 text-white'
     }
   }
 
@@ -131,9 +131,8 @@ export function ActionButton({
       onClick={onClick}
       disabled={disabled || loading}
       className={`
-        px-6 py-3 rounded-lg font-medium transition-all duration-200 
-        transform hover:scale-105 active:scale-95
-        disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none
+        px-4 py-2 rounded-md font-medium transition-colors duration-200 
+        disabled:opacity-50 disabled:cursor-not-allowed
         focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500
         ${getVariantStyles()}
       `}

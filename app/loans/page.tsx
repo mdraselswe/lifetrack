@@ -314,15 +314,15 @@ export default function LoansPage() {
   const totalReturned = returnedLoans.reduce((sum, l) => sum + l.amount, 0)
 
   return (
-    <div className="min-h-full bg-gradient-to-br from-red-50 to-rose-100 p-4">
+    <div className="min-h-full bg-gray-50 p-4">
       <div className="max-w-2xl mx-auto py-8">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-red-900">💸 ধার নেওয়া</h1>
+          <h1 className="text-2xl font-bold text-gray-900">💸 ধার নেওয়া</h1>
           <button
             onClick={() => setShowForm(!showForm)}
             className="btn btn-primary"
           >
-            {showForm ? 'বাতিল' : '+ নতুন'}
+            {showForm ? 'বাতিল' : '+ নতুন ধার'}
           </button>
         </div>
 
@@ -555,7 +555,7 @@ export default function LoansPage() {
                   const remaining = calculateRemaining(loan)
                   const totalPaid = getTotalPaid(loan)
                   return (
-                    <div key={loan.id} className="card bg-white hover:shadow-lg transition-shadow border-l-4 border-red-500">
+                    <div key={loan.id} className="card">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <h3 className="font-semibold text-lg text-gray-900 mb-1">
@@ -725,7 +725,7 @@ export default function LoansPage() {
                 {returnedLoans.map((loan) => {
                   const totalPaid = getTotalPaid(loan)
                   return (
-                    <div key={loan.id} className="card bg-gray-100 opacity-75">
+                    <div key={loan.id} className="card bg-gray-100">
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <h3 className="font-semibold text-gray-700 mb-1">

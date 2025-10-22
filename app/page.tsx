@@ -34,10 +34,10 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="min-h-full bg-gradient-to-br from-primary-50 to-blue-100 p-4">
+    <div className="min-h-full bg-gray-50 p-4">
       <div className="max-w-2xl mx-auto py-8">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-primary-900 mb-2">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
             LifeTrack
           </h1>
           <p className="text-gray-600">আপনার দৈনন্দিন জীবন পরিচালনা করুন</p>

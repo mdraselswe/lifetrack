@@ -154,15 +154,15 @@ export default function RemindersPage() {
   const dismissedReminders = reminders.filter(r => r.dismissed)
 
   return (
-    <div className="min-h-full bg-gradient-to-br from-purple-50 to-pink-100 p-4">
+    <div className="min-h-full bg-gray-50 p-4">
       <div className="max-w-2xl mx-auto py-8">
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-3xl font-bold text-purple-900">⏰ রিমাইন্ডার</h1>
+          <h1 className="text-2xl font-bold text-gray-900">⏰ রিমাইন্ডার</h1>
           <button
             onClick={() => setShowForm(!showForm)}
             className="btn btn-primary"
           >
-            {showForm ? 'বাতিল' : '+ নতুন'}
+            {showForm ? 'বাতিল' : '+ নতুন রিমাইন্ডার'}
           </button>
         </div>
 
@@ -230,7 +230,7 @@ export default function RemindersPage() {
               <h2 className="text-lg font-semibold text-gray-800 mb-3">সক্রিয় রিমাইন্ডার</h2>
               <div className="space-y-3">
                 {activeReminders.map((reminder) => (
-                  <div key={reminder.id} className="card bg-white hover:shadow-lg transition-shadow">
+                  <div key={reminder.id} className="card">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h3 className="font-semibold text-lg text-gray-900 mb-1">
@@ -272,7 +272,7 @@ export default function RemindersPage() {
               <h2 className="text-lg font-semibold text-gray-800 mb-3">সম্পন্ন রিমাইন্ডার</h2>
               <div className="space-y-3">
                 {dismissedReminders.map((reminder) => (
-                  <div key={reminder.id} className="card bg-gray-100 opacity-75">
+                  <div key={reminder.id} className="card bg-gray-100">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-700 line-through mb-1">
