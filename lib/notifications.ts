@@ -17,15 +17,15 @@ export const requestNotificationPermission = async (): Promise<boolean> => {
 }
 
 export const scheduleNotification = async (
-  id: string,
+  _id: string,
   title: string,
   body: string,
   scheduledTime: Date
-): Promise<void> => {
+): Promise<boolean> => {
   const hasPermission = await requestNotificationPermission()
   if (!hasPermission) {
-    alert('নোটিফিকেশন পাঠাতে পারমিশন দিন')
-    return
+    // Toast notification will be shown by the calling component
+    return false
   }
 
   const delay = scheduledTime.getTime() - Date.now()
@@ -49,6 +49,8 @@ export const scheduleNotification = async (
       }
     }, delay)
   }
+
+  return true
 }
 
 export const cancelNotification = (id: string): void => {

@@ -2,14 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { getDebts, getLoans, getReminders } from '@/lib/storage'
-import { Debt, Loan, Reminder } from '@/lib/types'
+import type { Debt, Loan, Reminder } from '@/lib/types'
 import Link from 'next/link'
-import PWAStatus from '@/components/PWAStatus'
-import PWAQuickFix from '@/components/PWAQuickFix'
-import PWAManualInstall from '@/components/PWAManualInstall'
-import PWAInstallCheck from '@/components/PWAInstallCheck'
-import PWARequirements from '@/components/PWARequirements'
-import PWAInstallAlternative from '@/components/PWAInstallAlternative'
 
 export default function Dashboard() {
   const [totalLent, setTotalLent] = useState(0)

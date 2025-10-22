@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import { getLoans, saveLoan, updateLoan, deleteLoan, addLoanPayment, deleteLoanPayment } from '@/lib/storage'
-import { Loan, Payment } from '@/lib/types'
+import type { Loan, Payment } from '@/lib/types'
 import { format } from 'date-fns'
+import { toast } from '@/lib/toast'
+import { confirm } from '@/lib/confirm'
+import Modal, { ActionButton } from '@/components/Modal'
 
 export default function LoansPage() {
   const [loans, setLoans] = useState<Loan[]>([])
@@ -11,11 +14,11 @@ export default function LoansPage() {
   const [personName, setPersonName] = useState('')
   const [amount, setAmount] = useState('')
   const [reason, setReason] = useState('')
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0])
+  const [date, setDate] = useState('')
   const [mounted, setMounted] = useState(false)
   const [showPaymentForm, setShowPaymentForm] = useState<string | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
-  const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0])
+  const [paymentDate, setPaymentDate] = useState('')
   const [paymentNote, setPaymentNote] = useState('')
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null)
   const [editPersonName, setEditPersonName] = useState('')
@@ -30,6 +33,9 @@ export default function LoansPage() {
   useEffect(() => {
     setMounted(true)
     loadLoans()
+    // Set default date after mount
+    setDate(new Date().toISOString().split('T')[0])
+    setPaymentDate(new Date().toISOString().split('T')[0])
   }, [])
 
   const loadLoans = () => {
@@ -40,7 +46,7 @@ export default function LoansPage() {
     e.preventDefault()
     
     if (!personName || !amount) {
-      alert('নাম এবং পরিমাণ দিন')
+      toast.error('নাম এবং পরিমাণ দিন')
       return
     }
 
@@ -62,31 +68,88 @@ export default function LoansPage() {
     setDate(new Date().toISOString().split('T')[0])
     setShowForm(false)
     loadLoans()
+    toast.success('ধার সফলভাবে যোগ করা হয়েছে')
   }
 
   const handleToggleReturned = (loan: Loan) => {
-    updateLoan(loan.id, { returned: !loan.returned })
-    loadLoans()
+    const newStatus = !loan.returned
+    const actionText = newStatus ? 'ফেরত দিয়েছেন' : 'ফেরত দেননি'
+    const confirmText = newStatus ? 'ফেরত দিয়েছি' : 'ফেরত দেইনি'
+    
+    confirm.custom(
+      'ধারের অবস্থা পরিবর্তন করুন',
+      `${loan.personName} এর ${loan.amount} টাকার ধার ${actionText} হিসেবে চিহ্নিত করবেন?`,
+      () => {
+        if (newStatus) {
+          // When marking as returned, ensure payment amount equals total amount
+          const totalPaid = getTotalPaid(loan)
+          if (totalPaid < loan.amount) {
+            // Add remaining payment to make it fully paid
+            const remainingAmount = loan.amount - totalPaid
+            const remainingPayment: Payment = {
+              id: Date.now().toString(),
+              amount: remainingAmount,
+              date: new Date().toISOString().split('T')[0],
+              note: 'সম্পূর্ণ পরিশোধ',
+              createdAt: new Date().toISOString(),
+            }
+            addLoanPayment(loan.id, remainingPayment)
+          }
+        }
+        updateLoan(loan.id, { returned: newStatus })
+        loadLoans()
+        toast.success(`ধার ${actionText} হিসেবে চিহ্নিত করা হয়েছে`)
+      },
+      {
+        confirmText: confirmText,
+        cancelText: 'বাতিল',
+        type: newStatus ? 'info' : 'warning'
+      }
+    )
   }
 
   const handleDelete = (id: string) => {
-    if (confirm('এই রেকর্ডটি মুছে ফেলবেন?')) {
-      deleteLoan(id)
-      loadLoans()
-    }
+    const loan = loans.find(l => l.id === id)
+    if (!loan) return
+    
+    confirm.delete(
+      'ধার মুছুন',
+      `${loan.personName} এর ${loan.amount} টাকার ধার মুছে ফেলবেন?`,
+      () => {
+        deleteLoan(id)
+        loadLoans()
+        toast.success('ধার সফলভাবে মুছে ফেলা হয়েছে')
+      }
+    )
   }
 
   const handleAddPayment = (loanId: string) => {
-    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
-      alert('সঠিক পরিমাণ দিন')
+    if (!paymentAmount || !paymentDate) {
+      toast.error('পরিমাণ এবং তারিখ প্রয়োজন')
+      return
+    }
+
+    const amount = Number(parseFloat(paymentAmount).toFixed(2))
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('সঠিক পরিমাণ দিন')
+      return
+    }
+
+    const loan = loans.find(l => l.id === loanId)
+    if (!loan) return
+
+    const remaining = calculateRemaining(loan)
+    
+    if (amount > remaining) {
+      toast.error(`বাকি পরিমাণ: ৳${remaining}. তার চেয়ে বেশি পরিশোধ করা যাবে না।`)
       return
     }
 
     const payment: Payment = {
       id: Date.now().toString(),
-      amount: parseFloat(paymentAmount),
+      amount,
       date: paymentDate,
-      note: paymentNote,
+      note: paymentNote || undefined,
       createdAt: new Date().toISOString(),
     }
 
@@ -99,10 +162,19 @@ export default function LoansPage() {
   }
 
   const handleDeletePayment = (loanId: string, paymentId: string) => {
-    if (confirm('এই পেমেন্ট মুছে ফেলবেন?')) {
-      deleteLoanPayment(loanId, paymentId)
-      loadLoans()
-    }
+    const loan = loans.find(l => l.id === loanId)
+    const payment = loan?.payments?.find(p => p.id === paymentId)
+    if (!loan || !payment) return
+    
+    confirm.delete(
+      'পেমেন্ট মুছুন',
+      `${payment.amount} টাকার পেমেন্ট মুছে ফেলবেন?`,
+      () => {
+        deleteLoanPayment(loanId, paymentId)
+        loadLoans()
+        toast.success('পেমেন্ট সফলভাবে মুছে ফেলা হয়েছে')
+      }
+    )
   }
 
   const calculateRemaining = (loan: Loan): number => {
@@ -132,23 +204,30 @@ export default function LoansPage() {
     e.preventDefault()
     
     if (!editingLoan || !editPersonName || !editAmount) {
-      alert('নাম এবং পরিমাণ দিন')
+      toast.error('নাম এবং পরিমাণ দিন')
       return
     }
 
-    updateLoan(editingLoan.id, {
-      personName: editPersonName,
-      amount: parseFloat(editAmount),
-      reason: editReason,
-      date: editDate,
-    })
+    confirm.update(
+      'ধার আপডেট করুন',
+      `${editPersonName} এর ধারের তথ্য আপডেট করবেন?`,
+      () => {
+        updateLoan(editingLoan.id, {
+          personName: editPersonName,
+          amount: parseFloat(editAmount),
+          reason: editReason,
+          date: editDate,
+        })
 
-    setEditingLoan(null)
-    setEditPersonName('')
-    setEditAmount('')
-    setEditReason('')
-    setEditDate('')
-    loadLoans()
+        setEditingLoan(null)
+        setEditPersonName('')
+        setEditAmount('')
+        setEditReason('')
+        setEditDate('')
+        loadLoans()
+        toast.success('ধার সফলভাবে আপডেট করা হয়েছে')
+      }
+    )
   }
 
   const handleCancelEdit = () => {
@@ -169,27 +248,53 @@ export default function LoansPage() {
   const handleEditPaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!editingPayment || !editPaymentAmount || parseFloat(editPaymentAmount) <= 0) {
-      alert('সঠিক পরিমাণ দিন')
+    if (!editingPayment || !editPaymentAmount || !editPaymentDate) {
+      toast.error('পরিমাণ এবং তারিখ প্রয়োজন')
+      return
+    }
+
+    const amount = parseFloat(editPaymentAmount)
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('সঠিক পরিমাণ দিন')
+      return
+    }
+
+    const loan = loans.find(l => l.id === editingPayment.loanId)
+    if (!loan) return
+
+    // Calculate remaining amount excluding the current payment being edited
+    const otherPayments = loan.payments?.filter(p => p.id !== editingPayment.payment.id) || []
+    const otherPaymentsTotal = otherPayments.reduce((sum, p) => sum + p.amount, 0)
+    const remaining = loan.amount - otherPaymentsTotal
+    
+    if (amount > remaining) {
+      toast.error(`বাকি পরিমাণ: ৳${remaining}. তার চেয়ে বেশি পরিশোধ করা যাবে না।`)
       return
     }
 
     const updatedPayment: Payment = {
       ...editingPayment.payment,
-      amount: parseFloat(editPaymentAmount),
+      amount,
       date: editPaymentDate,
-      note: editPaymentNote,
+      note: editPaymentNote || undefined,
     }
 
-    // Delete old payment and add updated payment
-    deleteLoanPayment(editingPayment.loanId, editingPayment.payment.id)
-    addLoanPayment(editingPayment.loanId, updatedPayment)
+    confirm.update(
+      'পেমেন্ট আপডেট করুন',
+      `${amount} টাকার পেমেন্ট আপডেট করবেন?`,
+      () => {
+        // Delete old payment and add updated payment
+        deleteLoanPayment(editingPayment.loanId, editingPayment.payment.id)
+        addLoanPayment(editingPayment.loanId, updatedPayment)
 
-    setEditingPayment(null)
-    setEditPaymentAmount('')
-    setEditPaymentDate('')
-    setEditPaymentNote('')
-    loadLoans()
+        setEditingPayment(null)
+        setEditPaymentAmount('')
+        setEditPaymentDate('')
+        setEditPaymentNote('')
+        loadLoans()
+        toast.success('পেমেন্ট সফলভাবে আপডেট করা হয়েছে')
+      }
+    )
   }
 
   const handleCancelPaymentEdit = () => {
@@ -232,177 +337,214 @@ export default function LoansPage() {
           </div>
         </div>
 
-        {showForm && (
-          <div className="card mb-6 bg-white">
-            <h2 className="text-xl font-semibold mb-4">নতুন ধার যোগ করুন</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="label">ব্যক্তির নাম *</label>
-                <input
-                  type="text"
-                  value={personName}
-                  onChange={(e) => setPersonName(e.target.value)}
-                  className="input"
-                  placeholder="যেমন: রহিম"
-                  required
-                />
-              </div>
-              <div>
-                <label className="label">পরিমাণ (৳) *</label>
-                <input
-                  type="number"
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  className="input"
-                  placeholder="০"
-                  min="0"
-                  step="0.01"
-                  required
-                />
-              </div>
-              <div>
-                <label className="label">কারণ (ঐচ্ছিক)</label>
-                <input
-                  type="text"
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  className="input"
-                  placeholder="যেমন: জরুরি খরচ"
-                />
-              </div>
-              <div>
-                <label className="label">তারিখ *</label>
-                <input
-                  type="date"
-                  value={date}
-                  onChange={(e) => setDate(e.target.value)}
-                  className="input"
-                  required
-                />
-              </div>
-              <button type="submit" className="btn btn-primary w-full">
+        {/* Add Loan Modal */}
+        <Modal
+          isOpen={showForm}
+          onClose={() => setShowForm(false)}
+          title="নতুন ধার যোগ করুন"
+          className="border-red-200"
+          footerActions={
+            <div className="flex justify-end space-x-3">
+              <ActionButton
+                onClick={() => setShowForm(false)}
+                variant="secondary"
+              >
+                বাতিল করুন
+              </ActionButton>
+              <ActionButton
+                onClick={(e) => e && handleSubmit(e)}
+                variant="primary"
+              >
                 সংরক্ষণ করুন
-              </button>
-            </form>
-          </div>
-        )}
+              </ActionButton>
+            </div>
+          }
+        >
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="label">ব্যক্তির নাম *</label>
+              <input
+                type="text"
+                value={personName}
+                onChange={(e) => setPersonName(e.target.value)}
+                className="input"
+                placeholder="যেমন: রহিম"
+                required
+              />
+            </div>
+            <div>
+              <label className="label">পরিমাণ (৳) *</label>
+              <input
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="input"
+                placeholder="০"
+                min="0"
+                step="0.01"
+                required
+              />
+            </div>
+            <div>
+              <label className="label">কারণ (ঐচ্ছিক)</label>
+              <input
+                type="text"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                className="input"
+                placeholder="যেমন: জরুরি খরচ"
+              />
+            </div>
+            <div>
+              <label className="label">তারিখ *</label>
+              <input
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                className="input"
+                required
+              />
+            </div>
+          </form>
+        </Modal>
 
-        {editingLoan && (
-          <div className="card mb-6 bg-white border-2 border-blue-200">
-            <h2 className="text-xl font-semibold mb-4 text-blue-900">ধার সম্পাদনা করুন</h2>
-            <form onSubmit={handleEditSubmit} className="space-y-4">
-              <div>
-                <label className="label">ব্যক্তির নাম *</label>
-                <input
-                  type="text"
-                  value={editPersonName}
-                  onChange={(e) => setEditPersonName(e.target.value)}
-                  className="input"
-                  placeholder="যেমন: রহিম"
-                  required
-                />
-              </div>
-              <div>
-                <label className="label">পরিমাণ (৳) *</label>
-                <input
-                  type="number"
-                  value={editAmount}
-                  onChange={(e) => setEditAmount(e.target.value)}
-                  className="input"
-                  placeholder="০"
-                  min="0"
-                  step="0.01"
-                  required
-                />
-              </div>
-              <div>
-                <label className="label">কারণ (ঐচ্ছিক)</label>
-                <input
-                  type="text"
-                  value={editReason}
-                  onChange={(e) => setEditReason(e.target.value)}
-                  className="input"
-                  placeholder="যেমন: জরুরি খরচ"
-                />
-              </div>
-              <div>
-                <label className="label">তারিখ *</label>
-                <input
-                  type="date"
-                  value={editDate}
-                  onChange={(e) => setEditDate(e.target.value)}
-                  className="input"
-                  required
-                />
-              </div>
-              <div className="flex gap-2">
-                <button type="submit" className="btn btn-primary flex-1">
-                  আপডেট করুন
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCancelEdit}
-                  className="btn btn-secondary"
-                >
-                  বাতিল
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+        {/* Edit Loan Modal */}
+        <Modal
+          isOpen={editingLoan !== null}
+          onClose={handleCancelEdit}
+          title="ধার সম্পাদনা করুন"
+          className="border-blue-200"
+          footerActions={
+            <div className="flex justify-end space-x-3">
+              <ActionButton
+                onClick={handleCancelEdit}
+                variant="secondary"
+              >
+                বাতিল
+              </ActionButton>
+              <ActionButton
+                onClick={(e) => e && handleEditSubmit(e)}
+                variant="primary"
+              >
+                আপডেট করুন
+              </ActionButton>
+            </div>
+          }
+        >
+          <form onSubmit={handleEditSubmit} className="space-y-4">
+            <div>
+              <label className="label">ব্যক্তির নাম *</label>
+              <input
+                type="text"
+                value={editPersonName}
+                onChange={(e) => setEditPersonName(e.target.value)}
+                className="input"
+                placeholder="যেমন: রহিম"
+                required
+              />
+            </div>
+            <div>
+              <label className="label">পরিমাণ (৳) *</label>
+              <input
+                type="number"
+                value={editAmount}
+                onChange={(e) => setEditAmount(e.target.value)}
+                className="input"
+                placeholder="০"
+                min="0"
+                step="0.01"
+                required
+              />
+            </div>
+            <div>
+              <label className="label">কারণ (ঐচ্ছিক)</label>
+              <input
+                type="text"
+                value={editReason}
+                onChange={(e) => setEditReason(e.target.value)}
+                className="input"
+                placeholder="যেমন: জরুরি খরচ"
+              />
+            </div>
+            <div>
+              <label className="label">তারিখ *</label>
+              <input
+                type="date"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
+                className="input"
+                required
+              />
+            </div>
+          </form>
+        </Modal>
 
-        {editingPayment && (
-          <div className="card mb-6 bg-white border-2 border-green-200">
-            <h2 className="text-xl font-semibold mb-4 text-green-900">পেমেন্ট সম্পাদনা করুন</h2>
-            <form onSubmit={handleEditPaymentSubmit} className="space-y-4">
-              <div>
-                <label className="label">পরিমাণ (৳) *</label>
-                <input
-                  type="number"
-                  value={editPaymentAmount}
-                  onChange={(e) => setEditPaymentAmount(e.target.value)}
-                  className="input"
-                  placeholder="০"
-                  min="0"
-                  step="0.01"
-                  required
-                />
-              </div>
-              <div>
-                <label className="label">তারিখ *</label>
-                <input
-                  type="date"
-                  value={editPaymentDate}
-                  onChange={(e) => setEditPaymentDate(e.target.value)}
-                  className="input"
-                  required
-                />
-              </div>
-              <div>
-                <label className="label">নোট (ঐচ্ছিক)</label>
-                <input
-                  type="text"
-                  value={editPaymentNote}
-                  onChange={(e) => setEditPaymentNote(e.target.value)}
-                  className="input"
-                  placeholder="যেমন: আংশিক পরিশোধ"
-                />
-              </div>
-              <div className="flex gap-2">
-                <button type="submit" className="btn btn-primary flex-1">
-                  আপডেট করুন
-                </button>
-                <button
-                  type="button"
-                  onClick={handleCancelPaymentEdit}
-                  className="btn btn-secondary"
-                >
-                  বাতিল
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
+        {/* Edit Payment Modal */}
+        <Modal
+          isOpen={editingPayment !== null}
+          onClose={handleCancelPaymentEdit}
+          title="পেমেন্ট সম্পাদনা করুন"
+          className="border-green-200"
+          footerActions={
+            <div className="flex justify-end space-x-3">
+              <ActionButton
+                onClick={handleCancelPaymentEdit}
+                variant="secondary"
+              >
+                বাতিল
+              </ActionButton>
+              <ActionButton
+                onClick={(e) => e && handleEditPaymentSubmit(e)}
+                variant="primary"
+              >
+                আপডেট করুন
+              </ActionButton>
+            </div>
+          }
+        >
+          <form onSubmit={handleEditPaymentSubmit} className="space-y-4">
+            <div>
+              <label className="label">পরিমাণ (৳) *</label>
+              <input
+                type="number"
+                value={editPaymentAmount}
+                onChange={(e) => setEditPaymentAmount(e.target.value)}
+                className="input"
+                placeholder="০"
+                min="0"
+                max={editingPayment ? (() => {
+                  const loan = loans.find(l => l.id === editingPayment.loanId)
+                  if (!loan) return 0
+                  const otherPayments = loan.payments?.filter(p => p.id !== editingPayment.payment.id) || []
+                  const otherPaymentsTotal = otherPayments.reduce((sum, p) => sum + p.amount, 0)
+                  return loan.amount - otherPaymentsTotal
+                })() : 0}
+                step="0.01"
+                required
+              />
+            </div>
+            <div>
+              <label className="label">তারিখ *</label>
+              <input
+                type="date"
+                value={editPaymentDate}
+                onChange={(e) => setEditPaymentDate(e.target.value)}
+                className="input"
+                required
+              />
+            </div>
+            <div>
+              <label className="label">নোট (ঐচ্ছিক)</label>
+              <input
+                type="text"
+                value={editPaymentNote}
+                onChange={(e) => setEditPaymentNote(e.target.value)}
+                className="input"
+                placeholder="যেমন: আংশিক পরিশোধ"
+              />
+            </div>
+          </form>
+        </Modal>
 
         <div className="space-y-6">
           {activeLoans.length > 0 && (

@@ -1,4 +1,4 @@
-import { Reminder, Debt, Loan, Payment } from './types'
+import type { Reminder, Debt, Loan, Payment } from './types'
 
 // Helper to check if we're in browser
 const isBrowser = typeof window !== 'undefined'
@@ -102,7 +102,12 @@ export const addDebtPayment = (debtId: string, payment: Payment): void => {
     if (!debts[index].payments) {
       debts[index].payments = []
     }
-    debts[index].payments!.push(payment)
+    // Ensure payment amount is a number
+    const paymentWithNumberAmount = {
+      ...payment,
+      amount: Number(payment.amount)
+    }
+    debts[index].payments!.push(paymentWithNumberAmount)
     
     // Auto-mark as returned if fully paid
     const totalPaid = debts[index].payments!.reduce((sum, p) => sum + p.amount, 0)
@@ -138,7 +143,12 @@ export const addLoanPayment = (loanId: string, payment: Payment): void => {
     if (!loans[index].payments) {
       loans[index].payments = []
     }
-    loans[index].payments!.push(payment)
+    // Ensure payment amount is a number
+    const paymentWithNumberAmount = {
+      ...payment,
+      amount: Number(payment.amount)
+    }
+    loans[index].payments!.push(paymentWithNumberAmount)
     
     // Auto-mark as returned if fully paid
     const totalPaid = loans[index].payments!.reduce((sum, p) => sum + p.amount, 0)

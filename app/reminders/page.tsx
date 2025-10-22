@@ -3,9 +3,12 @@
 import { useEffect, useState } from 'react'
 import { getReminders, saveReminder, updateReminder, deleteReminder } from '@/lib/storage'
 import { scheduleNotification } from '@/lib/notifications'
-import { Reminder } from '@/lib/types'
+import type { Reminder } from '@/lib/types'
 import { format } from 'date-fns'
 import { bn } from 'date-fns/locale'
+import { toast } from '@/lib/toast'
+import { confirm } from '@/lib/confirm'
+import Modal, { ActionButton } from '@/components/Modal'
 
 export default function RemindersPage() {
   const [reminders, setReminders] = useState<Reminder[]>([])
@@ -19,6 +22,8 @@ export default function RemindersPage() {
     setMounted(true)
     loadReminders()
     setupServiceWorker()
+    // Set default date after mount
+    setScheduledTime(new Date().toISOString().slice(0, 16))
   }, [])
 
   const setupServiceWorker = async () => {
@@ -67,7 +72,7 @@ export default function RemindersPage() {
     e.preventDefault()
     
     if (!title || !scheduledTime) {
-      alert('শিরোনাম এবং সময় দিন')
+      toast.error('শিরোনাম এবং সময় দিন')
       return
     }
 
@@ -83,14 +88,20 @@ export default function RemindersPage() {
     saveReminder(reminder)
     
     // Schedule notification
-    await scheduleNotification(
+    const hasPermission = await scheduleNotification(
       reminder.id,
       reminder.title,
       reminder.description || '',
       new Date(scheduledTime)
     )
     
-    alert('✅ রিমাইন্ডার সেট করা হয়েছে!\n\n⚠️ ব্রাউজার খোলা রাখুন!')
+    if (hasPermission === false) {
+      toast.error('নোটিফিকেশন পাঠাতে পারমিশন দিন')
+      return
+    }
+    
+    toast.success('রিমাইন্ডার সফলভাবে সেট করা হয়েছে!')
+    toast.warning('ব্রাউজার খোলা রাখুন নোটিফিকেশনের জন্য!', 6000)
 
     setTitle('')
     setDescription('')
@@ -100,15 +111,39 @@ export default function RemindersPage() {
   }
 
   const handleDelete = (id: string) => {
-    if (confirm('এই রিমাইন্ডারটি মুছে ফেলবেন?')) {
-      deleteReminder(id)
-      loadReminders()
-    }
+    const reminder = reminders.find(r => r.id === id)
+    if (!reminder) return
+    
+    confirm.delete(
+      'রিমাইন্ডার মুছুন',
+      `"${reminder.title}" রিমাইন্ডার মুছে ফেলবেন?`,
+      () => {
+        deleteReminder(id)
+        loadReminders()
+        toast.success('রিমাইন্ডার সফলভাবে মুছে ফেলা হয়েছে')
+      }
+    )
   }
 
   const handleToggleDismiss = (reminder: Reminder) => {
-    updateReminder(reminder.id, { dismissed: !reminder.dismissed })
-    loadReminders()
+    const newStatus = !reminder.dismissed
+    const actionText = newStatus ? 'বাতিল করেছেন' : 'সক্রিয় করেছেন'
+    const confirmText = newStatus ? 'বাতিল করি' : 'সক্রিয় করি'
+    
+    confirm.custom(
+      'রিমাইন্ডার অবস্থা পরিবর্তন করুন',
+      `"${reminder.title}" রিমাইন্ডার ${actionText} হিসেবে চিহ্নিত করবেন?`,
+      () => {
+        updateReminder(reminder.id, { dismissed: newStatus })
+        loadReminders()
+        toast.success(`রিমাইন্ডার ${actionText} হিসেবে চিহ্নিত করা হয়েছে`)
+      },
+      {
+        confirmText: confirmText,
+        cancelText: 'বাতিল',
+        type: newStatus ? 'warning' : 'info'
+      }
+    )
   }
 
   if (!mounted) {
@@ -131,47 +166,63 @@ export default function RemindersPage() {
           </button>
         </div>
 
-        {showForm && (
-          <div className="card mb-6 bg-white">
-            <h2 className="text-xl font-semibold mb-4">নতুন রিমাইন্ডার যোগ করুন</h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="label">শিরোনাম *</label>
-                <input
-                  type="text"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  className="input"
-                  placeholder="যেমন: ওষুধ খাওয়া"
-                  required
-                />
-              </div>
-              <div>
-                <label className="label">বিবরণ (ঐচ্ছিক)</label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="input"
-                  rows={3}
-                  placeholder="অতিরিক্ত বিবরণ"
-                />
-              </div>
-              <div>
-                <label className="label">সময় *</label>
-                <input
-                  type="datetime-local"
-                  value={scheduledTime}
-                  onChange={(e) => setScheduledTime(e.target.value)}
-                  className="input"
-                  required
-                />
-              </div>
-              <button type="submit" className="btn btn-primary w-full">
+        {/* Add Reminder Modal */}
+        <Modal
+          isOpen={showForm}
+          onClose={() => setShowForm(false)}
+          title="নতুন রিমাইন্ডার যোগ করুন"
+          className="border-purple-200"
+          footerActions={
+            <div className="flex justify-end space-x-3">
+              <ActionButton
+                onClick={() => setShowForm(false)}
+                variant="secondary"
+              >
+                বাতিল করুন
+              </ActionButton>
+              <ActionButton
+                onClick={(e) => e && handleSubmit(e)}
+                variant="primary"
+              >
                 রিমাইন্ডার সংরক্ষণ করুন
-              </button>
-            </form>
-          </div>
-        )}
+              </ActionButton>
+            </div>
+          }
+        >
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="label">শিরোনাম *</label>
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="input"
+                placeholder="যেমন: ওষুধ খাওয়া"
+                required
+              />
+            </div>
+            <div>
+              <label className="label">বিবরণ (ঐচ্ছিক)</label>
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="input"
+                rows={3}
+                placeholder="অতিরিক্ত বিবরণ"
+              />
+            </div>
+            <div>
+              <label className="label">সময় *</label>
+              <input
+                type="datetime-local"
+                value={scheduledTime}
+                onChange={(e) => setScheduledTime(e.target.value)}
+                className="input"
+                required
+              />
+            </div>
+          </form>
+        </Modal>
 
         <div className="space-y-6">
           {activeReminders.length > 0 && (
