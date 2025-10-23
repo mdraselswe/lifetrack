@@ -34,8 +34,8 @@ export default function DebtsPage() {
     setMounted(true)
     loadDebts()
     // Set default date after mount
-    setDate(new Date().toISOString().split('T')[0])
-    setPaymentDate(new Date().toISOString().split('T')[0])
+    setDate(new Date().toISOString().slice(0, 16))
+    setPaymentDate(new Date().toISOString().slice(0, 16))
   }, [])
 
   const loadDebts = () => {
@@ -65,7 +65,7 @@ export default function DebtsPage() {
     setPersonName('')
     setAmount('')
     setReason('')
-    setDate(new Date().toISOString().split('T')[0])
+    setDate(new Date().toISOString().slice(0, 16))
     setShowForm(false)
     loadDebts()
     toast.success('ধার সফলভাবে যোগ করা হয়েছে')
@@ -89,7 +89,7 @@ export default function DebtsPage() {
             const remainingPayment: Payment = {
               id: Date.now().toString(),
               amount: remainingAmount,
-              date: new Date().toISOString().split('T')[0],
+              date: new Date().toISOString().slice(0, 16),
               note: 'সম্পূর্ণ পরিশোধ',
               createdAt: new Date().toISOString(),
             }
@@ -150,7 +150,7 @@ export default function DebtsPage() {
 
     addDebtPayment(debtId, payment)
     setPaymentAmount('')
-    setPaymentDate(new Date().toISOString().split('T')[0])
+    setPaymentDate(new Date().toISOString().slice(0, 16))
     setPaymentNote('')
     setShowPaymentForm(null)
     loadDebts()
@@ -401,7 +401,26 @@ export default function DebtsPage() {
               <input
                 type="number"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  // Only allow numbers and decimal point
+                  if (/^\d*\.?\d*$/.test(value)) {
+                    setAmount(value)
+                  }
+                }}
+                onKeyDown={(e) => {
+                  // Prevent non-numeric keys except backspace, delete, tab, escape, enter, decimal point
+                  if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', '.', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                    e.preventDefault()
+                  }
+                }}
+                onPaste={(e) => {
+                  e.preventDefault()
+                  const paste = e.clipboardData.getData('text')
+                  if (/^\d*\.?\d*$/.test(paste)) {
+                    setAmount(paste)
+                  }
+                }}
                 className="input"
                 placeholder="০"
                 min="0"
@@ -422,7 +441,7 @@ export default function DebtsPage() {
             <div>
               <label className="label">তারিখ *</label>
               <input
-                type="date"
+                type="datetime-local"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 className="input"
@@ -472,7 +491,26 @@ export default function DebtsPage() {
               <input
                 type="number"
                 value={editAmount}
-                onChange={(e) => setEditAmount(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  // Only allow numbers and decimal point
+                  if (/^\d*\.?\d*$/.test(value)) {
+                    setEditAmount(value)
+                  }
+                }}
+                onKeyDown={(e) => {
+                  // Prevent non-numeric keys except backspace, delete, tab, escape, enter, decimal point
+                  if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', '.', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                    e.preventDefault()
+                  }
+                }}
+                onPaste={(e) => {
+                  e.preventDefault()
+                  const paste = e.clipboardData.getData('text')
+                  if (/^\d*\.?\d*$/.test(paste)) {
+                    setEditAmount(paste)
+                  }
+                }}
                 className="input"
                 placeholder="০"
                 min={editingDebt ? getTotalPaid(editingDebt) : 0}
@@ -493,7 +531,7 @@ export default function DebtsPage() {
             <div>
               <label className="label">তারিখ *</label>
               <input
-                type="date"
+                type="datetime-local"
                 value={editDate}
                 onChange={(e) => setEditDate(e.target.value)}
                 className="input"
@@ -532,7 +570,26 @@ export default function DebtsPage() {
               <input
                 type="number"
                 value={editPaymentAmount}
-                onChange={(e) => setEditPaymentAmount(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  // Only allow numbers and decimal point
+                  if (/^\d*\.?\d*$/.test(value)) {
+                    setEditPaymentAmount(value)
+                  }
+                }}
+                onKeyDown={(e) => {
+                  // Prevent non-numeric keys except backspace, delete, tab, escape, enter, decimal point
+                  if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', '.', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                    e.preventDefault()
+                  }
+                }}
+                onPaste={(e) => {
+                  e.preventDefault()
+                  const paste = e.clipboardData.getData('text')
+                  if (/^\d*\.?\d*$/.test(paste)) {
+                    setEditPaymentAmount(paste)
+                  }
+                }}
                 className="input"
                 placeholder="০"
                 min="0"
@@ -550,7 +607,7 @@ export default function DebtsPage() {
             <div>
               <label className="label">তারিখ *</label>
               <input
-                type="date"
+                type="datetime-local"
                 value={editPaymentDate}
                 onChange={(e) => setEditPaymentDate(e.target.value)}
                 className="input"
@@ -603,7 +660,7 @@ export default function DebtsPage() {
                             <p className="text-gray-600 text-sm mb-2">📝 {debt.reason}</p>
                           )}
                           <div className="text-sm text-gray-500">
-                            📅 {format(new Date(debt.date), 'PPP')}
+                            📅 {format(new Date(debt.date), 'PPP p')}
                           </div>
                         </div>
                         <div className="flex gap-2">
@@ -640,7 +697,7 @@ export default function DebtsPage() {
                                 <div className="flex items-center gap-3">
                                   <span className="font-semibold text-blue-600">৳{payment.amount}</span>
                                   <span className="text-gray-500">•</span>
-                                  <span className="text-gray-600">{format(new Date(payment.date), 'PP')}</span>
+                                  <span className="text-gray-600">{format(new Date(payment.date), 'PP p')}</span>
                                   {payment.note && (
                                     <>
                                       <span className="text-gray-500">•</span>
@@ -682,7 +739,26 @@ export default function DebtsPage() {
                                   <input
                                     type="number"
                                     value={paymentAmount}
-                                    onChange={(e) => setPaymentAmount(e.target.value)}
+                                    onChange={(e) => {
+                                      const value = e.target.value
+                                      // Only allow numbers and decimal point
+                                      if (/^\d*\.?\d*$/.test(value)) {
+                                        setPaymentAmount(value)
+                                      }
+                                    }}
+                                    onKeyDown={(e) => {
+                                      // Prevent non-numeric keys except backspace, delete, tab, escape, enter, decimal point
+                                      if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', '.', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                                        e.preventDefault()
+                                      }
+                                    }}
+                                    onPaste={(e) => {
+                                      e.preventDefault()
+                                      const paste = e.clipboardData.getData('text')
+                                      if (/^\d*\.?\d*$/.test(paste)) {
+                                        setPaymentAmount(paste)
+                                      }
+                                    }}
                                     className="input text-sm"
                                     placeholder="০"
                                     min="0"
@@ -693,7 +769,7 @@ export default function DebtsPage() {
                                 <div>
                                   <label className="text-xs text-gray-600">তারিখ</label>
                                   <input
-                                    type="date"
+                                    type="datetime-local"
                                     value={paymentDate}
                                     onChange={(e) => setPaymentDate(e.target.value)}
                                     className="input text-sm"
@@ -799,7 +875,7 @@ export default function DebtsPage() {
                                 <div className="flex items-center gap-3">
                                   <span className="font-semibold text-blue-600">৳{payment.amount}</span>
                                   <span className="text-gray-500">•</span>
-                                  <span className="text-gray-600">{format(new Date(payment.date), 'PP')}</span>
+                                  <span className="text-gray-600">{format(new Date(payment.date), 'PP p')}</span>
                                   {payment.note && (
                                     <>
                                       <span className="text-gray-500">•</span>
