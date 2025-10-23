@@ -344,7 +344,7 @@ export default function LoansPage() {
     <div className="min-h-full bg-gray-50 p-4">
       <div className="max-w-2xl mx-auto py-8">
         <div className="flex items-center justify-between mb-6 fade-in">
-          <h1 className="text-2xl font-bold text-gray-900 slide-up">💸 ধার নেওয়া</h1>
+          <h1 className="text-2xl font-bold text-gray-900 slide-up">💸 ধার নিয়েছি</h1>
           <button
             onClick={() => setShowForm(!showForm)}
             className="btn btn-primary flex items-center gap-2 scale-in"

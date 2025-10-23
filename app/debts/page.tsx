@@ -340,7 +340,7 @@ export default function DebtsPage() {
     <div className="min-h-full bg-gray-50 p-4">
       <div className="max-w-2xl mx-auto py-8">
         <div className="flex items-center justify-between mb-6 fade-in">
-          <h1 className="text-2xl font-bold text-gray-900 slide-up">💰 ধার দেওয়া</h1>
+          <h1 className="text-2xl font-bold text-gray-900 slide-up">💰 ধার দিয়েছি</h1>
           <button
             onClick={() => setShowForm(!showForm)}
             className="btn btn-primary flex items-center gap-2 scale-in"
@@ -356,7 +356,7 @@ export default function DebtsPage() {
             <div className="text-3xl font-bold">৳{totalActive}</div>
           </div>
           <div className="card bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg stagger-item">
-            <div className="text-sm mb-1 opacity-90">ফেরত পাওয়া</div>
+            <div className="text-sm mb-1 opacity-90">ফেরত পেয়েছি</div>
             <div className="text-3xl font-bold">৳{totalReturned}</div>
           </div>
         </div>
@@ -744,7 +744,7 @@ export default function DebtsPage() {
 
           {returnedDebts.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-800 mb-3">ফেরত পাওয়া</h2>
+              <h2 className="text-lg font-semibold text-gray-800 mb-3">ফেরত পেয়েছি</h2>
               <div className="space-y-3">
                 {returnedDebts.map((debt) => {
                   const totalPaid = getTotalPaid(debt)

@@ -97,7 +97,7 @@ export default function Dashboard() {
             <div className="card hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg stagger-item">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold mb-1">💰 ধার দেওয়া</h2>
+                  <h2 className="text-2xl font-bold mb-1">💰 ধার দিয়েছি</h2>
                   <p className="text-green-100 opacity-90">বাকি আছে যে টাকা</p>
                 </div>
                 <div className="text-right">
@@ -112,7 +112,7 @@ export default function Dashboard() {
             <div className="card hover:shadow-xl transition-shadow duration-300 cursor-pointer bg-gradient-to-br from-red-500 to-red-600 text-white border-0 shadow-lg stagger-item">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold mb-1">💸 ধার নেওয়া</h2>
+                  <h2 className="text-2xl font-bold mb-1">💸 ধার নিয়েছি</h2>
                   <p className="text-red-100 opacity-90">ফেরত দিতে হবে যে টাকা</p>
                 </div>
                 <div className="text-right">

@@ -9,8 +9,8 @@ export default function Navigation() {
   const navItems = [
     { href: '/', label: 'হোম', icon: '🏠' },
     { href: '/reminders', label: 'রিমাইন্ডার', icon: '⏰' },
-    { href: '/debts', label: 'ধার দেওয়া', icon: '💰' },
-    { href: '/loans', label: 'ধার নেওয়া', icon: '💸' },
+    { href: '/debts', label: 'ধার দিয়েছি', icon: '💰' },
+    { href: '/loans', label: 'ধার নিয়েছি', icon: '💸' },
   ]
 
   return (
