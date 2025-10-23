@@ -156,13 +156,14 @@ export default function RemindersPage() {
   return (
     <div className="min-h-full bg-gray-50 p-4">
       <div className="max-w-2xl mx-auto py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">⏰ রিমাইন্ডার</h1>
+        <div className="flex items-center justify-between mb-6 fade-in">
+          <h1 className="text-2xl font-bold text-gray-900 slide-up">⏰ রিমাইন্ডার</h1>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="btn btn-primary"
+            className="btn btn-primary flex items-center gap-2 scale-in"
           >
-            {showForm ? 'বাতিল' : '+ নতুন রিমাইন্ডার'}
+            <span className="text-lg">{showForm ? '✕' : '+'}</span>
+            {showForm ? 'বাতিল' : 'নতুন রিমাইন্ডার'}
           </button>
         </div>
 
@@ -249,13 +250,13 @@ export default function RemindersPage() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleToggleDismiss(reminder)}
-                          className="btn btn-secondary text-xs"
+                          className="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
                         >
                           ✓
                         </button>
                         <button
                           onClick={() => handleDelete(reminder.id)}
-                          className="btn btn-danger text-xs"
+                          className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
                         >
                           🗑️
                         </button>
@@ -285,13 +286,13 @@ export default function RemindersPage() {
                       <div className="flex gap-2">
                         <button
                           onClick={() => handleToggleDismiss(reminder)}
-                          className="btn btn-secondary text-xs"
+                          className="px-3 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
                         >
                           ↺
                         </button>
                         <button
                           onClick={() => handleDelete(reminder.id)}
-                          className="btn btn-danger text-xs"
+                          className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
                         >
                           🗑️
                         </button>

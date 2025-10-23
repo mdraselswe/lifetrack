@@ -204,15 +204,32 @@ export default function DebtsPage() {
       return
     }
 
+    const newAmount = parseFloat(editAmount)
+    if (isNaN(newAmount) || newAmount <= 0) {
+      toast.error('সঠিক পরিমাণ দিন')
+      return
+    }
+
+    // Check if new amount is less than total paid amount
+    const totalPaid = getTotalPaid(editingDebt)
+    if (newAmount < totalPaid) {
+      toast.error(`মোট পরিশোধিত পরিমাণ: ৳${totalPaid}. নতুন পরিমাণ তার চেয়ে কম হতে পারবে না।`)
+      return
+    }
+
     confirm.update(
       'ধার আপডেট করুন',
       `${editPersonName} এর ধারের তথ্য আপডেট করবেন?`,
       () => {
+        // Check if new amount is greater than total paid, then set returned to false
+        const shouldBeReturned = newAmount <= totalPaid
+        
         updateDebt(editingDebt.id, {
           personName: editPersonName,
-          amount: parseFloat(editAmount),
+          amount: newAmount,
           reason: editReason,
           date: editDate,
+          returned: shouldBeReturned,
         })
 
         setEditingDebt(null)
@@ -306,29 +323,40 @@ export default function DebtsPage() {
 
   const activeDebts = debts.filter(d => !d.returned)
   const returnedDebts = debts.filter(d => d.returned)
-  const totalActive = activeDebts.reduce((sum, d) => sum + d.amount, 0)
-  const totalReturned = returnedDebts.reduce((sum, d) => sum + d.amount, 0)
+  
+  // Calculate remaining amounts after payments
+  const totalActive = activeDebts.reduce((sum, d) => {
+    const totalPaid = d.payments?.reduce((paymentSum, payment) => paymentSum + payment.amount, 0) || 0
+    const remaining = d.amount - totalPaid
+    return sum + Math.max(0, remaining)
+  }, 0)
+  
+  const totalReturned = returnedDebts.reduce((sum, d) => {
+    const totalPaid = d.payments?.reduce((paymentSum, payment) => paymentSum + payment.amount, 0) || 0
+    return sum + totalPaid
+  }, 0)
 
   return (
     <div className="min-h-full bg-gray-50 p-4">
       <div className="max-w-2xl mx-auto py-8">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">💰 ধার দেওয়া</h1>
+        <div className="flex items-center justify-between mb-6 fade-in">
+          <h1 className="text-2xl font-bold text-gray-900 slide-up">💰 ধার দেওয়া</h1>
           <button
             onClick={() => setShowForm(!showForm)}
-            className="btn btn-primary"
+            className="btn btn-primary flex items-center gap-2 scale-in"
           >
-            {showForm ? 'বাতিল' : '+ নতুন ধার'}
+            <span className="text-lg">{showForm ? '✕' : '+'}</span>
+            {showForm ? 'বাতিল' : 'নতুন ধার'}
           </button>
         </div>
 
         <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="card bg-green-500 text-white">
-            <div className="text-sm mb-1">বাকি আছে</div>
+          <div className="card bg-gradient-to-br from-green-500 to-green-600 text-white border-0 shadow-lg stagger-item">
+            <div className="text-sm mb-1 opacity-90">বাকি আছে</div>
             <div className="text-3xl font-bold">৳{totalActive}</div>
           </div>
-          <div className="card bg-green-700 text-white">
-            <div className="text-sm mb-1">ফেরত পাওয়া</div>
+          <div className="card bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg stagger-item">
+            <div className="text-sm mb-1 opacity-90">ফেরত পাওয়া</div>
             <div className="text-3xl font-bold">৳{totalReturned}</div>
           </div>
         </div>
@@ -447,7 +475,7 @@ export default function DebtsPage() {
                 onChange={(e) => setEditAmount(e.target.value)}
                 className="input"
                 placeholder="০"
-                min="0"
+                min={editingDebt ? getTotalPaid(editingDebt) : 0}
                 step="0.01"
                 required
               />
@@ -581,21 +609,21 @@ export default function DebtsPage() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleEdit(debt)}
-                            className="btn btn-secondary text-xs"
+                            className="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
                             title="সম্পাদনা করুন"
                           >
                             ✏️
                           </button>
                           <button
                             onClick={() => handleToggleReturned(debt)}
-                            className="btn btn-secondary text-xs"
+                            className="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
                             title="ফেরত পেয়েছি"
                           >
                             ✓
                           </button>
                           <button
                             onClick={() => handleDelete(debt.id)}
-                            className="btn btn-danger text-xs"
+                            className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
                           >
                             🗑️
                           </button>
@@ -620,17 +648,17 @@ export default function DebtsPage() {
                                     </>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
                                   <button
                                     onClick={() => handleEditPayment(debt.id, payment)}
-                                    className="text-blue-500 hover:text-blue-700"
+                                    className="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded text-xs transition-colors duration-200"
                                     title="সম্পাদনা করুন"
                                   >
                                     ✏️
                                   </button>
                                   <button
                                     onClick={() => handleDeletePayment(debt.id, payment.id)}
-                                    className="text-red-500 hover:text-red-700"
+                                    className="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-600 rounded text-xs transition-colors duration-200"
                                     title="মুছুন"
                                   >
                                     ✕
@@ -740,21 +768,21 @@ export default function DebtsPage() {
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleEdit(debt)}
-                            className="btn btn-secondary text-xs"
+                            className="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
                             title="সম্পাদনা করুন"
                           >
                             ✏️
                           </button>
                           <button
                             onClick={() => handleToggleReturned(debt)}
-                            className="btn btn-secondary text-xs"
+                            className="px-3 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
                             title="ফেরত পাইনি"
                           >
                             ↺
                           </button>
                           <button
                             onClick={() => handleDelete(debt.id)}
-                            className="btn btn-danger text-xs"
+                            className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
                           >
                             🗑️
                           </button>
@@ -779,17 +807,17 @@ export default function DebtsPage() {
                                     </>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-2">
                                   <button
                                     onClick={() => handleEditPayment(debt.id, payment)}
-                                    className="text-blue-500 hover:text-blue-700"
+                                    className="px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded text-xs transition-colors duration-200"
                                     title="সম্পাদনা করুন"
                                   >
                                     ✏️
                                   </button>
                                   <button
                                     onClick={() => handleDeletePayment(debt.id, payment.id)}
-                                    className="text-red-500 hover:text-red-700"
+                                    className="px-2 py-1 bg-red-100 hover:bg-red-200 text-red-600 rounded text-xs transition-colors duration-200"
                                     title="মুছুন"
                                   >
                                     ✕
