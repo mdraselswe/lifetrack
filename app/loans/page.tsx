@@ -641,53 +641,56 @@ export default function LoansPage() {
                   const totalPaid = getTotalPaid(loan)
                   return (
                     <div key={loan.id} className="card">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-lg text-gray-900 mb-1">
+                      <div className="mb-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <h3 className="font-semibold text-lg text-gray-900">
                             {loan.personName}
                           </h3>
-                          <div className="grid grid-cols-3 gap-2 mb-2">
-                            <div>
-                              <div className="text-xs text-gray-500">মোট</div>
-                              <div className="text-lg font-bold text-gray-900">৳{loan.amount}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-gray-500">পরিশোধিত</div>
-                              <div className="text-lg font-bold text-blue-600">৳{totalPaid}</div>
-                            </div>
-                            <div>
-                              <div className="text-xs text-gray-500">বাকি</div>
-                              <div className="text-lg font-bold text-red-600">৳{remaining}</div>
-                            </div>
-                          </div>
-                          {loan.reason && (
-                            <p className="text-gray-600 text-sm mb-2">📝 {loan.reason}</p>
-                          )}
-                          <div className="text-sm text-gray-500">
-                            📅 {format(new Date(loan.date), 'PPP p')}
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleEdit(loan)}
+                              className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md transition-colors duration-200"
+                              title="সম্পাদনা করুন"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => handleToggleReturned(loan)}
+                              className="p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-md transition-colors duration-200"
+                              title="ফেরত দিয়েছি"
+                            >
+                              ✓
+                            </button>
+                            <button
+                              onClick={() => handleDelete(loan.id)}
+                              className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors duration-200"
+                            >
+                              🗑️
+                            </button>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleEdit(loan)}
-                            className="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
-                            title="সম্পাদনা করুন"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleToggleReturned(loan)}
-                            className="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
-                            title="ফেরত দিয়েছি"
-                          >
-                            ✓
-                          </button>
-                          <button
-                            onClick={() => handleDelete(loan.id)}
-                            className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
-                          >
-                            🗑️
-                          </button>
+                        
+                        <div className="grid grid-cols-3 gap-3 mb-3">
+                          <div className="text-center p-2 bg-gray-50 rounded-lg">
+                            <div className="text-xs text-gray-500 mb-1">মোট</div>
+                            <div className="text-lg font-bold text-gray-900">৳{loan.amount}</div>
+                          </div>
+                          <div className="text-center p-2 bg-blue-50 rounded-lg">
+                            <div className="text-xs text-gray-500 mb-1">পরিশোধিত</div>
+                            <div className="text-lg font-bold text-blue-600">৳{totalPaid}</div>
+                          </div>
+                          <div className="text-center p-2 bg-red-50 rounded-lg">
+                            <div className="text-xs text-gray-500 mb-1">বাকি</div>
+                            <div className="text-lg font-bold text-red-600">৳{remaining}</div>
+                          </div>
+                        </div>
+                        
+                        {loan.reason && (
+                          <p className="text-gray-600 text-sm mb-2 p-2 bg-gray-50 rounded-lg">📝 {loan.reason}</p>
+                        )}
+                        
+                        <div className="text-sm text-gray-500 p-2 bg-gray-50 rounded-lg">
+                          📅 {format(new Date(loan.date), 'PPP p')}
                         </div>
                       </div>
 
@@ -830,43 +833,45 @@ export default function LoansPage() {
                   const totalPaid = getTotalPaid(loan)
                   return (
                     <div key={loan.id} className="card bg-gray-100">
-                      <div className="flex items-start justify-between mb-3">
-                        <div className="flex-1">
-                          <h3 className="font-semibold text-gray-700 mb-1">
+                      <div className="mb-4">
+                        <div className="flex items-start justify-between mb-3">
+                          <h3 className="font-semibold text-lg text-gray-700">
                             {loan.personName}
                           </h3>
-                          <div className="text-xl font-bold text-gray-600 mb-2">
-                            ৳{loan.amount}
-                            {totalPaid > 0 && (
-                              <span className="text-sm text-blue-500 ml-2">(পরিশোধিত: ৳{totalPaid})</span>
-                            )}
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleEdit(loan)}
+                              className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md transition-colors duration-200"
+                              title="সম্পাদনা করুন"
+                            >
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => handleToggleReturned(loan)}
+                              className="p-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-md transition-colors duration-200"
+                              title="ফেরত দেইনি"
+                            >
+                              ↺
+                            </button>
+                            <button
+                              onClick={() => handleDelete(loan.id)}
+                              className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors duration-200"
+                            >
+                              🗑️
+                            </button>
                           </div>
-                          {loan.reason && (
-                            <p className="text-gray-500 text-sm mb-2">📝 {loan.reason}</p>
+                        </div>
+                        
+                        <div className="text-center p-3 bg-gray-200 rounded-lg mb-3">
+                          <div className="text-xl font-bold text-gray-700 mb-1">৳{loan.amount}</div>
+                          {totalPaid > 0 && (
+                            <div className="text-sm text-blue-600">পরিশোধিত: ৳{totalPaid}</div>
                           )}
                         </div>
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleEdit(loan)}
-                            className="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
-                            title="সম্পাদনা করুন"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleToggleReturned(loan)}
-                            className="px-3 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
-                            title="ফেরত দেইনি"
-                          >
-                            ↺
-                          </button>
-                          <button
-                            onClick={() => handleDelete(loan.id)}
-                            className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
-                          >
-                            🗑️
-                          </button>
-                        </div>
+                        
+                        {loan.reason && (
+                          <p className="text-gray-500 text-sm mb-2 p-2 bg-gray-200 rounded-lg">📝 {loan.reason}</p>
+                        )}
                       </div>
 
                       {/* Payment History */}
