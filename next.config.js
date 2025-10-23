@@ -11,6 +11,11 @@ const nextConfig = {
   // Next.js 16 features
   cacheComponents: true,
   
+  // Turbopack configuration
+  turbopack: {
+    root: process.cwd(),
+  },
+  
   // Experimental features
   experimental: {
     // Optimized package imports

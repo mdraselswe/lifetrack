@@ -100,7 +100,7 @@ export default function RootLayout({
         <ToastContainer />
         <ConfirmToastContainer />
         <div className="flex flex-col h-full min-h-screen">
-          <main className="flex-1 overflow-auto pb-20">
+          <main className="flex-1 overflow-auto pb-16">
             {children}
           </main>
           <Navigation />

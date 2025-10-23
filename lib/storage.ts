@@ -3,11 +3,24 @@ import type { Reminder, Debt, Loan, Payment } from './types'
 // Helper to check if we're in browser
 const isBrowser = typeof window !== 'undefined'
 
+// Helper function to remove duplicates from array based on ID
+const removeDuplicates = <T extends { id: string }>(items: T[]): T[] => {
+  const seen = new Set<string>()
+  return items.filter(item => {
+    if (seen.has(item.id)) {
+      return false
+    }
+    seen.add(item.id)
+    return true
+  })
+}
+
 // Reminders
 export const getReminders = (): Reminder[] => {
   if (!isBrowser) return []
   const data = localStorage.getItem('reminders')
-  return data ? JSON.parse(data) : []
+  const reminders = data ? JSON.parse(data) : []
+  return removeDuplicates(reminders)
 }
 
 export const saveReminder = (reminder: Reminder): void => {
@@ -37,7 +50,8 @@ export const deleteReminder = (id: string): void => {
 export const getDebts = (): Debt[] => {
   if (!isBrowser) return []
   const data = localStorage.getItem('debts')
-  return data ? JSON.parse(data) : []
+  const debts = data ? JSON.parse(data) : []
+  return removeDuplicates(debts)
 }
 
 export const saveDebt = (debt: Debt): void => {
@@ -67,7 +81,8 @@ export const deleteDebt = (id: string): void => {
 export const getLoans = (): Loan[] => {
   if (!isBrowser) return []
   const data = localStorage.getItem('loans')
-  return data ? JSON.parse(data) : []
+  const loans = data ? JSON.parse(data) : []
+  return removeDuplicates(loans)
 }
 
 export const saveLoan = (loan: Loan): void => {
@@ -173,5 +188,69 @@ export const deleteLoanPayment = (loanId: string, paymentId: string): void => {
     
     localStorage.setItem('loans', JSON.stringify(loans))
   }
+}
+
+// Utility function to clean up localStorage data
+export const cleanupData = (): void => {
+  if (!isBrowser) return
+  
+  // Clean up reminders
+  const reminders = getReminders()
+  localStorage.setItem('reminders', JSON.stringify(reminders))
+  
+  // Clean up debts
+  const debts = getDebts()
+  localStorage.setItem('debts', JSON.stringify(debts))
+  
+  // Clean up loans
+  const loans = getLoans()
+  localStorage.setItem('loans', JSON.stringify(loans))
+  
+  console.log('Data cleanup completed')
+}
+
+// Utility function to validate and fix data integrity
+export const validateData = (): void => {
+  if (!isBrowser) return
+  
+  // Validate and fix reminders
+  const reminders = getReminders().filter(r => 
+    r.id && r.title && r.scheduledTime && r.createdAt
+  )
+  localStorage.setItem('reminders', JSON.stringify(reminders))
+  
+  // Validate and fix debts
+  const debts = getDebts().filter(d => 
+    d.id && d.personName && typeof d.amount === 'number' && d.date && d.createdAt
+  ).map(d => ({
+    ...d,
+    amount: Number(d.amount),
+    returned: Boolean(d.returned),
+    payments: d.payments?.filter(p => 
+      p.id && typeof p.amount === 'number' && p.date && p.createdAt
+    ).map(p => ({
+      ...p,
+      amount: Number(p.amount)
+    })) || []
+  }))
+  localStorage.setItem('debts', JSON.stringify(debts))
+  
+  // Validate and fix loans
+  const loans = getLoans().filter(l => 
+    l.id && l.personName && typeof l.amount === 'number' && l.date && l.createdAt
+  ).map(l => ({
+    ...l,
+    amount: Number(l.amount),
+    returned: Boolean(l.returned),
+    payments: l.payments?.filter(p => 
+      p.id && typeof p.amount === 'number' && p.date && p.createdAt
+    ).map(p => ({
+      ...p,
+      amount: Number(p.amount)
+    })) || []
+  }))
+  localStorage.setItem('loans', JSON.stringify(loans))
+  
+  console.log('Data validation completed')
 }
 

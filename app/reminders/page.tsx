@@ -154,16 +154,69 @@ export default function RemindersPage() {
   const dismissedReminders = reminders.filter(r => r.dismissed)
 
   return (
-    <div className="min-h-full bg-gray-50 p-4">
-      <div className="max-w-2xl mx-auto py-8">
-        <div className="flex items-center justify-between mb-6 fade-in">
-          <h1 className="text-2xl font-bold text-gray-900 slide-up">⏰ রিমাইন্ডার</h1>
+    <div className="min-h-full bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-100 relative overflow-hidden">
+      {/* Animated Background Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-purple-400/20 to-indigo-500/20 rounded-full blur-3xl animate-pulse"></div>
+        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-indigo-400/20 to-blue-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
+      </div>
+
+      <div className="relative z-10 max-w-4xl mx-auto px-4 py-6">
+        {/* Header Section */}
+        <div className="text-center mb-8 sm:mb-12 fade-in">
+          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl shadow-xl mb-4 sm:mb-6 float-gentle">
+            <span className="text-2xl sm:text-3xl">⏰</span>
+          </div>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-purple-800 to-indigo-800 bg-clip-text text-transparent mb-3 sm:mb-4 float-gentle">
+            রিমাইন্ডার
+          </h1>
+          <p className="text-lg sm:text-xl text-gray-600 slide-up max-w-md mx-auto leading-relaxed px-4">
+            সময়মতো নোটিফিকেশন পান
+          </p>
+        </div>
+
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300 stagger-item">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">সক্রিয় রিমাইন্ডার</p>
+                <p className="text-2xl font-bold text-purple-600">{activeReminders.length}</p>
+                <p className="text-xs text-gray-500">চালু আছে</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
+                <span className="text-2xl">⏰</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300 stagger-item">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600 mb-1">বাতিল রিমাইন্ডার</p>
+                <p className="text-2xl font-bold text-gray-600">{dismissedReminders.length}</p>
+                <p className="text-xs text-gray-500">বন্ধ আছে</p>
+              </div>
+              <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
+                <span className="text-2xl">⏸️</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Add Button */}
+        <div className="flex justify-center mb-8">
           <button
             onClick={() => setShowForm(!showForm)}
-            className="btn btn-primary flex items-center gap-2 scale-in"
+            className="group relative overflow-hidden bg-gradient-to-br from-purple-500 via-indigo-600 to-blue-600 rounded-2xl px-8 py-4 shadow-2xl hover:shadow-purple-500/25 transition-all duration-500 cursor-pointer transform hover:scale-105 hover:-translate-y-1"
           >
-            <span className="text-lg">{showForm ? '✕' : '+'}</span>
-            {showForm ? 'বাতিল' : 'নতুন রিমাইন্ডার'}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <div className="relative z-10 flex items-center gap-3 text-white font-semibold text-lg">
+              <span className="text-2xl group-hover:scale-110 transition-transform duration-300">
+                {showForm ? '✕' : '➕'}
+              </span>
+              {showForm ? 'বাতিল করুন' : 'নতুন রিমাইন্ডার যোগ করুন'}
+            </div>
           </button>
         </div>
 
@@ -179,7 +232,7 @@ export default function RemindersPage() {
                 onClick={() => setShowForm(false)}
                 variant="secondary"
               >
-                বাতিল করুন
+                বাতিল
               </ActionButton>
               <ActionButton
                 onClick={(e) => e && handleSubmit(e)}
@@ -197,7 +250,7 @@ export default function RemindersPage() {
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="input"
+                className="input focus:ring-purple-500/50 focus:border-purple-500/50"
                 placeholder="যেমন: ওষুধ খাওয়া"
                 required
               />
@@ -207,7 +260,7 @@ export default function RemindersPage() {
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="input"
+                className="input focus:ring-purple-500/50 focus:border-purple-500/50"
                 rows={3}
                 placeholder="অতিরিক্ত বিবরণ"
               />
@@ -218,48 +271,60 @@ export default function RemindersPage() {
                 type="datetime-local"
                 value={scheduledTime}
                 onChange={(e) => setScheduledTime(e.target.value)}
-                className="input"
+                className="input focus:ring-purple-500/50 focus:border-purple-500/50"
                 required
               />
             </div>
           </form>
         </Modal>
 
-        <div className="space-y-6">
+        <div className="space-y-8">
           {activeReminders.length > 0 && (
             <div>
-              <h2 className="text-lg font-semibold text-gray-800 mb-3">সক্রিয় রিমাইন্ডার</h2>
-              <div className="space-y-3">
+              <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-3">
+                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                  <span className="text-purple-600">⏰</span>
+                </div>
+                সক্রিয় রিমাইন্ডার
+              </h2>
+              <div className="grid gap-6">
                 {activeReminders.map((reminder) => (
-                  <div key={reminder.id} className="card">
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <h3 className="font-semibold text-lg text-gray-900 mb-1">
-                          {reminder.title}
-                        </h3>
-                        {reminder.description && (
-                          <p className="text-gray-600 text-sm mb-2">{reminder.description}</p>
-                        )}
-                        <div className="flex items-center gap-2 text-sm text-gray-500">
-                          <span>📅</span>
-                          <span>
-                            {format(new Date(reminder.scheduledTime), 'PPpp', { locale: bn })}
-                          </span>
+                  <div key={reminder.id} className="group relative overflow-hidden bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300">
+                    <div className="p-6">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-4 flex-1">
+                          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-xl">⏰</span>
+                          </div>
+                          <div className="flex-1">
+                            <h3 className="font-bold text-xl text-gray-900 mb-2">
+                              {reminder.title}
+                            </h3>
+                            {reminder.description && (
+                              <p className="text-gray-600 text-sm mb-3 leading-relaxed">{reminder.description}</p>
+                            )}
+                            <div className="flex items-center gap-2 text-sm text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
+                              <span>📅</span>
+                              <span>
+                                {format(new Date(reminder.scheduledTime), 'PPpp', { locale: bn })}
+                              </span>
+                            </div>
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleToggleDismiss(reminder)}
-                          className="px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
-                        >
-                          ✓
-                        </button>
-                        <button
-                          onClick={() => handleDelete(reminder.id)}
-                          className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors duration-200 shadow-sm hover:shadow-md"
-                        >
-                          🗑️
-                        </button>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleToggleDismiss(reminder)}
+                            className="px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105"
+                          >
+                            ✓
+                          </button>
+                          <button
+                            onClick={() => handleDelete(reminder.id)}
+                            className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md hover:scale-105"
+                          >
+                            🗑️
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -305,9 +370,19 @@ export default function RemindersPage() {
           )}
 
           {reminders.length === 0 && (
-            <div className="card text-center py-12 bg-white">
-              <p className="text-gray-500 text-lg mb-2">কোনো রিমাইন্ডার নেই</p>
-              <p className="text-gray-400 text-sm">উপরের "+ নতুন" বাটনে ক্লিক করে যোগ করুন</p>
+            <div className="text-center py-16">
+              <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mb-6">
+                <span className="text-4xl text-gray-400">⏰</span>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-700 mb-2">কোনো রিমাইন্ডার নেই</h3>
+              <p className="text-gray-500 mb-6">এখনো কোনো রিমাইন্ডার সেট করেননি</p>
+              <button
+                onClick={() => setShowForm(true)}
+                className="inline-flex items-center gap-2 bg-gradient-to-br from-purple-500 to-indigo-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 hover:scale-105"
+              >
+                <span>➕</span>
+                প্রথম রিমাইন্ডার যোগ করুন
+              </button>
             </div>
           )}
         </div>
