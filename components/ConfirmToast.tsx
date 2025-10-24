@@ -14,8 +14,8 @@ export default function ConfirmToastContainer() {
   if (confirms.length === 0) return null
 
   return (
-    <div className="fixed inset-0 z-[150] flex items-center justify-center bg-black bg-opacity-50">
-      <div className="space-y-4 max-w-sm w-full mx-4">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black bg-opacity-30 pointer-events-auto">
+      <div className="space-y-4 max-w-sm w-full mx-4 relative z-[99999]">
         {confirms.map((confirm) => (
           <ConfirmToastItem key={confirm.id} confirm={confirm} />
         ))}
@@ -46,7 +46,7 @@ function ConfirmToastItem({ confirm }: { confirm: ConfirmToast }) {
   }
 
   const getConfirmStyles = () => {
-    const baseStyles = "bg-white rounded-lg shadow-xl border-l-4 p-6 transform transition-all duration-300 ease-in-out"
+    const baseStyles = "bg-white rounded-lg shadow-2xl border-l-4 p-6 transform transition-all duration-300 ease-in-out relative z-[99999]"
     
     switch (confirm.type) {
       case 'danger':

@@ -15,6 +15,14 @@ export interface Payment {
   createdAt: string
 }
 
+export interface AmountIncrease {
+  id: string
+  amount: number
+  date: string
+  reason?: string
+  createdAt: string
+}
+
 export interface Debt {
   id: string
   personName: string
@@ -24,6 +32,7 @@ export interface Debt {
   returned: boolean
   createdAt: string
   payments?: Payment[]
+  increases?: AmountIncrease[]
 }
 
 export interface Loan {
@@ -35,5 +44,6 @@ export interface Loan {
   returned: boolean
   createdAt: string
   payments?: Payment[]
+  increases?: AmountIncrease[]
 }
 

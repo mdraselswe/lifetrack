@@ -1,4 +1,4 @@
-import type { Reminder, Debt, Loan, Payment } from './types'
+import type { Reminder, Debt, Loan, Payment, AmountIncrease } from './types'
 
 // Helper to check if we're in browser
 const isBrowser = typeof window !== 'undefined'
@@ -189,6 +189,65 @@ export const deleteLoanPayment = (loanId: string, paymentId: string): void => {
     localStorage.setItem('loans', JSON.stringify(loans))
   }
 }
+
+// Amount increase management for Loans
+export const addLoanIncrease = (loanId: string, increase: AmountIncrease): void => {
+  if (!isBrowser) return
+  const loans = getLoans()
+  const index = loans.findIndex(l => l.id === loanId)
+  if (index !== -1) {
+    if (!loans[index].increases) {
+      loans[index].increases = []
+    }
+    // Ensure increase amount is a number
+    const increaseWithNumberAmount = {
+      ...increase,
+      amount: typeof increase.amount === 'string' ? parseFloat(increase.amount) : increase.amount
+    }
+    loans[index].increases!.push(increaseWithNumberAmount)
+    localStorage.setItem('loans', JSON.stringify(loans))
+  }
+}
+
+export const deleteLoanIncrease = (loanId: string, increaseId: string): void => {
+  if (!isBrowser) return
+  const loans = getLoans()
+  const index = loans.findIndex(l => l.id === loanId)
+  if (index !== -1 && loans[index].increases) {
+    loans[index].increases = loans[index].increases!.filter(i => i.id !== increaseId)
+    localStorage.setItem('loans', JSON.stringify(loans))
+  }
+}
+
+// Amount increase management for Debts
+export const addDebtIncrease = (debtId: string, increase: AmountIncrease): void => {
+  if (!isBrowser) return
+  const debts = getDebts()
+  const index = debts.findIndex(d => d.id === debtId)
+  if (index !== -1) {
+    if (!debts[index].increases) {
+      debts[index].increases = []
+    }
+    // Ensure increase amount is a number
+    const increaseWithNumberAmount = {
+      ...increase,
+      amount: typeof increase.amount === 'string' ? parseFloat(increase.amount) : increase.amount
+    }
+    debts[index].increases!.push(increaseWithNumberAmount)
+    localStorage.setItem('debts', JSON.stringify(debts))
+  }
+}
+
+export const deleteDebtIncrease = (debtId: string, increaseId: string): void => {
+  if (!isBrowser) return
+  const debts = getDebts()
+  const index = debts.findIndex(d => d.id === debtId)
+  if (index !== -1 && debts[index].increases) {
+    debts[index].increases = debts[index].increases!.filter(i => i.id !== increaseId)
+    localStorage.setItem('debts', JSON.stringify(debts))
+  }
+}
+
 
 // Utility function to clean up localStorage data
 export const cleanupData = (): void => {
