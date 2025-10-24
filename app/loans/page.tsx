@@ -798,11 +798,11 @@ export default function LoansPage() {
                   return (
                     <div key={loan.id} className="space-y-6">
                       {/* Main Loan Card */}
-                      <div className="group relative overflow-hidden bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300">
+                      <div className="group relative overflow-hidden bg-gradient-to-br from-orange-50 to-orange-100 rounded-2xl shadow-lg border border-orange-200 hover:shadow-xl transition-all duration-300">
                         <div className="p-6">
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-rose-600 rounded-xl flex items-center justify-center">
+                              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl flex items-center justify-center">
                                 <span className="text-white text-xl">👤</span>
                               </div>
                               <div>
@@ -836,16 +836,16 @@ export default function LoansPage() {
                           </div>
                           
                           <div className="grid grid-cols-3 gap-3 mb-4">
-                            <div className="text-center p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl">
-                              <div className="text-xs text-gray-500 mb-2 font-medium">মোট</div>
-                              <div className="text-lg sm:text-xl font-bold text-gray-900">৳{loan.amount}</div>
+                            <div className="text-center p-3 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl border border-orange-300">
+                              <div className="text-xs text-orange-700 mb-2 font-medium">মোট</div>
+                              <div className="text-lg sm:text-xl font-bold text-orange-800">৳{loan.amount}</div>
                             </div>
-                            <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
+                            <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
                               <div className="text-xs text-gray-500 mb-2 font-medium">পরিশোধিত</div>
                               <div className="text-lg sm:text-xl font-bold text-blue-600">৳{totalPaid}</div>
                             </div>
-                            <div className="text-center p-3 bg-gradient-to-br from-red-50 to-red-100 rounded-xl">
-                              <div className="text-xs text-gray-500 mb-2 font-medium">বাকি</div>
+                            <div className="text-center p-3 bg-gradient-to-br from-red-50 to-red-100 rounded-xl border border-red-200">
+                              <div className="text-xs text-red-700 mb-2 font-medium">বাকি</div>
                               <div className="text-lg sm:text-xl font-bold text-red-600">৳{remaining}</div>
                             </div>
                           </div>
@@ -1063,12 +1063,12 @@ export default function LoansPage() {
                 {returnedLoans.map((loan) => {
                   const totalPaid = getTotalPaid(loan)
                   return (
-                    <div key={loan.id} className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+                    <div key={loan.id} className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl shadow-lg border border-blue-200 overflow-hidden">
                       <div className="p-6">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                              <span className="text-purple-600 text-xl">✅</span>
+                            <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                              <span className="text-white text-xl">✅</span>
                             </div>
                             <div>
                               <h3 className="font-bold text-xl text-gray-900 mb-1">
@@ -1102,13 +1102,13 @@ export default function LoansPage() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div className="text-center p-4 bg-purple-50 rounded-xl border border-purple-100">
-                            <div className="text-xs text-gray-500 mb-2 font-medium">মূল পরিমাণ</div>
-                            <div className="text-lg sm:text-xl font-bold text-purple-600">৳{loan.amount}</div>
+                          <div className="text-center p-4 bg-blue-100 rounded-xl border border-blue-200">
+                            <div className="text-xs text-blue-700 mb-2 font-medium">মূল পরিমাণ</div>
+                            <div className="text-lg sm:text-xl font-bold text-blue-800">৳{loan.amount}</div>
                           </div>
-                          <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-100">
-                            <div className="text-xs text-gray-500 mb-2 font-medium">পরিশোধিত</div>
-                            <div className="text-lg sm:text-xl font-bold text-blue-600">৳{totalPaid}</div>
+                          <div className="text-center p-4 bg-green-50 rounded-xl border border-green-200">
+                            <div className="text-xs text-green-700 mb-2 font-medium">পরিশোধিত</div>
+                            <div className="text-lg sm:text-xl font-bold text-green-600">৳{totalPaid}</div>
                           </div>
                         </div>
                         

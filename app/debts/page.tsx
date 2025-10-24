@@ -791,11 +791,11 @@ export default function DebtsPage() {
                   return (
                     <div key={debt.id} className="space-y-6">
                       {/* Main Debt Card */}
-                      <div className="group relative overflow-hidden bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300">
+                      <div className="group relative overflow-hidden bg-gradient-to-br from-red-50 to-red-100 rounded-2xl shadow-lg border border-red-200 hover:shadow-xl transition-all duration-300">
                         <div className="p-6">
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                              <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center">
                                 <span className="text-white text-xl">👤</span>
                               </div>
                               <div>
@@ -829,17 +829,17 @@ export default function DebtsPage() {
                           </div>
                           
                           <div className="grid grid-cols-3 gap-3 mb-4">
-                            <div className="text-center p-3 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl">
-                              <div className="text-xs text-gray-500 mb-2 font-medium">মোট</div>
-                              <div className="text-lg sm:text-xl font-bold text-gray-900">৳{debt.amount}</div>
+                            <div className="text-center p-3 bg-gradient-to-br from-red-100 to-red-200 rounded-xl border border-red-300">
+                              <div className="text-xs text-red-700 mb-2 font-medium">মোট</div>
+                              <div className="text-lg sm:text-xl font-bold text-red-800">৳{debt.amount}</div>
                             </div>
-                            <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl">
+                            <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
                               <div className="text-xs text-gray-500 mb-2 font-medium">পরিশোধিত</div>
                               <div className="text-lg sm:text-xl font-bold text-blue-600">৳{totalPaid}</div>
                             </div>
-                            <div className="text-center p-3 bg-gradient-to-br from-green-50 to-green-100 rounded-xl">
-                              <div className="text-xs text-gray-500 mb-2 font-medium">বাকি</div>
-                              <div className="text-lg sm:text-xl font-bold text-green-600">৳{remaining}</div>
+                            <div className="text-center p-3 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border border-orange-200">
+                              <div className="text-xs text-orange-700 mb-2 font-medium">বাকি</div>
+                              <div className="text-lg sm:text-xl font-bold text-orange-600">৳{remaining}</div>
                             </div>
                           </div>
                           
@@ -1018,7 +1018,7 @@ export default function DebtsPage() {
                               <div className="grid grid-cols-2 gap-3">
                                 <button
                                   onClick={() => handleOpenPaymentModal(debt.id)}
-                                  className="group relative overflow-hidden bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl px-4 py-3 w-full shadow-lg hover:shadow-green-500/25 transition-all duration-300 cursor-pointer"
+                                  className="group relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl px-4 py-3 w-full shadow-lg hover:shadow-blue-500/25 transition-all duration-300 cursor-pointer"
                                 >
                                   <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                                   <div className="relative z-10 flex items-center justify-center gap-2 text-white font-semibold text-sm">
@@ -1056,12 +1056,12 @@ export default function DebtsPage() {
                 {returnedDebts.map((debt) => {
                   const totalPaid = getTotalPaid(debt)
                   return (
-                    <div key={debt.id} className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden">
+                    <div key={debt.id} className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl shadow-lg border border-green-200 overflow-hidden">
                       <div className="p-6">
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                              <span className="text-green-600 text-xl">✅</span>
+                            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                              <span className="text-white text-xl">✅</span>
                             </div>
                             <div>
                               <h3 className="font-bold text-xl text-gray-900 mb-1">
@@ -1095,11 +1095,11 @@ export default function DebtsPage() {
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div className="text-center p-4 bg-green-50 rounded-xl border border-green-100">
-                            <div className="text-xs text-gray-500 mb-2 font-medium">মূল পরিমাণ</div>
-                            <div className="text-lg sm:text-xl font-bold text-green-600">৳{debt.amount}</div>
+                          <div className="text-center p-4 bg-green-100 rounded-xl border border-green-200">
+                            <div className="text-xs text-green-700 mb-2 font-medium">মূল পরিমাণ</div>
+                            <div className="text-lg sm:text-xl font-bold text-green-800">৳{debt.amount}</div>
                           </div>
-                          <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-100">
+                          <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
                             <div className="text-xs text-gray-500 mb-2 font-medium">পরিশোধিত</div>
                             <div className="text-lg sm:text-xl font-bold text-blue-600">৳{totalPaid}</div>
                           </div>
