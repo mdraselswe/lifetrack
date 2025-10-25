@@ -30,6 +30,10 @@ export default function LoansPage() {
   const [editPaymentDate, setEditPaymentDate] = useState('')
   const [editPaymentNote, setEditPaymentNote] = useState('')
   const [showPaymentModal, setShowPaymentModal] = useState<string | null>(null)
+  const [editingIncrease, setEditingIncrease] = useState<{loanId: string, increase: AmountIncrease} | null>(null)
+  const [editIncreaseAmount, setEditIncreaseAmount] = useState('')
+  const [editIncreaseDate, setEditIncreaseDate] = useState('')
+  const [editIncreaseReason, setEditIncreaseReason] = useState('')
   const [showIncreaseModal, setShowIncreaseModal] = useState<string | null>(null)
   const [increaseAmount, setIncreaseAmount] = useState('')
   const [increaseDate, setIncreaseDate] = useState('')
@@ -83,16 +87,19 @@ export default function LoansPage() {
     const actionText = newStatus ? 'ফেরত দিয়েছেন' : 'ফেরত দেননি'
     const confirmText = newStatus ? 'ফেরত দিয়েছি' : 'ফেরত দেইনি'
     
+    // Calculate total amount including increments
+    const totalAmount = loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)
+    
     confirm.custom(
       'ধারের অবস্থা পরিবর্তন করুন',
-      `${loan.personName} এর ${loan.amount} টাকার ধার ${actionText} হিসেবে চিহ্নিত করবেন?`,
+      `${loan.personName} এর ${totalAmount} টাকার ধার ${actionText} হিসেবে চিহ্নিত করবেন?`,
       () => {
         if (newStatus) {
           // When marking as returned, ensure payment amount equals total amount
           const totalPaid = getTotalPaid(loan)
-          if (totalPaid < loan.amount) {
+          if (totalPaid < totalAmount) {
             // Add remaining payment to make it fully paid
-            const remainingAmount = loan.amount - totalPaid
+            const remainingAmount = totalAmount - totalPaid
             const remainingPayment: Payment = {
               id: Date.now().toString(),
               amount: remainingAmount,
@@ -185,11 +192,13 @@ export default function LoansPage() {
     const loan = loans.find(l => l.id === loanId)
     if (!loan) return
 
-    const newTotalAmount = loan.amount + amount
+    // Calculate current total amount (initial + all increases)
+    const currentTotalAmount = loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)
+    const newTotalAmount = currentTotalAmount + amount
 
     confirm.update(
       'ধারের পরিমাণ বৃদ্ধি করুন',
-      `${loan.personName} এর ধারের পরিমাণ ৳${loan.amount} থেকে ৳${newTotalAmount} বৃদ্ধি করবেন?`,
+      `${loan.personName} এর ধারের পরিমাণ ৳${currentTotalAmount} থেকে ৳${newTotalAmount} বৃদ্ধি করবেন?`,
       () => {
         // Add increase to history
         const increase: AmountIncrease = {
@@ -202,11 +211,12 @@ export default function LoansPage() {
         
         addLoanIncrease(loanId, increase)
         
-        // Update loan amount
-        updateLoan(loanId, { 
-          amount: newTotalAmount,
-          reason: increaseReason ? `${loan.reason || ''} + ${increaseReason}`.trim() : loan.reason
-        })
+        // Don't update loan amount - keep original amount, only update reason if needed
+        if (increaseReason) {
+          updateLoan(loanId, { 
+            reason: `${loan.reason || ''} + ${increaseReason}`.trim()
+          })
+        }
         
         toast.success('ধারের পরিমাণ বৃদ্ধি করা হয়েছে')
         handleCloseIncreaseModal()
@@ -264,19 +274,16 @@ export default function LoansPage() {
     const increase = loan?.increases?.find(i => i.id === increaseId)
     if (!loan || !increase) return
 
-    const newTotalAmount = loan.amount - increase.amount
+    // Calculate current total amount (initial + all increases)
+    const currentTotalAmount = loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)
+    const newTotalAmount = currentTotalAmount - increase.amount
 
     confirm.delete(
       'পরিমাণ বৃদ্ধি মুছুন',
-      `${increase.amount} টাকার পরিমাণ বৃদ্ধি মুছে ফেলবেন? ধারের পরিমাণ ৳${loan.amount} থেকে ৳${newTotalAmount} হবে।`,
+      `${increase.amount} টাকার পরিমাণ বৃদ্ধি মুছে ফেলবেন? ধারের পরিমাণ ৳${currentTotalAmount} থেকে ৳${newTotalAmount} হবে।`,
       () => {
-        // Update loan amount first
-        updateLoan(loanId, { 
-          amount: newTotalAmount,
-          reason: loan.reason
-        })
-        
-        // Then delete the increase record
+        // Don't update loan.amount - it should always remain the initial amount
+        // Just delete the increase record
         deleteLoanIncrease(loanId, increaseId)
         loadLoans()
         toast.success('পরিমাণ বৃদ্ধি সফলভাবে মুছে ফেলা হয়েছে')
@@ -286,11 +293,14 @@ export default function LoansPage() {
 
 
   const calculateRemaining = (loan: Loan): number => {
+    // Calculate total amount including increments
+    const totalAmount = loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)
+    
     if (!loan.payments || loan.payments.length === 0) {
-      return loan.amount
+      return totalAmount
     }
     const totalPaid = loan.payments.reduce((sum, p) => sum + p.amount, 0)
-    return loan.amount - totalPaid
+    return totalAmount - totalPaid
   }
 
   const getTotalPaid = (loan: Loan): number => {
@@ -300,12 +310,32 @@ export default function LoansPage() {
     return loan.payments.reduce((sum, p) => sum + p.amount, 0)
   }
 
+  // Helper function to get initial amount (always the original amount, never affected by increments)
+  const getInitialAmount = (loan: Loan): number => {
+    return loan.amount
+  }
+
+  // Helper function to get initial reason (only the first part, before any increments)
+  const getInitialReason = (loan: Loan): string => {
+    if (!loan.reason) return ''
+    
+    // If there are no increases, return the full reason
+    if (!loan.increases || loan.increases.length === 0) {
+      return loan.reason
+    }
+    
+    // Split by ' + ' and take only the first part (initial reason)
+    const parts = loan.reason.split(' + ')
+    return parts[0] || ''
+  }
+
+
 
   const handleEdit = (loan: Loan) => {
     setEditingLoan(loan)
     setEditPersonName(loan.personName)
     setEditAmount(loan.amount.toString())
-    setEditReason(loan.reason || '')
+    setEditReason(getInitialReason(loan))
     setEditDate(loan.date)
   }
 
@@ -371,6 +401,13 @@ export default function LoansPage() {
     setEditPaymentNote(payment.note || '')
   }
 
+  const handleEditIncrease = (loanId: string, increase: AmountIncrease) => {
+    setEditingIncrease({ loanId, increase })
+    setEditIncreaseAmount(increase.amount.toString())
+    setEditIncreaseDate(increase.date)
+    setEditIncreaseReason(increase.reason || '')
+  }
+
   const handleEditPaymentSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -423,11 +460,57 @@ export default function LoansPage() {
     )
   }
 
+  const handleEditIncreaseSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    
+    if (!editingIncrease || !editIncreaseAmount || !editIncreaseDate) {
+      toast.error('পরিমাণ এবং তারিখ প্রয়োজন')
+      return
+    }
+
+    const amount = parseFloat(editIncreaseAmount)
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('সঠিক পরিমাণ দিন')
+      return
+    }
+
+    const updatedIncrease: AmountIncrease = {
+      ...editingIncrease.increase,
+      amount,
+      date: editIncreaseDate,
+      reason: editIncreaseReason || undefined,
+    }
+
+    confirm.update(
+      'পরিমাণ বৃদ্ধি আপডেট করুন',
+      `${amount} টাকার পরিমাণ বৃদ্ধি আপডেট করবেন?`,
+      () => {
+        // Delete old increase and add updated increase
+        deleteLoanIncrease(editingIncrease.loanId, editingIncrease.increase.id)
+        addLoanIncrease(editingIncrease.loanId, updatedIncrease)
+
+        setEditingIncrease(null)
+        setEditIncreaseAmount('')
+        setEditIncreaseDate('')
+        setEditIncreaseReason('')
+        loadLoans()
+        toast.success('পরিমাণ বৃদ্ধি সফলভাবে আপডেট করা হয়েছে')
+      }
+    )
+  }
+
   const handleCancelPaymentEdit = () => {
     setEditingPayment(null)
     setEditPaymentAmount('')
     setEditPaymentDate('')
     setEditPaymentNote('')
+  }
+
+  const handleCancelIncreaseEdit = () => {
+    setEditingIncrease(null)
+    setEditIncreaseAmount('')
+    setEditIncreaseDate('')
+    setEditIncreaseReason('')
   }
 
   if (!mounted) {
@@ -440,7 +523,8 @@ export default function LoansPage() {
   // Calculate remaining amounts after payments
   const totalActive = activeLoans.reduce((sum, l) => {
     const totalPaid = l.payments?.reduce((paymentSum, payment) => paymentSum + payment.amount, 0) || 0
-    const remaining = l.amount - totalPaid
+    const totalAmount = l.amount + (l.increases?.reduce((incSum, inc) => incSum + inc.amount, 0) || 0)
+    const remaining = totalAmount - totalPaid
     return sum + Math.max(0, remaining)
   }, 0)
   
@@ -584,13 +668,13 @@ export default function LoansPage() {
               />
             </div>
             <div>
-              <label className="label">কারণ (ঐচ্ছিক)</label>
-              <input
-                type="text"
+              <label className="label">প্রাথমিক কারণ (ঐচ্ছিক)</label>
+              <textarea
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                className="input focus:ring-red-500/50 focus:border-red-500/50"
+                className="input focus:ring-red-500/50 focus:border-red-500/50 min-h-[80px] resize-none"
                 placeholder="যেমন: জরুরি খরচ"
+                rows={3}
               />
             </div>
             <div>
@@ -674,13 +758,13 @@ export default function LoansPage() {
               />
             </div>
             <div>
-              <label className="label">কারণ (ঐচ্ছিক)</label>
-              <input
-                type="text"
+              <label className="label">প্রাথমিক কারণ (ঐচ্ছিক)</label>
+              <textarea
                 value={editReason}
                 onChange={(e) => setEditReason(e.target.value)}
-                className="input focus:ring-red-500/50 focus:border-red-500/50"
+                className="input focus:ring-red-500/50 focus:border-red-500/50 min-h-[80px] resize-none"
                 placeholder="যেমন: জরুরি খরচ"
+                rows={3}
               />
             </div>
             <div>
@@ -771,12 +855,91 @@ export default function LoansPage() {
             </div>
             <div>
               <label className="label">নোট (ঐচ্ছিক)</label>
-              <input
-                type="text"
+              <textarea
                 value={editPaymentNote}
                 onChange={(e) => setEditPaymentNote(e.target.value)}
-                className="input focus:ring-red-500/50 focus:border-red-500/50"
+                className="input focus:ring-red-500/50 focus:border-red-500/50 min-h-[80px] resize-none"
                 placeholder="যেমন: আংশিক পরিশোধ"
+                rows={3}
+              />
+            </div>
+          </form>
+        </Modal>
+
+        {/* Edit Increase Modal */}
+        <Modal
+          isOpen={editingIncrease !== null}
+          onClose={handleCancelIncreaseEdit}
+          title="পরিমাণ বৃদ্ধি সম্পাদনা করুন"
+          className="border-purple-200"
+          footerActions={
+            <div className="flex gap-3">
+              <ActionButton
+                onClick={handleCancelIncreaseEdit}
+                variant="secondary"
+              >
+                বাতিল
+              </ActionButton>
+              <ActionButton
+                onClick={(e) => e && handleEditIncreaseSubmit(e)}
+                variant="primary"
+              >
+                আপডেট করুন
+              </ActionButton>
+            </div>
+          }
+        >
+          <form onSubmit={handleEditIncreaseSubmit} className="space-y-4">
+            <div>
+              <label className="label">পরিমাণ (৳) *</label>
+              <input
+                type="number"
+                value={editIncreaseAmount}
+                onChange={(e) => {
+                  const value = e.target.value
+                  // Only allow numbers and decimal point
+                  if (/^\d*\.?\d*$/.test(value)) {
+                    setEditIncreaseAmount(value)
+                  }
+                }}
+                onKeyDown={(e) => {
+                  // Prevent non-numeric keys except backspace, delete, tab, escape, enter, decimal point
+                  if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', '.', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                    e.preventDefault()
+                  }
+                }}
+                onPaste={(e) => {
+                  e.preventDefault()
+                  const paste = e.clipboardData.getData('text')
+                  if (/^\d*\.?\d*$/.test(paste)) {
+                    setEditIncreaseAmount(paste)
+                  }
+                }}
+                className="input focus:ring-purple-500/50 focus:border-purple-500/50"
+                placeholder="০"
+                min="0"
+                step="0.01"
+                required
+              />
+            </div>
+            <div>
+              <label className="label">তারিখ *</label>
+              <input
+                type="datetime-local"
+                value={editIncreaseDate}
+                onChange={(e) => setEditIncreaseDate(e.target.value)}
+                className="input focus:ring-purple-500/50 focus:border-purple-500/50"
+                required
+              />
+            </div>
+            <div>
+              <label className="label">কারণ (ঐচ্ছিক)</label>
+              <textarea
+                value={editIncreaseReason}
+                onChange={(e) => setEditIncreaseReason(e.target.value)}
+                className="input focus:ring-purple-500/50 focus:border-purple-500/50 min-h-[80px] resize-none"
+                placeholder="পরিমাণ বৃদ্ধির কারণ"
+                rows={3}
               />
             </div>
           </form>
@@ -813,13 +976,6 @@ export default function LoansPage() {
                             </div>
                             <div className="flex gap-2">
                               <button
-                                onClick={() => handleEdit(loan)}
-                                className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-all duration-200 hover:scale-110"
-                                title="সম্পাদনা করুন"
-                              >
-                                ✏️
-                              </button>
-                              <button
                                 onClick={() => handleToggleReturned(loan)}
                                 className="p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-all duration-200 hover:scale-110"
                                 title="ফেরত দিয়েছি"
@@ -838,7 +994,7 @@ export default function LoansPage() {
                           <div className="grid grid-cols-3 gap-3 mb-4">
                             <div className="text-center p-3 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl border border-orange-300">
                               <div className="text-xs text-orange-700 mb-2 font-medium">মোট</div>
-                              <div className="text-lg sm:text-xl font-bold text-orange-800">৳{loan.amount}</div>
+                              <div className="text-lg sm:text-xl font-bold text-orange-800">৳{loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)}</div>
                             </div>
                             <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
                               <div className="text-xs text-gray-500 mb-2 font-medium">পরিশোধিত</div>
@@ -849,10 +1005,41 @@ export default function LoansPage() {
                               <div className="text-lg sm:text-xl font-bold text-red-600">৳{remaining}</div>
                             </div>
                           </div>
-                          
-                          
-                          <div className="text-sm text-gray-500 p-3 bg-gray-50 rounded-lg">
-                            📅 {format(new Date(loan.date), 'PPP p')}
+                        </div>
+
+                        {/* Initial Payment Section */}
+                        <div className="mt-6 pt-4 border-t border-gray-200">
+                          <div className="flex items-center gap-2 mb-4 px-6">
+                            <div className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center">
+                              <span className="text-green-600 text-sm">💰</span>
+                            </div>
+                            <h4 className="text-sm font-semibold text-gray-700">প্রাথমিক পরিমাণ</h4>
+                          </div>
+                          <div className="px-6 pb-4">
+                            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+                                  <span className="text-white text-sm font-bold">৳</span>
+                                </div>
+                                <div>
+                                  <div className="font-bold text-green-700">৳{getInitialAmount(loan)}</div>
+                                  <div className="text-xs text-gray-600">{format(new Date(loan.date), 'PP p')}</div>
+                                  <div className="text-xs text-gray-500 italic mt-1">প্রাথমিক ধার</div>
+                                  {getInitialReason(loan) && (
+                                    <div className="text-xs text-gray-500 italic mt-1">📝 {getInitialReason(loan)}</div>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleEdit(loan)}
+                                  className="p-2 bg-green-100 hover:bg-green-200 text-green-600 rounded-lg text-xs transition-all duration-200 hover:scale-110"
+                                  title="প্রাথমিক কারণ সম্পাদনা করুন"
+                                >
+                                  ✏️
+                                </button>
+                              </div>
+                            </div>
                           </div>
                         </div>
 
@@ -909,34 +1096,53 @@ export default function LoansPage() {
                               <div className="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center">
                                 <span className="text-purple-600 text-sm">➕</span>
                               </div>
-                              <h4 className="text-sm font-semibold text-gray-700">পরিমাণ বৃদ্ধির ইতিহাস</h4>
+                              <h4 className="text-sm font-semibold text-gray-700">পরিমাণ বৃদ্ধির তালিকা</h4>
                             </div>
                             <div className="space-y-3 px-6 pb-4">
-                              {loan.increases.map((increase) => (
-                                <div key={increase.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                                      <span className="text-white text-sm font-bold">➕</span>
+                              {loan.increases.map((increase, index) => {
+                                // Calculate initial amount and total after this increase
+                                const previousIncreases = loan.increases?.slice(0, index) || []
+                                const previousIncreasesTotal = previousIncreases.reduce((sum, inc) => sum + inc.amount, 0)
+                                const initialAmount = loan.amount  // loan.amount is always the initial amount
+                                const totalAfterThisIncrease = initialAmount + previousIncreasesTotal + increase.amount
+                                
+                                return (
+                                  <div key={increase.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                                        <span className="text-white text-sm font-bold">➕</span>
+                                      </div>
+                                      <div>
+                                        <div className="font-bold text-purple-700">বৃদ্ধির পরিমাণ (৳): ৳{increase.amount}</div>
+                                        <div className="text-xs text-gray-600">{format(new Date(increase.date), 'PP p')}</div>
+                                        <div className="text-xs text-gray-500 mt-1">
+                                          <span className="font-medium">প্রাথমিক: ৳{initialAmount}</span> → 
+                                          <span className="font-medium text-purple-600"> মোট: ৳{totalAfterThisIncrease}</span>
+                                        </div>
+                                        {increase.reason && (
+                                          <div className="text-xs text-gray-500 italic mt-1">কারণ (ঐচ্ছিক): {increase.reason}</div>
+                                        )}
+                                      </div>
                                     </div>
-                                    <div>
-                                      <div className="font-bold text-purple-700">বৃদ্ধির পরিমাণ (৳): ৳{increase.amount}</div>
-                                      <div className="text-xs text-gray-600">{format(new Date(increase.date), 'PP p')}</div>
-                                      {increase.reason && (
-                                        <div className="text-xs text-gray-500 italic mt-1">কারণ (ঐচ্ছিক): {increase.reason}</div>
-                                      )}
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        onClick={() => handleEditIncrease(loan.id, increase)}
+                                        className="p-2 bg-purple-100 hover:bg-purple-200 text-purple-600 rounded-lg text-xs transition-all duration-200 hover:scale-110"
+                                        title="সম্পাদনা করুন"
+                                      >
+                                        ✏️
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteIncrease(loan.id, increase.id)}
+                                        className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg text-xs transition-all duration-200 hover:scale-110"
+                                        title="মুছে ফেলুন"
+                                      >
+                                        🗑️
+                                      </button>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={() => handleDeleteIncrease(loan.id, increase.id)}
-                                      className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg text-xs transition-all duration-200 hover:scale-110"
-                                      title="মুছে ফেলুন"
-                                    >
-                                      🗑️
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
+                                )
+                              })}
                             </div>
                           </div>
                         )}
@@ -1078,13 +1284,6 @@ export default function LoansPage() {
                           </div>
                           <div className="flex gap-2">
                             <button
-                              onClick={() => handleEdit(loan)}
-                              className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-all duration-200 hover:scale-110"
-                              title="সম্পাদনা করুন"
-                            >
-                              ✏️
-                            </button>
-                            <button
                               onClick={() => handleToggleReturned(loan)}
                               className="p-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-lg transition-all duration-200 hover:scale-110"
                               title="ফেরত দেইনি"
@@ -1104,16 +1303,39 @@ export default function LoansPage() {
                         <div className="grid grid-cols-2 gap-4 mb-4">
                           <div className="text-center p-4 bg-blue-100 rounded-xl border border-blue-200">
                             <div className="text-xs text-blue-700 mb-2 font-medium">মূল পরিমাণ</div>
-                            <div className="text-lg sm:text-xl font-bold text-blue-800">৳{loan.amount}</div>
+                            <div className="text-lg sm:text-xl font-bold text-blue-800">৳{loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)}</div>
                           </div>
                           <div className="text-center p-4 bg-green-50 rounded-xl border border-green-200">
                             <div className="text-xs text-green-700 mb-2 font-medium">পরিশোধিত</div>
                             <div className="text-lg sm:text-xl font-bold text-green-600">৳{totalPaid}</div>
                           </div>
                         </div>
-                        
-                        <div className="text-sm text-gray-500 p-3 bg-gray-50 rounded-lg">
-                          📅 {format(new Date(loan.date), 'PPP p')}
+
+                        {/* Initial Payment Section */}
+                        <div className="mt-6 pt-4 border-t border-gray-200">
+                          <div className="flex items-center gap-2 mb-4">
+                            <div className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center">
+                              <span className="text-green-600 text-sm">💰</span>
+                            </div>
+                            <h4 className="text-sm font-semibold text-gray-700">প্রাথমিক পরিমাণ</h4>
+                          </div>
+                          <div className="px-6 pb-4">
+                            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
+                                  <span className="text-white text-sm font-bold">৳</span>
+                                </div>
+                                <div>
+                                  <div className="font-bold text-green-700">৳{getInitialAmount(loan)}</div>
+                                  <div className="text-xs text-gray-600">{format(new Date(loan.date), 'PP p')}</div>
+                                  <div className="text-xs text-gray-500 italic mt-1">প্রাথমিক ধার</div>
+                                  {getInitialReason(loan) && (
+                                    <div className="text-xs text-gray-500 italic mt-1">📝 {getInitialReason(loan)}</div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
                         </div>
 
                         {/* Payment History */}
@@ -1140,22 +1362,6 @@ export default function LoansPage() {
                                       )}
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={() => handleEditPayment(loan.id, payment)}
-                                      className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg text-xs transition-all duration-200 hover:scale-110"
-                                      title="সম্পাদনা করুন"
-                                    >
-                                      ✏️
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeletePayment(loan.id, payment.id)}
-                                      className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg text-xs transition-all duration-200 hover:scale-110"
-                                      title="মুছে ফেলুন"
-                                    >
-                                      🗑️
-                                    </button>
-                                  </div>
                                 </div>
                               ))}
                             </div>
@@ -1169,34 +1375,37 @@ export default function LoansPage() {
                               <div className="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center">
                                 <span className="text-purple-600 text-sm">➕</span>
                               </div>
-                              <h4 className="text-sm font-semibold text-gray-700">পরিমাণ বৃদ্ধির ইতিহাস</h4>
+                              <h4 className="text-sm font-semibold text-gray-700">পরিমাণ বৃদ্ধির তালিকা</h4>
                             </div>
                             <div className="space-y-3">
-                              {loan.increases.map((increase) => (
-                                <div key={increase.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                                      <span className="text-white text-sm font-bold">➕</span>
-                                    </div>
-                                    <div>
-                                      <div className="font-bold text-purple-700">বৃদ্ধির পরিমাণ (৳): ৳{increase.amount}</div>
-                                      <div className="text-xs text-gray-600">{format(new Date(increase.date), 'PP p')}</div>
-                                      {increase.reason && (
-                                        <div className="text-xs text-gray-500 italic mt-1">কারণ (ঐচ্ছিক): {increase.reason}</div>
-                                      )}
+                              {loan.increases.map((increase, index) => {
+                                // Calculate initial amount and total after this increase
+                                const previousIncreases = loan.increases?.slice(0, index) || []
+                                const previousIncreasesTotal = previousIncreases.reduce((sum, inc) => sum + inc.amount, 0)
+                                const initialAmount = loan.amount  // loan.amount is always the initial amount
+                                const totalAfterThisIncrease = initialAmount + previousIncreasesTotal + increase.amount
+                                
+                                return (
+                                  <div key={increase.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
+                                        <span className="text-white text-sm font-bold">➕</span>
+                                      </div>
+                                      <div>
+                                        <div className="font-bold text-purple-700">বৃদ্ধির পরিমাণ (৳): ৳{increase.amount}</div>
+                                        <div className="text-xs text-gray-600">{format(new Date(increase.date), 'PP p')}</div>
+                                        <div className="text-xs text-gray-500 mt-1">
+                                          <span className="font-medium">প্রাথমিক: ৳{initialAmount}</span> → 
+                                          <span className="font-medium text-purple-600"> মোট: ৳{totalAfterThisIncrease}</span>
+                                        </div>
+                                        {increase.reason && (
+                                          <div className="text-xs text-gray-500 italic mt-1">কারণ (ঐচ্ছিক): {increase.reason}</div>
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-2">
-                                    <button
-                                      onClick={() => handleDeleteIncrease(loan.id, increase.id)}
-                                      className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg text-xs transition-all duration-200 hover:scale-110"
-                                      title="মুছে ফেলুন"
-                                    >
-                                      🗑️
-                                    </button>
-                                  </div>
-                                </div>
-                              ))}
+                                )
+                              })}
                             </div>
                           </div>
                         )}
@@ -1293,12 +1502,12 @@ export default function LoansPage() {
             </div>
             <div>
               <label className="label">নোট (ঐচ্ছিক)</label>
-              <input
-                type="text"
+              <textarea
                 value={paymentNote}
                 onChange={(e) => setPaymentNote(e.target.value)}
-                className="input focus:ring-red-500/50 focus:border-red-500/50"
+                className="input focus:ring-red-500/50 focus:border-red-500/50 min-h-[80px] resize-none"
                 placeholder="যেমন: আংশিক পরিশোধ"
+                rows={3}
               />
             </div>
           </div>
@@ -1371,12 +1580,12 @@ export default function LoansPage() {
             </div>
             <div>
               <label className="label">কারণ (ঐচ্ছিক)</label>
-              <input
-                type="text"
+              <textarea
                 value={increaseReason}
                 onChange={(e) => setIncreaseReason(e.target.value)}
-                className="input focus:ring-purple-500/50 focus:border-purple-500/50"
+                className="input focus:ring-purple-500/50 focus:border-purple-500/50 min-h-[80px] resize-none"
                 placeholder="যেমন: অতিরিক্ত প্রয়োজন"
+                rows={3}
               />
             </div>
           </div>
