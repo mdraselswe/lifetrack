@@ -1,11 +1,12 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/auth'
 import Navigation from './Navigation'
 
 interface ConditionalLayoutProps {
-  children: React.ReactNode
+  children: ReactNode
 }
 
 export default function ConditionalLayout({ children }: ConditionalLayoutProps) {

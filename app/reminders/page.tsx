@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { getReminders, saveReminder, updateReminder, deleteReminder } from '@/lib/storage'
 import { scheduleNotification } from '@/lib/notifications'
 import type { Reminder } from '@/lib/types'
@@ -76,7 +76,7 @@ export default function RemindersPage() {
     setReminders(getReminders())
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     
     if (!title || !scheduledTime) {

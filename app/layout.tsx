@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next'
+import type { ReactNode } from 'react'
 import './globals.css'
-import Navigation from '@/components/Navigation'
 import PWARegistration from '@/components/PWARegistration'
 import ToastContainer from '@/components/Toast'
 import ConfirmToastContainer from '@/components/ConfirmToast'
@@ -82,7 +82,7 @@ export const viewport: Viewport = {
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: ReactNode
 }) {
   return (
     <html lang="bn" suppressHydrationWarning>

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { getDebts, saveDebt, updateDebt, deleteDebt, addDebtPayment, deleteDebtPayment, addDebtIncrease, deleteDebtIncrease } from '@/lib/storage'
 import type { Debt, Payment, AmountIncrease } from '@/lib/types'
 import { format } from 'date-fns'
@@ -60,7 +60,7 @@ export default function DebtsPage() {
     setDebts(getDebts())
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     
     if (!personName || !amount) {
@@ -340,7 +340,7 @@ export default function DebtsPage() {
     setEditDate(debt.date)
   }
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = (e: FormEvent) => {
     e.preventDefault()
     
     if (!editingDebt || !editPersonName || !editAmount) {
@@ -409,7 +409,7 @@ export default function DebtsPage() {
     setEditIncreaseReason(increase.reason || '')
   }
 
-  const handleEditPaymentSubmit = (e: React.FormEvent) => {
+  const handleEditPaymentSubmit = (e: FormEvent) => {
     e.preventDefault()
     
     if (!editingPayment || !editPaymentAmount || !editPaymentDate) {
@@ -461,7 +461,7 @@ export default function DebtsPage() {
     )
   }
 
-  const handleEditIncreaseSubmit = (e: React.FormEvent) => {
+  const handleEditIncreaseSubmit = (e: FormEvent) => {
     e.preventDefault()
     
     if (!editingIncrease || !editIncreaseAmount || !editIncreaseDate) {

@@ -1,14 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode, type FormEvent } from 'react'
 
 interface ModalProps {
   isOpen: boolean
   onClose: () => void
   title: string
-  children: React.ReactNode
+  children?: ReactNode
   className?: string
-  footerActions?: React.ReactNode
+  footerActions?: ReactNode
 }
 
 export default function Modal({ isOpen, onClose, title, children, className = '', footerActions }: ModalProps) {
@@ -185,8 +185,8 @@ export default function Modal({ isOpen, onClose, title, children, className = ''
 
 // Action Button Component
 interface ActionButtonProps {
-  onClick: (e?: React.FormEvent) => void | Promise<void>
-  children: React.ReactNode
+  onClick: (e?: FormEvent) => void | Promise<void>
+  children?: ReactNode
   variant?: 'primary' | 'secondary' | 'danger'
   disabled?: boolean
   loading?: boolean

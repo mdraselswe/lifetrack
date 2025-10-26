@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { getLoans, saveLoan, updateLoan, deleteLoan, addLoanPayment, deleteLoanPayment, addLoanIncrease, deleteLoanIncrease } from '@/lib/storage'
 import type { Loan, Payment, AmountIncrease } from '@/lib/types'
 import { format } from 'date-fns'
@@ -60,7 +60,7 @@ export default function LoansPage() {
     setLoans(getLoans())
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
     
     if (!personName || !amount) {
@@ -347,7 +347,7 @@ export default function LoansPage() {
     setEditDate(loan.date)
   }
 
-  const handleEditSubmit = (e: React.FormEvent) => {
+  const handleEditSubmit = (e: FormEvent) => {
     e.preventDefault()
     
     if (!editingLoan || !editPersonName || !editAmount) {
@@ -416,7 +416,7 @@ export default function LoansPage() {
     setEditIncreaseReason(increase.reason || '')
   }
 
-  const handleEditPaymentSubmit = (e: React.FormEvent) => {
+  const handleEditPaymentSubmit = (e: FormEvent) => {
     e.preventDefault()
     
     if (!editingPayment || !editPaymentAmount || !editPaymentDate) {
@@ -468,7 +468,7 @@ export default function LoansPage() {
     )
   }
 
-  const handleEditIncreaseSubmit = (e: React.FormEvent) => {
+  const handleEditIncreaseSubmit = (e: FormEvent) => {
     e.preventDefault()
     
     if (!editingIncrease || !editIncreaseAmount || !editIncreaseDate) {
