@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/lib/auth'
+import { useAuth } from '@/lib/firebase-auth'
 import { toast } from '@/lib/toast'
 import Link from 'next/link'
 
@@ -36,16 +36,11 @@ export default function RegisterPage() {
     setLoading(true)
     
     try {
-      const success = await register(name, email, password)
-      
-      if (success) {
-        toast.success('সফলভাবে রেজিস্ট্রেশন হয়েছে')
-        router.push('/')
-      } else {
-        toast.error('এই ইমেইল দিয়ে ইতিমধ্যে রেজিস্ট্রেশন হয়েছে')
-      }
-    } catch (error) {
-      toast.error('রেজিস্ট্রেশনে সমস্যা হয়েছে')
+      await register(name, email, password)
+      toast.success('সফলভাবে রেজিস্ট্রেশন হয়েছে')
+      router.push('/')
+    } catch (error: any) {
+      toast.error(error.message || 'এই ইমেইল দিয়ে ইতিমধ্যে রেজিস্ট্রেশন হয়েছে')
     } finally {
       setLoading(false)
     }

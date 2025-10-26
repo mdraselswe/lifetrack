@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useAuth } from '@/lib/auth'
+import { useAuth } from '@/lib/firebase-auth'
 import { useState } from 'react'
 
 export default function Navigation() {
@@ -60,7 +60,7 @@ export default function Navigation() {
           {showUserMenu && (
             <div className="absolute bottom-full right-0 mb-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
               <div className="px-4 py-2 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                <p className="text-sm font-medium text-gray-900">{user.displayName || user.email}</p>
                 <p className="text-xs text-gray-500">{user.email}</p>
               </div>
               <button

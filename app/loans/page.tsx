@@ -7,12 +7,14 @@ import { format } from 'date-fns'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
 import Modal, { ActionButton } from '@/components/Modal'
-import { useAuth } from '@/lib/auth'
+import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
+import { ListSkeleton } from '@/components/SkeletonLoader'
 
 export default function LoansPage() {
   const [loans, setLoans] = useState<Loan[]>([])
   const [showForm, setShowForm] = useState(false)
+  const [dataLoading, setDataLoading] = useState(true)
   const [personName, setPersonName] = useState('')
   const [amount, setAmount] = useState('')
   const [reason, setReason] = useState('')
@@ -49,15 +51,23 @@ export default function LoansPage() {
       return
     }
     setMounted(true)
-    loadLoans()
+    loadLoans().catch(console.error)
     // Set default date after mount
     setDate(new Date().toISOString().slice(0, 16))
     setPaymentDate(new Date().toISOString().slice(0, 16))
     setIncreaseDate(new Date().toISOString().slice(0, 16))
   }, [user, loading, router])
 
-  const loadLoans = () => {
-    setLoans(getLoans())
+  const loadLoans = async () => {
+    try {
+      setDataLoading(true)
+      const loans = await getLoans()
+      setLoans(loans)
+    } catch (error) {
+      console.error('Error loading loans:', error)
+    } finally {
+      setDataLoading(false)
+    }
   }
 
   const handleSubmit = (e: FormEvent) => {
@@ -86,7 +96,7 @@ export default function LoansPage() {
     setReason('')
     setDate(new Date().toISOString().slice(0, 16))
     setShowForm(false)
-    loadLoans()
+    loadLoans().catch(console.error)
     toast.success('ধার সফলভাবে যোগ করা হয়েছে')
   }
 
@@ -119,7 +129,7 @@ export default function LoansPage() {
           }
         }
         updateLoan(loan.id, { returned: newStatus })
-        loadLoans()
+        loadLoans().catch(console.error)
         toast.success(`ধার ${actionText} হিসেবে চিহ্নিত করা হয়েছে`)
       },
       {
@@ -139,7 +149,7 @@ export default function LoansPage() {
       `${loan.personName} এর ${loan.amount} টাকার ধার মুছে ফেলবেন?`,
       () => {
         deleteLoan(id)
-        loadLoans()
+        loadLoans().catch(console.error)
         toast.success('ধার সফলভাবে মুছে ফেলা হয়েছে')
       }
     )
@@ -181,7 +191,7 @@ export default function LoansPage() {
     setPaymentNote('')
     setShowPaymentForm(null)
     setShowPaymentModal(null)
-    loadLoans()
+    loadLoans().catch(console.error)
     toast.success('পেমেন্ট সফলভাবে যোগ করা হয়েছে')
   }
 
@@ -210,25 +220,21 @@ export default function LoansPage() {
       () => {
         // Add increase to history
         const increase: AmountIncrease = {
-          id: Date.now().toString(),
+          id: crypto.randomUUID(),
           amount,
           date: increaseDate,
-          reason: increaseReason || undefined,
+          ...(increaseReason && { reason: increaseReason }),
           createdAt: new Date().toISOString(),
         }
         
-        addLoanIncrease(loanId, increase)
-        
-        // Don't update loan amount - keep original amount, only update reason if needed
-        if (increaseReason) {
-          updateLoan(loanId, { 
-            reason: `${loan.reason || ''} + ${increaseReason}`.trim()
-          })
-        }
-        
-        toast.success('ধারের পরিমাণ বৃদ্ধি করা হয়েছে')
-        handleCloseIncreaseModal()
-        loadLoans()
+        addLoanIncrease(loanId, increase).then(() => {
+          toast.success('ধারের পরিমাণ বৃদ্ধি করা হয়েছে')
+          handleCloseIncreaseModal()
+          loadLoans().catch(console.error)
+        }).catch((error) => {
+          console.error('Error increasing loan amount:', error)
+          toast.error('ধারের পরিমাণ বৃদ্ধি করতে সমস্যা হয়েছে')
+        })
       }
     )
   }
@@ -271,7 +277,7 @@ export default function LoansPage() {
       `${payment.amount} টাকার পেমেন্ট মুছে ফেলবেন?`,
       () => {
         deleteLoanPayment(loanId, paymentId)
-        loadLoans()
+        loadLoans().catch(console.error)
         toast.success('পেমেন্ট সফলভাবে মুছে ফেলা হয়েছে')
       }
     )
@@ -293,7 +299,7 @@ export default function LoansPage() {
         // Don't update loan.amount - it should always remain the initial amount
         // Just delete the increase record
         deleteLoanIncrease(loanId, increaseId)
-        loadLoans()
+        loadLoans().catch(console.error)
         toast.success('পরিমাণ বৃদ্ধি সফলভাবে মুছে ফেলা হয়েছে')
       }
     )
@@ -388,7 +394,7 @@ export default function LoansPage() {
         setEditAmount('')
         setEditReason('')
         setEditDate('')
-        loadLoans()
+        loadLoans().catch(console.error)
         toast.success('ধার সফলভাবে আপডেট করা হয়েছে')
       }
     )
@@ -462,7 +468,7 @@ export default function LoansPage() {
         setEditPaymentAmount('')
         setEditPaymentDate('')
         setEditPaymentNote('')
-        loadLoans()
+        loadLoans().catch(console.error)
         toast.success('পেমেন্ট সফলভাবে আপডেট করা হয়েছে')
       }
     )
@@ -494,15 +500,19 @@ export default function LoansPage() {
       `${amount} টাকার পরিমাণ বৃদ্ধি আপডেট করবেন?`,
       () => {
         // Delete old increase and add updated increase
-        deleteLoanIncrease(editingIncrease.loanId, editingIncrease.increase.id)
-        addLoanIncrease(editingIncrease.loanId, updatedIncrease)
-
-        setEditingIncrease(null)
-        setEditIncreaseAmount('')
-        setEditIncreaseDate('')
-        setEditIncreaseReason('')
-        loadLoans()
-        toast.success('পরিমাণ বৃদ্ধি সফলভাবে আপডেট করা হয়েছে')
+        deleteLoanIncrease(editingIncrease.loanId, editingIncrease.increase.id).then(() => {
+          return addLoanIncrease(editingIncrease.loanId, updatedIncrease)
+        }).then(() => {
+          setEditingIncrease(null)
+          setEditIncreaseAmount('')
+          setEditIncreaseDate('')
+          setEditIncreaseReason('')
+          loadLoans().catch(console.error)
+          toast.success('পরিমাণ বৃদ্ধি সফলভাবে আপডেট করা হয়েছে')
+        }).catch((error) => {
+          console.error('Error updating increase:', error)
+          toast.error('পরিমাণ বৃদ্ধি আপডেট করতে সমস্যা হয়েছে')
+        })
       }
     )
   }
@@ -1425,7 +1435,9 @@ export default function LoansPage() {
             </div>
           )}
 
-          {loans.length === 0 && (
+          {dataLoading ? (
+            <ListSkeleton count={3} />
+          ) : loans.length === 0 ? (
             <div className="text-center py-16">
               <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mb-6">
                 <span className="text-4xl text-gray-400">💸</span>
@@ -1440,7 +1452,7 @@ export default function LoansPage() {
                 প্রথম ঋণ যোগ করুন
               </button>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 

@@ -9,12 +9,14 @@ import { bn } from 'date-fns/locale'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
 import Modal, { ActionButton } from '@/components/Modal'
-import { useAuth } from '@/lib/auth'
+import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
+import { ListSkeleton } from '@/components/SkeletonLoader'
 
 export default function RemindersPage() {
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [showForm, setShowForm] = useState(false)
+  const [dataLoading, setDataLoading] = useState(true)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [scheduledTime, setScheduledTime] = useState('')
@@ -67,13 +69,21 @@ export default function RemindersPage() {
         if (reminder) {
           scheduleNotification(reminderId, reminder.title, reminder.description || '', newTime)
         }
-        loadReminders()
+        loadReminders().catch(console.error)
       }
     }
   }
 
-  const loadReminders = () => {
-    setReminders(getReminders())
+  const loadReminders = async () => {
+    try {
+      setDataLoading(true)
+      const reminders = await getReminders()
+      setReminders(reminders)
+    } catch (error) {
+      console.error('Error loading reminders:', error)
+    } finally {
+      setDataLoading(false)
+    }
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -127,7 +137,7 @@ export default function RemindersPage() {
       `"${reminder.title}" রিমাইন্ডার মুছে ফেলবেন?`,
       () => {
         deleteReminder(id)
-        loadReminders()
+        loadReminders().catch(console.error)
         toast.success('রিমাইন্ডার সফলভাবে মুছে ফেলা হয়েছে')
       }
     )
@@ -143,7 +153,7 @@ export default function RemindersPage() {
       `"${reminder.title}" রিমাইন্ডার ${actionText} হিসেবে চিহ্নিত করবেন?`,
       () => {
         updateReminder(reminder.id, { dismissed: newStatus })
-        loadReminders()
+        loadReminders().catch(console.error)
         toast.success(`রিমাইন্ডার ${actionText} হিসেবে চিহ্নিত করা হয়েছে`)
       },
       {
@@ -377,7 +387,9 @@ export default function RemindersPage() {
             </div>
           )}
 
-          {reminders.length === 0 && (
+          {dataLoading ? (
+            <ListSkeleton count={3} />
+          ) : reminders.length === 0 ? (
             <div className="text-center py-16">
               <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mb-6">
                 <span className="text-4xl text-gray-400">⏰</span>
@@ -392,7 +404,7 @@ export default function RemindersPage() {
                 প্রথম রিমাইন্ডার যোগ করুন
               </button>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>

@@ -1,21 +1,73 @@
 import type { Reminder, Debt, Loan, Payment, AmountIncrease } from './types'
+import { 
+  getDebts as getFirebaseDebts,
+  saveDebt as saveFirebaseDebt,
+  updateDebt as updateFirebaseDebt,
+  deleteDebt as deleteFirebaseDebt,
+  getLoans as getFirebaseLoans,
+  saveLoan as saveFirebaseLoan,
+  updateLoan as updateFirebaseLoan,
+  deleteLoan as deleteFirebaseLoan,
+  getReminders as getFirebaseReminders,
+  saveReminder as saveFirebaseReminder,
+  updateReminder as updateFirebaseReminder,
+  deleteReminder as deleteFirebaseReminder,
+  subscribeToDebts,
+  subscribeToLoans,
+  subscribeToReminders
+} from './firebase-db'
+import { auth } from './firebase'
 
 // Helper to check if we're in browser
 const isBrowser = typeof window !== 'undefined'
 
-// Helper to get current user ID
+// Global variable to store current user ID
+let currentUserId: string | null = null
+
+// Initialize auth state listener
+if (isBrowser) {
+  auth.onAuthStateChanged((user) => {
+    currentUserId = user ? user.uid : null
+    
+    // Clear localStorage data when user logs in to ensure Firebase-only data
+    if (user) {
+      const keys = ['reminders', 'debts', 'loans']
+      keys.forEach(key => {
+        const storageKey = `${key}_${user.uid}`
+        localStorage.removeItem(storageKey)
+      })
+    }
+  })
+}
+
+// Helper to get current user ID from Firebase Auth
 const getCurrentUserId = (): string | null => {
   if (!isBrowser) return null
-  const currentUser = localStorage.getItem('currentUser')
+  
+  // Return the cached user ID
+  if (currentUserId) {
+    return currentUserId
+  }
+  
+  // Fallback: Get current user from Firebase Auth
+  const currentUser = auth.currentUser
   if (currentUser) {
+    currentUserId = currentUser.uid
+    return currentUserId
+  }
+  
+  // Fallback: Try to get from localStorage (for development/testing)
+  const firebaseUser = localStorage.getItem('firebase:authUser')
+  if (firebaseUser) {
     try {
-      const user = JSON.parse(currentUser)
-      return user.id
+      const user = JSON.parse(firebaseUser)
+      currentUserId = user.uid
+      return currentUserId
     } catch (error) {
-      console.error('Error parsing current user:', error)
-      return null
+      console.error('Error parsing Firebase user:', error)
     }
   }
+  
   return null
 }
 
@@ -38,183 +90,319 @@ const removeDuplicates = <T extends { id: string }>(items: T[]): T[] => {
 }
 
 // Reminders
-export const getReminders = (): Reminder[] => {
+export const getReminders = async (): Promise<Reminder[]> => {
   if (!isBrowser) return []
-  const storageKey = getUserStorageKey('reminders')
-  const data = localStorage.getItem(storageKey)
-  const reminders = data ? JSON.parse(data) : []
-  return removeDuplicates(reminders)
-}
-
-export const saveReminder = (reminder: Reminder): void => {
-  if (!isBrowser) return
-  const reminders = getReminders()
-  reminders.push(reminder)
-  const storageKey = getUserStorageKey('reminders')
-  localStorage.setItem(storageKey, JSON.stringify(reminders))
-}
-
-export const updateReminder = (id: string, updates: Partial<Reminder>): void => {
-  if (!isBrowser) return
-  const reminders = getReminders()
-  const index = reminders.findIndex(r => r.id === id)
-  if (index !== -1) {
-    reminders[index] = { ...reminders[index], ...updates }
-    const storageKey = getUserStorageKey('reminders')
-    localStorage.setItem(storageKey, JSON.stringify(reminders))
+  const userId = getCurrentUserId()
+  if (!userId) {
+    console.warn('No user ID found - user must be logged in to access data')
+    return []
+  }
+  
+  try {
+    return await getFirebaseReminders(userId)
+  } catch (error) {
+    console.error('Error getting reminders from Firebase:', error)
+    throw error // Don't fallback to localStorage - force Firebase usage
   }
 }
 
-export const deleteReminder = (id: string): void => {
+export const saveReminder = async (reminder: Reminder): Promise<void> => {
   if (!isBrowser) return
-  const reminders = getReminders().filter(r => r.id !== id)
-  const storageKey = getUserStorageKey('reminders')
-  localStorage.setItem(storageKey, JSON.stringify(reminders))
+  const userId = getCurrentUserId()
+  
+  if (!userId) {
+    throw new Error('User must be logged in to save data')
+  }
+  
+  try {
+    const { id, ...reminderWithoutId } = reminder
+    await saveFirebaseReminder(userId, reminderWithoutId)
+  } catch (error) {
+    console.error('Error saving reminder to Firebase:', error)
+    throw error // Don't fallback to localStorage - force Firebase usage
+  }
+}
+
+export const updateReminder = async (id: string, updates: Partial<Reminder>): Promise<void> => {
+  if (!isBrowser) return
+  const userId = getCurrentUserId()
+  
+  if (!userId) {
+    throw new Error('User must be logged in to update data')
+  }
+  
+  try {
+    await updateFirebaseReminder(userId, id, updates)
+  } catch (error) {
+    console.error('Error updating reminder in Firebase:', error)
+    throw error // Don't fallback to localStorage - force Firebase usage
+  }
+}
+
+export const deleteReminder = async (id: string): Promise<void> => {
+  if (!isBrowser) return
+  const userId = getCurrentUserId()
+  
+  if (!userId) {
+    throw new Error('User must be logged in to delete data')
+  }
+  
+  try {
+    await deleteFirebaseReminder(userId, id)
+  } catch (error) {
+    console.error('Error deleting reminder from Firebase:', error)
+    throw error // Don't fallback to localStorage - force Firebase usage
+  }
 }
 
 // Debts (money lent)
-export const getDebts = (): Debt[] => {
+export const getDebts = async (): Promise<Debt[]> => {
   if (!isBrowser) return []
-  const storageKey = getUserStorageKey('debts')
-  const data = localStorage.getItem(storageKey)
-  const debts = data ? JSON.parse(data) : []
-  return removeDuplicates(debts)
-}
-
-export const saveDebt = (debt: Debt): void => {
-  if (!isBrowser) return
-  const debts = getDebts()
-  debts.push(debt)
-  const storageKey = getUserStorageKey('debts')
-  localStorage.setItem(storageKey, JSON.stringify(debts))
-}
-
-export const updateDebt = (id: string, updates: Partial<Debt>): void => {
-  if (!isBrowser) return
-  const debts = getDebts()
-  const index = debts.findIndex(d => d.id === id)
-  if (index !== -1) {
-    debts[index] = { ...debts[index], ...updates }
-    const storageKey = getUserStorageKey('debts')
-    localStorage.setItem(storageKey, JSON.stringify(debts))
+  const userId = getCurrentUserId()
+  if (!userId) {
+    console.warn('No user ID found - user must be logged in to access data')
+    return []
+  }
+  
+  try {
+    return await getFirebaseDebts(userId)
+  } catch (error) {
+    console.error('Error getting debts from Firebase:', error)
+    throw error // Don't fallback to localStorage - force Firebase usage
   }
 }
 
-export const deleteDebt = (id: string): void => {
+export const saveDebt = async (debt: Debt): Promise<void> => {
   if (!isBrowser) return
-  const debts = getDebts().filter(d => d.id !== id)
-  const storageKey = getUserStorageKey('debts')
-  localStorage.setItem(storageKey, JSON.stringify(debts))
+  const userId = getCurrentUserId()
+  
+  if (!userId) {
+    throw new Error('User must be logged in to save data')
+  }
+  
+  try {
+    const { id, ...debtWithoutId } = debt
+    await saveFirebaseDebt(userId, debtWithoutId)
+  } catch (error) {
+    console.error('Error saving debt to Firebase:', error)
+    throw error // Don't fallback to localStorage - force Firebase usage
+  }
+}
+
+export const updateDebt = async (id: string, updates: Partial<Debt>): Promise<void> => {
+  if (!isBrowser) return
+  const userId = getCurrentUserId()
+  
+  if (!userId) {
+    throw new Error('User must be logged in to update data')
+  }
+  
+  try {
+    await updateFirebaseDebt(userId, id, updates)
+  } catch (error) {
+    console.error('Error updating debt in Firebase:', error)
+    throw error // Don't fallback to localStorage - force Firebase usage
+  }
+}
+
+export const deleteDebt = async (id: string): Promise<void> => {
+  if (!isBrowser) return
+  const userId = getCurrentUserId()
+  
+  if (!userId) {
+    throw new Error('User must be logged in to delete data')
+  }
+  
+  try {
+    await deleteFirebaseDebt(userId, id)
+  } catch (error) {
+    console.error('Error deleting debt from Firebase:', error)
+    throw error // Don't fallback to localStorage - force Firebase usage
+  }
 }
 
 // Loans (money borrowed)
-export const getLoans = (): Loan[] => {
+export const getLoans = async (): Promise<Loan[]> => {
   if (!isBrowser) return []
-  const storageKey = getUserStorageKey('loans')
-  const data = localStorage.getItem(storageKey)
-  const loans = data ? JSON.parse(data) : []
-  return removeDuplicates(loans)
-}
-
-export const saveLoan = (loan: Loan): void => {
-  if (!isBrowser) return
-  const loans = getLoans()
-  loans.push(loan)
-  const storageKey = getUserStorageKey('loans')
-  localStorage.setItem(storageKey, JSON.stringify(loans))
-}
-
-export const updateLoan = (id: string, updates: Partial<Loan>): void => {
-  if (!isBrowser) return
-  const loans = getLoans()
-  const index = loans.findIndex(l => l.id === id)
-  if (index !== -1) {
-    loans[index] = { ...loans[index], ...updates }
-    const storageKey = getUserStorageKey('loans')
-    localStorage.setItem(storageKey, JSON.stringify(loans))
+  const userId = getCurrentUserId()
+  if (!userId) {
+    console.warn('No user ID found - user must be logged in to access data')
+    return []
+  }
+  
+  try {
+    return await getFirebaseLoans(userId)
+  } catch (error) {
+    console.error('Error getting loans from Firebase:', error)
+    throw error // Don't fallback to localStorage - force Firebase usage
   }
 }
 
-export const deleteLoan = (id: string): void => {
+export const saveLoan = async (loan: Loan): Promise<void> => {
   if (!isBrowser) return
-  const loans = getLoans().filter(l => l.id !== id)
-  const storageKey = getUserStorageKey('loans')
-  localStorage.setItem(storageKey, JSON.stringify(loans))
+  const userId = getCurrentUserId()
+  
+  if (!userId) {
+    throw new Error('User must be logged in to save data')
+  }
+  
+  try {
+    const { id, ...loanWithoutId } = loan
+    await saveFirebaseLoan(userId, loanWithoutId)
+  } catch (error) {
+    console.error('Error saving loan to Firebase:', error)
+    throw error // Don't fallback to localStorage - force Firebase usage
+  }
+}
+
+export const updateLoan = async (id: string, updates: Partial<Loan>): Promise<void> => {
+  if (!isBrowser) return
+  const userId = getCurrentUserId()
+  
+  if (!userId) {
+    throw new Error('User must be logged in to update data')
+  }
+  
+  try {
+    await updateFirebaseLoan(userId, id, updates)
+  } catch (error) {
+    console.error('Error updating loan in Firebase:', error)
+    throw error // Don't fallback to localStorage - force Firebase usage
+  }
+}
+
+export const deleteLoan = async (id: string): Promise<void> => {
+  if (!isBrowser) return
+  const userId = getCurrentUserId()
+  
+  if (!userId) {
+    throw new Error('User must be logged in to delete data')
+  }
+  
+  try {
+    await deleteFirebaseLoan(userId, id)
+  } catch (error) {
+    console.error('Error deleting loan from Firebase:', error)
+    throw error // Don't fallback to localStorage - force Firebase usage
+  }
 }
 
 // Payment management for Debts
-export const addDebtPayment = (debtId: string, payment: Payment): void => {
+export const addDebtPayment = async (debtId: string, payment: Payment): Promise<void> => {
   if (!isBrowser) return
-  const debts = getDebts()
-  const index = debts.findIndex(d => d.id === debtId)
-  if (index !== -1) {
-    if (!debts[index].payments) {
-      debts[index].payments = []
+  const userId = getCurrentUserId()
+  
+  if (!userId) {
+    throw new Error('User must be logged in to add payment')
+  }
+  
+  try {
+    const debts = await getDebts()
+    const debt = debts.find(d => d.id === debtId)
+    if (!debt) {
+      throw new Error('Debt not found')
     }
+    
     // Ensure payment amount is a number
     const paymentWithNumberAmount = {
       ...payment,
       amount: Number(payment.amount)
     }
-    debts[index].payments!.push(paymentWithNumberAmount)
+    
+    // Add payment to existing payments array
+    const updatedPayments = [...(debt.payments || []), paymentWithNumberAmount]
     
     // Auto-mark as returned if fully paid
-    const totalPaid = debts[index].payments!.reduce((sum, p) => sum + p.amount, 0)
-    if (totalPaid >= debts[index].amount) {
-      debts[index].returned = true
-    }
+    const totalPaid = updatedPayments.reduce((sum, p) => sum + p.amount, 0)
+    const shouldBeReturned = totalPaid >= debt.amount
     
-    const storageKey = getUserStorageKey('debts')
-    localStorage.setItem(storageKey, JSON.stringify(debts))
+    // Update the debt with new payment
+    await updateDebt(debtId, {
+      payments: updatedPayments,
+      returned: shouldBeReturned
+    })
+  } catch (error) {
+    console.error('Error adding payment:', error)
+    throw error
   }
 }
 
-export const deleteDebtPayment = (debtId: string, paymentId: string): void => {
+export const deleteDebtPayment = async (debtId: string, paymentId: string): Promise<void> => {
   if (!isBrowser) return
-  const debts = getDebts()
-  const index = debts.findIndex(d => d.id === debtId)
-  if (index !== -1 && debts[index].payments) {
-    debts[index].payments = debts[index].payments!.filter(p => p.id !== paymentId)
+  const userId = getCurrentUserId()
+  
+  if (!userId) {
+    throw new Error('User must be logged in to delete payment')
+  }
+  
+  try {
+    const debts = await getDebts()
+    const debt = debts.find(d => d.id === debtId)
+    if (!debt) {
+      throw new Error('Debt not found')
+    }
+    
+    // Remove payment from payments array
+    const updatedPayments = (debt.payments || []).filter(p => p.id !== paymentId)
     
     // Update returned status based on remaining payments
-    const totalPaid = debts[index].payments!.reduce((sum, p) => sum + p.amount, 0)
-    debts[index].returned = totalPaid >= debts[index].amount
+    const totalPaid = updatedPayments.reduce((sum, p) => sum + p.amount, 0)
+    const shouldBeReturned = totalPaid >= debt.amount
     
-    const storageKey = getUserStorageKey('debts')
-    localStorage.setItem(storageKey, JSON.stringify(debts))
+    // Update the debt with removed payment
+    await updateDebt(debtId, {
+      payments: updatedPayments,
+      returned: shouldBeReturned
+    })
+  } catch (error) {
+    console.error('Error deleting payment:', error)
+    throw error
   }
 }
 
 // Payment management for Loans
-export const addLoanPayment = (loanId: string, payment: Payment): void => {
+export const addLoanPayment = async (loanId: string, payment: Payment): Promise<void> => {
   if (!isBrowser) return
-  const loans = getLoans()
-  const index = loans.findIndex(l => l.id === loanId)
-  if (index !== -1) {
-    if (!loans[index].payments) {
-      loans[index].payments = []
+  const userId = getCurrentUserId()
+  
+  if (!userId) {
+    throw new Error('User must be logged in to add payment')
+  }
+  
+  try {
+    const loans = await getLoans()
+    const loan = loans.find(l => l.id === loanId)
+    if (!loan) {
+      throw new Error('Loan not found')
     }
+    
     // Ensure payment amount is a number
     const paymentWithNumberAmount = {
       ...payment,
       amount: Number(payment.amount)
     }
-    loans[index].payments!.push(paymentWithNumberAmount)
+    
+    // Add payment to existing payments array
+    const updatedPayments = [...(loan.payments || []), paymentWithNumberAmount]
     
     // Auto-mark as returned if fully paid
-    const totalPaid = loans[index].payments!.reduce((sum, p) => sum + p.amount, 0)
-    if (totalPaid >= loans[index].amount) {
-      loans[index].returned = true
-    }
+    const totalPaid = updatedPayments.reduce((sum, p) => sum + p.amount, 0)
+    const shouldBeReturned = totalPaid >= loan.amount
     
-    const storageKey = getUserStorageKey('loans')
-    localStorage.setItem(storageKey, JSON.stringify(loans))
+    // Update the loan with new payment
+    await updateLoan(loanId, {
+      payments: updatedPayments,
+      returned: shouldBeReturned
+    })
+  } catch (error) {
+    console.error('Error adding payment:', error)
+    throw error
   }
 }
 
-export const deleteLoanPayment = (loanId: string, paymentId: string): void => {
+export const deleteLoanPayment = async (loanId: string, paymentId: string): Promise<void> => {
   if (!isBrowser) return
-  const loans = getLoans()
+  const loans = await getLoans()
   const index = loans.findIndex(l => l.id === loanId)
   if (index !== -1 && loans[index].payments) {
     loans[index].payments = loans[index].payments!.filter(p => p.id !== paymentId)
@@ -223,15 +411,15 @@ export const deleteLoanPayment = (loanId: string, paymentId: string): void => {
     const totalPaid = loans[index].payments!.reduce((sum, p) => sum + p.amount, 0)
     loans[index].returned = totalPaid >= loans[index].amount
     
-    const storageKey = getUserStorageKey('loans')
-    localStorage.setItem(storageKey, JSON.stringify(loans))
+    // Update the loan with removed payment
+    await updateLoan(loanId, loans[index])
   }
 }
 
 // Amount increase management for Loans
-export const addLoanIncrease = (loanId: string, increase: AmountIncrease): void => {
+export const addLoanIncrease = async (loanId: string, increase: AmountIncrease): Promise<void> => {
   if (!isBrowser) return
-  const loans = getLoans()
+  const loans = await getLoans()
   const index = loans.findIndex(l => l.id === loanId)
   if (index !== -1) {
     if (!loans[index].increases) {
@@ -243,50 +431,84 @@ export const addLoanIncrease = (loanId: string, increase: AmountIncrease): void 
       amount: typeof increase.amount === 'string' ? parseFloat(increase.amount) : increase.amount
     }
     loans[index].increases!.push(increaseWithNumberAmount)
-    const storageKey = getUserStorageKey('loans')
-    localStorage.setItem(storageKey, JSON.stringify(loans))
+    
+    // Update the loan with new increase
+    await updateLoan(loanId, loans[index])
   }
 }
 
-export const deleteLoanIncrease = (loanId: string, increaseId: string): void => {
+export const deleteLoanIncrease = async (loanId: string, increaseId: string): Promise<void> => {
   if (!isBrowser) return
-  const loans = getLoans()
+  const loans = await getLoans()
   const index = loans.findIndex(l => l.id === loanId)
   if (index !== -1 && loans[index].increases) {
     loans[index].increases = loans[index].increases!.filter(i => i.id !== increaseId)
-    const storageKey = getUserStorageKey('loans')
-    localStorage.setItem(storageKey, JSON.stringify(loans))
+    
+    // Update the loan with removed increase
+    await updateLoan(loanId, loans[index])
   }
 }
 
 // Amount increase management for Debts
-export const addDebtIncrease = (debtId: string, increase: AmountIncrease): void => {
+export const addDebtIncrease = async (debtId: string, increase: AmountIncrease): Promise<void> => {
   if (!isBrowser) return
-  const debts = getDebts()
-  const index = debts.findIndex(d => d.id === debtId)
-  if (index !== -1) {
-    if (!debts[index].increases) {
-      debts[index].increases = []
+  
+  const userId = getCurrentUserId()
+  if (!userId) {
+    throw new Error('User must be logged in to add increase')
+  }
+  
+  try {
+    const debts = await getDebts()
+    const debt = debts.find(d => d.id === debtId)
+    if (!debt) {
+      throw new Error('Debt not found')
     }
+    
     // Ensure increase amount is a number
     const increaseWithNumberAmount = {
       ...increase,
       amount: typeof increase.amount === 'string' ? parseFloat(increase.amount) : increase.amount
     }
-    debts[index].increases!.push(increaseWithNumberAmount)
-    const storageKey = getUserStorageKey('debts')
-    localStorage.setItem(storageKey, JSON.stringify(debts))
+    
+    // Add increase to existing increases array
+    const updatedIncreases = [...(debt.increases || []), increaseWithNumberAmount]
+    
+    // Update the debt with new increase
+    await updateDebt(debtId, {
+      increases: updatedIncreases
+    })
+  } catch (error) {
+    console.error('Error adding increase:', error)
+    throw error
   }
 }
 
-export const deleteDebtIncrease = (debtId: string, increaseId: string): void => {
+export const deleteDebtIncrease = async (debtId: string, increaseId: string): Promise<void> => {
   if (!isBrowser) return
-  const debts = getDebts()
-  const index = debts.findIndex(d => d.id === debtId)
-  if (index !== -1 && debts[index].increases) {
-    debts[index].increases = debts[index].increases!.filter(i => i.id !== increaseId)
-    const storageKey = getUserStorageKey('debts')
-    localStorage.setItem(storageKey, JSON.stringify(debts))
+  const userId = getCurrentUserId()
+  
+  if (!userId) {
+    throw new Error('User must be logged in to delete increase')
+  }
+  
+  try {
+    const debts = await getDebts()
+    const debt = debts.find(d => d.id === debtId)
+    if (!debt) {
+      throw new Error('Debt not found')
+    }
+    
+    // Remove increase from increases array
+    const updatedIncreases = (debt.increases || []).filter(i => i.id !== increaseId)
+    
+    // Update the debt with removed increase
+    await updateDebt(debtId, {
+      increases: updatedIncreases
+    })
+  } catch (error) {
+    console.error('Error deleting increase:', error)
+    throw error
   }
 }
 
@@ -295,69 +517,71 @@ export const deleteDebtIncrease = (debtId: string, increaseId: string): void => 
 export const cleanupData = (): void => {
   if (!isBrowser) return
   
-  // Clean up reminders
-  const reminders = getReminders()
-  const remindersKey = getUserStorageKey('reminders')
-  localStorage.setItem(remindersKey, JSON.stringify(reminders))
-  
-  // Clean up debts
-  const debts = getDebts()
-  const debtsKey = getUserStorageKey('debts')
-  localStorage.setItem(debtsKey, JSON.stringify(debts))
-  
-  // Clean up loans
-  const loans = getLoans()
-  const loansKey = getUserStorageKey('loans')
-  localStorage.setItem(loansKey, JSON.stringify(loans))
-  
-  console.log('Data cleanup completed')
+  // Remove all localStorage data - Firebase only
+  const userId = getCurrentUserId()
+  if (userId) {
+    // Clear all user-specific localStorage data
+    const keys = ['reminders', 'debts', 'loans']
+    keys.forEach(key => {
+      const storageKey = `${key}_${userId}`
+      localStorage.removeItem(storageKey)
+    })
+    console.log('localStorage data cleared - using Firebase only')
+  }
 }
 
 // Utility function to validate and fix data integrity
-export const validateData = (): void => {
+export const validateData = async (): Promise<void> => {
   if (!isBrowser) return
   
-  // Validate and fix reminders
-  const reminders = getReminders().filter(r => 
-    r.id && r.title && r.scheduledTime && r.createdAt
-  )
-  const remindersKey = getUserStorageKey('reminders')
-  localStorage.setItem(remindersKey, JSON.stringify(reminders))
+  const userId = getCurrentUserId()
+  if (!userId) {
+    console.warn('No user ID found - cannot validate data')
+    return
+  }
   
-  // Validate and fix debts
-  const debts = getDebts().filter(d => 
-    d.id && d.personName && typeof d.amount === 'number' && d.date && d.createdAt
-  ).map(d => ({
-    ...d,
-    amount: Number(d.amount),
-    returned: Boolean(d.returned),
-    payments: d.payments?.filter(p => 
-      p.id && typeof p.amount === 'number' && p.date && p.createdAt
-    ).map(p => ({
-      ...p,
-      amount: Number(p.amount)
-    })) || []
-  }))
-  const debtsKey = getUserStorageKey('debts')
-  localStorage.setItem(debtsKey, JSON.stringify(debts))
-  
-  // Validate and fix loans
-  const loans = getLoans().filter(l => 
-    l.id && l.personName && typeof l.amount === 'number' && l.date && l.createdAt
-  ).map(l => ({
-    ...l,
-    amount: Number(l.amount),
-    returned: Boolean(l.returned),
-    payments: l.payments?.filter(p => 
-      p.id && typeof p.amount === 'number' && p.date && p.createdAt
-    ).map(p => ({
-      ...p,
-      amount: Number(p.amount)
-    })) || []
-  }))
-  const loansKey = getUserStorageKey('loans')
-  localStorage.setItem(loansKey, JSON.stringify(loans))
-  
-  console.log('Data validation completed')
+  try {
+    // Validate and fix reminders
+    const reminders = (await getReminders()).filter(r => 
+      r.id && r.title && r.scheduledTime && r.createdAt
+    )
+    console.log(`Validated ${reminders.length} reminders`)
+    
+    // Validate and fix debts
+    const debts = (await getDebts()).filter(d => 
+      d.id && d.personName && typeof d.amount === 'number' && d.date && d.createdAt
+    ).map(d => ({
+      ...d,
+      amount: Number(d.amount),
+      returned: Boolean(d.returned),
+      payments: d.payments?.filter(p => 
+        p.id && typeof p.amount === 'number' && p.date && p.createdAt
+      ).map(p => ({
+        ...p,
+        amount: Number(p.amount)
+      })) || []
+    }))
+    console.log(`Validated ${debts.length} debts`)
+    
+    // Validate and fix loans
+    const loans = (await getLoans()).filter(l => 
+      l.id && l.personName && typeof l.amount === 'number' && l.date && l.createdAt
+    ).map(l => ({
+      ...l,
+      amount: Number(l.amount),
+      returned: Boolean(l.returned),
+      payments: l.payments?.filter(p => 
+        p.id && typeof p.amount === 'number' && p.date && p.createdAt
+      ).map(p => ({
+        ...p,
+        amount: Number(p.amount)
+      })) || []
+    }))
+    console.log(`Validated ${loans.length} loans`)
+    
+    console.log('Data validation completed - Firebase only')
+  } catch (error) {
+    console.error('Error validating data:', error)
+  }
 }
 

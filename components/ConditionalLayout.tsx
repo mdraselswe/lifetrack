@@ -2,7 +2,7 @@
 
 import type { ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import { useAuth } from '@/lib/auth'
+import { useAuth } from '@/lib/firebase-auth'
 import Navigation from './Navigation'
 
 interface ConditionalLayoutProps {

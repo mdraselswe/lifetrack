@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import { getDebts, getLoans, getReminders, validateData } from '@/lib/storage'
 import type { Debt, Loan, Reminder } from '@/lib/types'
 import Link from 'next/link'
-import { useAuth } from '@/lib/auth'
+import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
+import { DashboardSkeleton } from '@/components/SkeletonLoader'
 
 export default function Dashboard() {
   const [totalLent, setTotalLent] = useState(0)
@@ -14,6 +15,7 @@ export default function Dashboard() {
   const [debtDetails, setDebtDetails] = useState<Array<{name: string, amount: number}>>([])
   const [loanDetails, setLoanDetails] = useState<Array<{name: string, amount: number}>>([])
   const [mounted, setMounted] = useState(false)
+  const [dataLoading, setDataLoading] = useState(true)
   const { user, loading } = useAuth()
   const router = useRouter()
 
@@ -26,17 +28,17 @@ export default function Dashboard() {
     
     // Validate and clean data on first load
     validateData()
-    loadData()
+    loadData().catch(console.error)
 
     // Reload data when page becomes visible (after returning from other pages)
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        loadData()
+        loadData().catch(console.error)
       }
     }
 
     const handleFocus = () => {
-      loadData()
+      loadData().catch(console.error)
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -48,93 +50,91 @@ export default function Dashboard() {
     }
   }, [user, loading, router])
 
-  const loadData = () => {
-    const debts: Debt[] = getDebts()
-    const loans: Loan[] = getLoans()
-    const reminders: Reminder[] = getReminders()
+  const loadData = async () => {
+    try {
+      setDataLoading(true)
+      const debts: Debt[] = await getDebts()
+      const loans: Loan[] = await getLoans()
+      const reminders: Reminder[] = await getReminders()
 
-    // Calculate total amounts and collect details (only for non-returned items)
-    const debtDetailsList: Array<{name: string, amount: number}> = []
-    const lent = debts.reduce((sum, debt) => {
-      // Skip if already marked as returned
-      if (debt.returned) return sum
-      
-      // Calculate total amount including increments
-      const totalAmount = (typeof debt.amount === 'number' ? debt.amount : 0) + 
-        (debt.increases?.reduce((increaseSum, increase) => {
-          return increaseSum + (typeof increase.amount === 'number' ? increase.amount : 0)
-        }, 0) || 0)
-      
-      // Calculate total payments made
-      const totalPaid = debt.payments?.reduce((paymentSum, payment) => {
-        return paymentSum + (typeof payment.amount === 'number' ? payment.amount : 0)
-      }, 0) || 0
-      
-      // Calculate remaining amount
-      const remaining = totalAmount - totalPaid
-      const remainingAmount = Math.max(0, remaining)
-      
-      if (remainingAmount > 0) {
-        debtDetailsList.push({
-          name: debt.personName || 'অজানা',
-          amount: remainingAmount
-        })
-      }
-      
-      return sum + remainingAmount
-    }, 0)
+      // Calculate total amounts and collect details (only for non-returned items)
+      const debtDetailsList: Array<{name: string, amount: number}> = []
+      const lent = debts.reduce((sum, debt) => {
+        // Skip if already marked as returned
+        if (debt.returned) return sum
+        
+        // Calculate total amount including increments
+        const totalAmount = (typeof debt.amount === 'number' ? debt.amount : 0) + 
+          (debt.increases?.reduce((increaseSum, increase) => {
+            return increaseSum + (typeof increase.amount === 'number' ? increase.amount : 0)
+          }, 0) || 0)
+        
+        // Calculate total payments made
+        const totalPaid = debt.payments?.reduce((paymentSum, payment) => {
+          return paymentSum + (typeof payment.amount === 'number' ? payment.amount : 0)
+        }, 0) || 0
+        
+        // Calculate remaining amount
+        const remaining = totalAmount - totalPaid
+        const remainingAmount = Math.max(0, remaining)
+        
+        if (remainingAmount > 0) {
+          debtDetailsList.push({
+            name: debt.personName || 'অজানা',
+            amount: remainingAmount
+          })
+        }
+        
+        return sum + remainingAmount
+      }, 0)
 
-    const loanDetailsList: Array<{name: string, amount: number}> = []
-    const borrowed = loans.reduce((sum, loan) => {
-      // Skip if already marked as returned
-      if (loan.returned) return sum
-      
-      // Calculate total amount including increments
-      const totalAmount = (typeof loan.amount === 'number' ? loan.amount : 0) + 
-        (loan.increases?.reduce((increaseSum, increase) => {
-          return increaseSum + (typeof increase.amount === 'number' ? increase.amount : 0)
-        }, 0) || 0)
-      
-      // Calculate total payments made
-      const totalPaid = loan.payments?.reduce((paymentSum, payment) => {
-        return paymentSum + (typeof payment.amount === 'number' ? payment.amount : 0)
-      }, 0) || 0
-      
-      // Calculate remaining amount
-      const remaining = totalAmount - totalPaid
-      const remainingAmount = Math.max(0, remaining)
-      
-      if (remainingAmount > 0) {
-        loanDetailsList.push({
-          name: loan.personName || 'অজানা',
-          amount: remainingAmount
-        })
-      }
-      
-      return sum + remainingAmount
-    }, 0)
+      const loanDetailsList: Array<{name: string, amount: number}> = []
+      const borrowed = loans.reduce((sum, loan) => {
+        // Skip if already marked as returned
+        if (loan.returned) return sum
+        
+        // Calculate total amount including increments
+        const totalAmount = (typeof loan.amount === 'number' ? loan.amount : 0) + 
+          (loan.increases?.reduce((increaseSum, increase) => {
+            return increaseSum + (typeof increase.amount === 'number' ? increase.amount : 0)
+          }, 0) || 0)
+        
+        // Calculate total payments made
+        const totalPaid = loan.payments?.reduce((paymentSum, payment) => {
+          return paymentSum + (typeof payment.amount === 'number' ? payment.amount : 0)
+        }, 0) || 0
+        
+        // Calculate remaining amount
+        const remaining = totalAmount - totalPaid
+        const remainingAmount = Math.max(0, remaining)
+        
+        if (remainingAmount > 0) {
+          loanDetailsList.push({
+            name: loan.personName || 'অজানা',
+            amount: remainingAmount
+          })
+        }
+        
+        return sum + remainingAmount
+      }, 0)
 
-    // Count active reminders (not dismissed)
-    const activeReminders = reminders.filter(r => !r.dismissed)
+      // Count active reminders (not dismissed)
+      const activeReminders = reminders.filter(r => !r.dismissed)
 
-    setTotalLent(lent)
-    setTotalBorrowed(borrowed)
-    setReminderCount(activeReminders.length)
-    setDebtDetails(debtDetailsList)
-    setLoanDetails(loanDetailsList)
+      setTotalLent(lent)
+      setTotalBorrowed(borrowed)
+      setReminderCount(activeReminders.length)
+      setDebtDetails(debtDetailsList)
+      setLoanDetails(loanDetailsList)
+    } catch (error) {
+      console.error('Error loading dashboard data:', error)
+    } finally {
+      setDataLoading(false)
+    }
   }
 
-  if (loading || !mounted) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
-            <span className="text-2xl">📱</span>
-          </div>
-          <p className="text-gray-600">লোড হচ্ছে...</p>
-        </div>
-      </div>
-    )
+  if (loading || !mounted || dataLoading) {
+    return <DashboardSkeleton />
   }
 
   if (!user) {
@@ -161,9 +161,19 @@ export default function Dashboard() {
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold bg-gradient-to-r from-gray-900 via-blue-700 to-purple-700 bg-clip-text text-transparent mb-4 sm:mb-6 tracking-tight">
             LifeTrack
           </h1>
-          <p className="text-xl sm:text-2xl text-gray-600 max-w-lg mx-auto leading-relaxed font-medium">
+          <p className="text-xl sm:text-2xl text-gray-600 max-w-lg mx-auto leading-relaxed font-medium mb-4">
             আপনার আর্থিক জীবন সহজভাবে পরিচালনা করুন
           </p>
+          <div className="inline-flex items-center gap-2 bg-white/80 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg border border-white/20">
+            <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-blue-500 rounded-full flex items-center justify-center">
+              <span className="text-white text-sm font-bold">
+                {user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email?.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            <span className="text-gray-700 font-medium">
+              {user.displayName || user.email}
+            </span>
+          </div>
         </div>
 
         {/* User Financial Summary */}
@@ -174,6 +184,10 @@ export default function Dashboard() {
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">আপনার আর্থিক সারসংক্ষেপ</h2>
             <p className="text-base text-gray-600">মোট হিসাবের একটি দ্রুত চিত্র</p>
+            <div className="mt-3 inline-flex items-center gap-2 bg-blue-50 rounded-full px-3 py-1">
+              <span className="text-blue-600 text-sm">👤</span>
+              <span className="text-blue-700 text-sm font-medium">ব্যক্তিগত ডেটা</span>
+            </div>
           </div>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
@@ -274,6 +288,7 @@ export default function Dashboard() {
                 <div className="flex-1">
                   <h3 className="text-lg font-bold text-white mb-1">রিমাইন্ডার</h3>
                   <p className="text-purple-100 text-sm">{reminderCount} সক্রিয়</p>
+                  <p className="text-purple-200 text-xs">আপনার ব্যক্তিগত</p>
                 </div>
               </div>
             </div>
@@ -287,7 +302,8 @@ export default function Dashboard() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-bold text-white mb-1">ধার দিয়েছি</h3>
-                  <p className="text-green-100 text-sm">বিস্তারিত দেখুন</p>
+                  <p className="text-green-100 text-sm">৳{totalLent} মোট</p>
+                  <p className="text-green-200 text-xs">আপনার পাওনা</p>
                 </div>
               </div>
             </div>
@@ -301,7 +317,8 @@ export default function Dashboard() {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-bold text-white mb-1">ধার নিয়েছি</h3>
-                  <p className="text-red-100 text-sm">বিস্তারিত দেখুন</p>
+                  <p className="text-red-100 text-sm">৳{totalBorrowed} মোট</p>
+                  <p className="text-red-200 text-xs">আপনার ঋণ</p>
                 </div>
               </div>
             </div>
@@ -316,6 +333,10 @@ export default function Dashboard() {
             </div>
             <h3 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">সহায়ক টিপস</h3>
             <p className="text-gray-600">আপনার অভিজ্ঞতা আরো ভালো করার জন্য</p>
+            <div className="mt-2 inline-flex items-center gap-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-full px-3 py-1">
+              <span className="text-blue-600 text-sm">🔒</span>
+              <span className="text-blue-700 text-sm font-medium">আপনার ডেটা নিরাপদ</span>
+            </div>
           </div>
           <div className="grid gap-3">
             <div className="flex items-start gap-3 p-3 rounded-lg bg-gradient-to-r from-blue-50 to-indigo-50 hover:from-blue-100 hover:to-indigo-100 transition-all duration-300 group">
@@ -343,6 +364,15 @@ export default function Dashboard() {
               <div className="flex-1">
                 <p className="text-gray-800 font-medium text-sm">পেমেন্ট ট্র্যাক করুন</p>
                 <p className="text-gray-600 text-xs leading-relaxed">টাকা ফেরত পেলে বা দিলে অবশ্যই চিহ্নিত করুন যাতে হিসাব সঠিক থাকে</p>
+              </div>
+            </div>
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-gradient-to-r from-orange-50 to-yellow-50 hover:from-orange-100 hover:to-yellow-100 transition-all duration-300 group">
+              <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+                <span className="text-white text-xs font-bold">4</span>
+              </div>
+              <div className="flex-1">
+                <p className="text-gray-800 font-medium text-sm">ব্যক্তিগত ডেটা</p>
+                <p className="text-gray-600 text-xs leading-relaxed">আপনার সব ডেটা Firebase এ নিরাপদে সংরক্ষিত এবং শুধু আপনার কাছে দৃশ্যমান</p>
               </div>
             </div>
           </div>

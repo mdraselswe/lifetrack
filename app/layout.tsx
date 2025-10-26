@@ -4,7 +4,7 @@ import './globals.css'
 import PWARegistration from '@/components/PWARegistration'
 import ToastContainer from '@/components/Toast'
 import ConfirmToastContainer from '@/components/ConfirmToast'
-import { AuthProvider } from '@/lib/auth'
+import { AuthProvider } from '@/lib/firebase-auth'
 import ConditionalLayout from '@/components/ConditionalLayout'
 
 // Next.js 16 optimized metadata
@@ -97,7 +97,7 @@ export default function RootLayout({
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className="antialiased">
+      <body className="antialiased" suppressHydrationWarning={true}>
         <AuthProvider>
           <PWARegistration />
           <ToastContainer />

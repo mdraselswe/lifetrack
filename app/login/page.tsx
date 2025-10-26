@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/lib/auth'
+import { useAuth } from '@/lib/firebase-auth'
 import { toast } from '@/lib/toast'
 import Link from 'next/link'
 
@@ -24,16 +24,11 @@ export default function LoginPage() {
     setLoading(true)
     
     try {
-      const success = await login(email, password)
-      
-      if (success) {
-        toast.success('সফলভাবে লগইন হয়েছে')
-        router.push('/')
-      } else {
-        toast.error('ইমেইল বা পাসওয়ার্ড ভুল')
-      }
-    } catch (error) {
-      toast.error('লগইনে সমস্যা হয়েছে')
+      await login(email, password)
+      toast.success('সফলভাবে লগইন হয়েছে')
+      router.push('/')
+    } catch (error: any) {
+      toast.error(error.message || 'ইমেইল বা পাসওয়ার্ড ভুল')
     } finally {
       setLoading(false)
     }

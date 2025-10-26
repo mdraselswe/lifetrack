@@ -7,12 +7,14 @@ import { format } from 'date-fns'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
 import Modal, { ActionButton } from '@/components/Modal'
-import { useAuth } from '@/lib/auth'
+import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
+import { ListSkeleton } from '@/components/SkeletonLoader'
 
 export default function DebtsPage() {
   const [debts, setDebts] = useState<Debt[]>([])
   const [showForm, setShowForm] = useState(false)
+  const [dataLoading, setDataLoading] = useState(true)
   const [personName, setPersonName] = useState('')
   const [amount, setAmount] = useState('')
   const [reason, setReason] = useState('')
@@ -49,15 +51,23 @@ export default function DebtsPage() {
       return
     }
     setMounted(true)
-    loadDebts()
+    loadDebts().catch(console.error)
     // Set default date after mount
     setDate(new Date().toISOString().slice(0, 16))
     setPaymentDate(new Date().toISOString().slice(0, 16))
     setIncreaseDate(new Date().toISOString().slice(0, 16))
   }, [user, loading, router])
 
-  const loadDebts = () => {
-    setDebts(getDebts())
+  const loadDebts = async () => {
+    try {
+      setDataLoading(true)
+      const debts = await getDebts()
+      setDebts(debts)
+    } catch (error) {
+      console.error('Error loading debts:', error)
+    } finally {
+      setDataLoading(false)
+    }
   }
 
   const handleSubmit = (e: FormEvent) => {
@@ -69,7 +79,7 @@ export default function DebtsPage() {
     }
 
     const debt: Debt = {
-      id: Date.now().toString(),
+      id: '', // Will be set by Firebase
       personName,
       amount: parseFloat(amount),
       reason,
@@ -80,14 +90,18 @@ export default function DebtsPage() {
       increases: [],
     }
 
-    saveDebt(debt)
-    setPersonName('')
-    setAmount('')
-    setReason('')
-    setDate(new Date().toISOString().slice(0, 16))
-    setShowForm(false)
-    loadDebts()
-    toast.success('ধার সফলভাবে যোগ করা হয়েছে')
+    saveDebt(debt).then(() => {
+      setPersonName('')
+      setAmount('')
+      setReason('')
+      setDate(new Date().toISOString().slice(0, 16))
+      setShowForm(false)
+      loadDebts().catch(console.error)
+      toast.success('ধার সফলভাবে যোগ করা হয়েছে')
+    }).catch((error) => {
+      console.error('Error saving debt:', error)
+      toast.error('ধার যোগ করতে সমস্যা হয়েছে')
+    })
   }
 
   const handleToggleReturned = (debt: Debt) => {
@@ -109,7 +123,7 @@ export default function DebtsPage() {
             // Add remaining payment to make it fully paid
             const remainingAmount = totalAmount - totalPaid
             const remainingPayment: Payment = {
-              id: Date.now().toString(),
+              id: crypto.randomUUID(),
               amount: remainingAmount,
               date: new Date().toISOString().slice(0, 16),
               note: 'সম্পূর্ণ পরিশোধ',
@@ -118,9 +132,13 @@ export default function DebtsPage() {
             addDebtPayment(debt.id, remainingPayment)
           }
         }
-        updateDebt(debt.id, { returned: newStatus })
-        loadDebts()
-        toast.success(`ধার ${actionText} হিসেবে চিহ্নিত করা হয়েছে`)
+        updateDebt(debt.id, { returned: newStatus }).then(() => {
+          loadDebts().catch(console.error)
+          toast.success(`ধার ${actionText} হিসেবে চিহ্নিত করা হয়েছে`)
+        }).catch((error) => {
+          console.error('Error updating debt status:', error)
+          toast.error('ধারের অবস্থা পরিবর্তন করতে সমস্যা হয়েছে')
+        })
       },
       {
         confirmText: confirmText,
@@ -138,9 +156,13 @@ export default function DebtsPage() {
       'ধার মুছুন',
       `${debt.personName} এর ${debt.amount} টাকার ধার মুছে ফেলবেন?`,
       () => {
-        deleteDebt(id)
-        loadDebts()
-        toast.success('ধার সফলভাবে মুছে ফেলা হয়েছে')
+        deleteDebt(id).then(() => {
+          loadDebts().catch(console.error)
+          toast.success('ধার সফলভাবে মুছে ফেলা হয়েছে')
+        }).catch((error) => {
+          console.error('Error deleting debt:', error)
+          toast.error('ধার মুছতে সমস্যা হয়েছে')
+        })
       }
     )
   }
@@ -163,21 +185,25 @@ export default function DebtsPage() {
     }
 
     const payment: Payment = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       amount,
       date: paymentDate,
       note: paymentNote,
       createdAt: new Date().toISOString(),
     }
 
-    addDebtPayment(debtId, payment)
-    setPaymentAmount('')
-    setPaymentDate(new Date().toISOString().slice(0, 16))
-    setPaymentNote('')
-    setShowPaymentForm(null)
-    setShowPaymentModal(null)
-    loadDebts()
-    toast.success('পেমেন্ট সফলভাবে যোগ করা হয়েছে')
+    addDebtPayment(debtId, payment).then(() => {
+      setPaymentAmount('')
+      setPaymentDate(new Date().toISOString().slice(0, 16))
+      setPaymentNote('')
+      setShowPaymentForm(null)
+      setShowPaymentModal(null)
+      loadDebts().catch(console.error)
+      toast.success('পেমেন্ট সফলভাবে যোগ করা হয়েছে')
+    }).catch((error) => {
+      console.error('Error adding payment:', error)
+      toast.error('পেমেন্ট যোগ করতে সমস্যা হয়েছে')
+    })
   }
 
   const handleOpenPaymentModal = (debtId: string) => {
@@ -203,9 +229,13 @@ export default function DebtsPage() {
       'পেমেন্ট মুছুন',
       `${payment.amount} টাকার পেমেন্ট মুছে ফেলবেন?`,
       () => {
-        deleteDebtPayment(debtId, paymentId)
-        loadDebts()
-        toast.success('পেমেন্ট সফলভাবে মুছে ফেলা হয়েছে')
+        deleteDebtPayment(debtId, paymentId).then(() => {
+          loadDebts().catch(console.error)
+          toast.success('পেমেন্ট সফলভাবে মুছে ফেলা হয়েছে')
+        }).catch((error) => {
+          console.error('Error deleting payment:', error)
+          toast.error('পেমেন্ট মুছতে সমস্যা হয়েছে')
+        })
       }
     )
   }
@@ -235,25 +265,21 @@ export default function DebtsPage() {
       () => {
         // Add increase to history
         const increase: AmountIncrease = {
-          id: Date.now().toString(),
+          id: crypto.randomUUID(),
           amount,
           date: increaseDate,
-          reason: increaseReason || undefined,
+          ...(increaseReason && { reason: increaseReason }),
           createdAt: new Date().toISOString(),
         }
         
-        addDebtIncrease(debtId, increase)
-        
-        // Don't update debt amount - keep original amount, only update reason if needed
-        if (increaseReason) {
-          updateDebt(debtId, { 
-            reason: `${debt.reason || ''} + ${increaseReason}`.trim()
-          })
-        }
-        
-        toast.success('ধারের পরিমাণ বৃদ্ধি করা হয়েছে')
-        handleCloseIncreaseModal()
-        loadDebts()
+        addDebtIncrease(debtId, increase).then(() => {
+          toast.success('ধারের পরিমাণ বৃদ্ধি করা হয়েছে')
+          handleCloseIncreaseModal()
+          loadDebts().catch(console.error)
+        }).catch((error) => {
+          console.error('Error increasing debt amount:', error)
+          toast.error('ধারের পরিমাণ বৃদ্ধি করতে সমস্যা হয়েছে')
+        })
       }
     )
   }
@@ -287,9 +313,13 @@ export default function DebtsPage() {
       () => {
         // Don't update debt.amount - it should always remain the initial amount
         // Just delete the increase record
-        deleteDebtIncrease(debtId, increaseId)
-        loadDebts()
-        toast.success('পরিমাণ বৃদ্ধি সফলভাবে মুছে ফেলা হয়েছে')
+        deleteDebtIncrease(debtId, increaseId).then(() => {
+          loadDebts().catch(console.error)
+          toast.success('পরিমাণ বৃদ্ধি সফলভাবে মুছে ফেলা হয়েছে')
+        }).catch((error) => {
+          console.error('Error deleting increase:', error)
+          toast.error('পরিমাণ বৃদ্ধি মুছতে সমস্যা হয়েছে')
+        })
       }
     )
   }
@@ -374,15 +404,18 @@ export default function DebtsPage() {
           reason: editReason,
           date: editDate,
           returned: shouldBeReturned,
+        }).then(() => {
+          setEditingDebt(null)
+          setEditPersonName('')
+          setEditAmount('')
+          setEditReason('')
+          setEditDate('')
+          loadDebts().catch(console.error)
+          toast.success('ধার সফলভাবে আপডেট করা হয়েছে')
+        }).catch((error) => {
+          console.error('Error updating debt:', error)
+          toast.error('ধার আপডেট করতে সমস্যা হয়েছে')
         })
-
-        setEditingDebt(null)
-        setEditPersonName('')
-        setEditAmount('')
-        setEditReason('')
-        setEditDate('')
-        loadDebts()
-        toast.success('ধার সফলভাবে আপডেট করা হয়েছে')
       }
     )
   }
@@ -448,15 +481,19 @@ export default function DebtsPage() {
       `${amount} টাকার পেমেন্ট আপডেট করবেন?`,
       () => {
         // Delete old payment and add updated payment
-        deleteDebtPayment(editingPayment.debtId, editingPayment.payment.id)
-        addDebtPayment(editingPayment.debtId, updatedPayment)
-
-        setEditingPayment(null)
-        setEditPaymentAmount('')
-        setEditPaymentDate('')
-        setEditPaymentNote('')
-        loadDebts()
-        toast.success('পেমেন্ট সফলভাবে আপডেট করা হয়েছে')
+        deleteDebtPayment(editingPayment.debtId, editingPayment.payment.id).then(() => {
+          return addDebtPayment(editingPayment.debtId, updatedPayment)
+        }).then(() => {
+          setEditingPayment(null)
+          setEditPaymentAmount('')
+          setEditPaymentDate('')
+          setEditPaymentNote('')
+          loadDebts().catch(console.error)
+          toast.success('পেমেন্ট সফলভাবে আপডেট করা হয়েছে')
+        }).catch((error) => {
+          console.error('Error updating payment:', error)
+          toast.error('পেমেন্ট আপডেট করতে সমস্যা হয়েছে')
+        })
       }
     )
   }
@@ -487,15 +524,19 @@ export default function DebtsPage() {
       `${amount} টাকার পরিমাণ বৃদ্ধি আপডেট করবেন?`,
       () => {
         // Delete old increase and add updated increase
-        deleteDebtIncrease(editingIncrease.debtId, editingIncrease.increase.id)
-        addDebtIncrease(editingIncrease.debtId, updatedIncrease)
-
-        setEditingIncrease(null)
-        setEditIncreaseAmount('')
-        setEditIncreaseDate('')
-        setEditIncreaseReason('')
-        loadDebts()
-        toast.success('পরিমাণ বৃদ্ধি সফলভাবে আপডেট করা হয়েছে')
+        deleteDebtIncrease(editingIncrease.debtId, editingIncrease.increase.id).then(() => {
+          return addDebtIncrease(editingIncrease.debtId, updatedIncrease)
+        }).then(() => {
+          setEditingIncrease(null)
+          setEditIncreaseAmount('')
+          setEditIncreaseDate('')
+          setEditIncreaseReason('')
+          loadDebts().catch(console.error)
+          toast.success('পরিমাণ বৃদ্ধি সফলভাবে আপডেট করা হয়েছে')
+        }).catch((error) => {
+          console.error('Error updating increase:', error)
+          toast.error('পরিমাণ বৃদ্ধি আপডেট করতে সমস্যা হয়েছে')
+        })
       }
     )
   }
@@ -1418,7 +1459,9 @@ export default function DebtsPage() {
             </div>
           )}
 
-          {debts.length === 0 && (
+          {dataLoading ? (
+            <ListSkeleton count={3} />
+          ) : debts.length === 0 ? (
             <div className="text-center py-16">
               <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mb-6">
                 <span className="text-4xl text-gray-400">💰</span>
@@ -1433,7 +1476,7 @@ export default function DebtsPage() {
                 প্রথম ধার যোগ করুন
               </button>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
