@@ -4,6 +4,8 @@ import Navigation from '@/components/Navigation'
 import PWARegistration from '@/components/PWARegistration'
 import ToastContainer from '@/components/Toast'
 import ConfirmToastContainer from '@/components/ConfirmToast'
+import { AuthProvider } from '@/lib/auth'
+import ConditionalLayout from '@/components/ConditionalLayout'
 
 // Next.js 16 optimized metadata
 export const metadata: Metadata = {
@@ -96,15 +98,14 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="antialiased">
-        <PWARegistration />
-        <ToastContainer />
-        <ConfirmToastContainer />
-        <div className="flex flex-col h-full min-h-screen">
-          <main className="flex-1 overflow-auto pb-16">
+        <AuthProvider>
+          <PWARegistration />
+          <ToastContainer />
+          <ConfirmToastContainer />
+          <ConditionalLayout>
             {children}
-          </main>
-          <Navigation />
-        </div>
+          </ConditionalLayout>
+        </AuthProvider>
       </body>
     </html>
   )

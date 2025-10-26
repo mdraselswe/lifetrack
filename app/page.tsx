@@ -4,14 +4,22 @@ import { useEffect, useState } from 'react'
 import { getDebts, getLoans, getReminders, validateData } from '@/lib/storage'
 import type { Debt, Loan, Reminder } from '@/lib/types'
 import Link from 'next/link'
+import { useAuth } from '@/lib/auth'
+import { useRouter } from 'next/navigation'
 
 export default function Dashboard() {
   const [totalLent, setTotalLent] = useState(0)
   const [totalBorrowed, setTotalBorrowed] = useState(0)
   const [reminderCount, setReminderCount] = useState(0)
   const [mounted, setMounted] = useState(false)
+  const { user, loading } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login')
+      return
+    }
     setMounted(true)
     
     // Validate and clean data on first load
@@ -36,7 +44,7 @@ export default function Dashboard() {
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       window.removeEventListener('focus', handleFocus)
     }
-  }, [])
+  }, [user, loading, router])
 
   const loadData = () => {
     const debts: Debt[] = getDebts()
@@ -80,7 +88,20 @@ export default function Dashboard() {
     setReminderCount(activeReminders.length)
   }
 
-  if (!mounted) {
+  if (loading || !mounted) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center mx-auto mb-4 animate-pulse">
+            <span className="text-2xl">📱</span>
+          </div>
+          <p className="text-gray-600">লোড হচ্ছে...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (!user) {
     return null
   }
 

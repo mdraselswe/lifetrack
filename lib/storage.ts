@@ -3,6 +3,28 @@ import type { Reminder, Debt, Loan, Payment, AmountIncrease } from './types'
 // Helper to check if we're in browser
 const isBrowser = typeof window !== 'undefined'
 
+// Helper to get current user ID
+const getCurrentUserId = (): string | null => {
+  if (!isBrowser) return null
+  const currentUser = localStorage.getItem('currentUser')
+  if (currentUser) {
+    try {
+      const user = JSON.parse(currentUser)
+      return user.id
+    } catch (error) {
+      console.error('Error parsing current user:', error)
+      return null
+    }
+  }
+  return null
+}
+
+// Helper to get user-specific storage key
+const getUserStorageKey = (baseKey: string): string => {
+  const userId = getCurrentUserId()
+  return userId ? `${baseKey}_${userId}` : baseKey
+}
+
 // Helper function to remove duplicates from array based on ID
 const removeDuplicates = <T extends { id: string }>(items: T[]): T[] => {
   const seen = new Set<string>()
@@ -18,7 +40,8 @@ const removeDuplicates = <T extends { id: string }>(items: T[]): T[] => {
 // Reminders
 export const getReminders = (): Reminder[] => {
   if (!isBrowser) return []
-  const data = localStorage.getItem('reminders')
+  const storageKey = getUserStorageKey('reminders')
+  const data = localStorage.getItem(storageKey)
   const reminders = data ? JSON.parse(data) : []
   return removeDuplicates(reminders)
 }
@@ -27,7 +50,8 @@ export const saveReminder = (reminder: Reminder): void => {
   if (!isBrowser) return
   const reminders = getReminders()
   reminders.push(reminder)
-  localStorage.setItem('reminders', JSON.stringify(reminders))
+  const storageKey = getUserStorageKey('reminders')
+  localStorage.setItem(storageKey, JSON.stringify(reminders))
 }
 
 export const updateReminder = (id: string, updates: Partial<Reminder>): void => {
@@ -36,20 +60,23 @@ export const updateReminder = (id: string, updates: Partial<Reminder>): void => 
   const index = reminders.findIndex(r => r.id === id)
   if (index !== -1) {
     reminders[index] = { ...reminders[index], ...updates }
-    localStorage.setItem('reminders', JSON.stringify(reminders))
+    const storageKey = getUserStorageKey('reminders')
+    localStorage.setItem(storageKey, JSON.stringify(reminders))
   }
 }
 
 export const deleteReminder = (id: string): void => {
   if (!isBrowser) return
   const reminders = getReminders().filter(r => r.id !== id)
-  localStorage.setItem('reminders', JSON.stringify(reminders))
+  const storageKey = getUserStorageKey('reminders')
+  localStorage.setItem(storageKey, JSON.stringify(reminders))
 }
 
 // Debts (money lent)
 export const getDebts = (): Debt[] => {
   if (!isBrowser) return []
-  const data = localStorage.getItem('debts')
+  const storageKey = getUserStorageKey('debts')
+  const data = localStorage.getItem(storageKey)
   const debts = data ? JSON.parse(data) : []
   return removeDuplicates(debts)
 }
@@ -58,7 +85,8 @@ export const saveDebt = (debt: Debt): void => {
   if (!isBrowser) return
   const debts = getDebts()
   debts.push(debt)
-  localStorage.setItem('debts', JSON.stringify(debts))
+  const storageKey = getUserStorageKey('debts')
+  localStorage.setItem(storageKey, JSON.stringify(debts))
 }
 
 export const updateDebt = (id: string, updates: Partial<Debt>): void => {
@@ -67,20 +95,23 @@ export const updateDebt = (id: string, updates: Partial<Debt>): void => {
   const index = debts.findIndex(d => d.id === id)
   if (index !== -1) {
     debts[index] = { ...debts[index], ...updates }
-    localStorage.setItem('debts', JSON.stringify(debts))
+    const storageKey = getUserStorageKey('debts')
+    localStorage.setItem(storageKey, JSON.stringify(debts))
   }
 }
 
 export const deleteDebt = (id: string): void => {
   if (!isBrowser) return
   const debts = getDebts().filter(d => d.id !== id)
-  localStorage.setItem('debts', JSON.stringify(debts))
+  const storageKey = getUserStorageKey('debts')
+  localStorage.setItem(storageKey, JSON.stringify(debts))
 }
 
 // Loans (money borrowed)
 export const getLoans = (): Loan[] => {
   if (!isBrowser) return []
-  const data = localStorage.getItem('loans')
+  const storageKey = getUserStorageKey('loans')
+  const data = localStorage.getItem(storageKey)
   const loans = data ? JSON.parse(data) : []
   return removeDuplicates(loans)
 }
@@ -89,7 +120,8 @@ export const saveLoan = (loan: Loan): void => {
   if (!isBrowser) return
   const loans = getLoans()
   loans.push(loan)
-  localStorage.setItem('loans', JSON.stringify(loans))
+  const storageKey = getUserStorageKey('loans')
+  localStorage.setItem(storageKey, JSON.stringify(loans))
 }
 
 export const updateLoan = (id: string, updates: Partial<Loan>): void => {
@@ -98,14 +130,16 @@ export const updateLoan = (id: string, updates: Partial<Loan>): void => {
   const index = loans.findIndex(l => l.id === id)
   if (index !== -1) {
     loans[index] = { ...loans[index], ...updates }
-    localStorage.setItem('loans', JSON.stringify(loans))
+    const storageKey = getUserStorageKey('loans')
+    localStorage.setItem(storageKey, JSON.stringify(loans))
   }
 }
 
 export const deleteLoan = (id: string): void => {
   if (!isBrowser) return
   const loans = getLoans().filter(l => l.id !== id)
-  localStorage.setItem('loans', JSON.stringify(loans))
+  const storageKey = getUserStorageKey('loans')
+  localStorage.setItem(storageKey, JSON.stringify(loans))
 }
 
 // Payment management for Debts
@@ -130,7 +164,8 @@ export const addDebtPayment = (debtId: string, payment: Payment): void => {
       debts[index].returned = true
     }
     
-    localStorage.setItem('debts', JSON.stringify(debts))
+    const storageKey = getUserStorageKey('debts')
+    localStorage.setItem(storageKey, JSON.stringify(debts))
   }
 }
 
@@ -145,7 +180,8 @@ export const deleteDebtPayment = (debtId: string, paymentId: string): void => {
     const totalPaid = debts[index].payments!.reduce((sum, p) => sum + p.amount, 0)
     debts[index].returned = totalPaid >= debts[index].amount
     
-    localStorage.setItem('debts', JSON.stringify(debts))
+    const storageKey = getUserStorageKey('debts')
+    localStorage.setItem(storageKey, JSON.stringify(debts))
   }
 }
 
@@ -171,7 +207,8 @@ export const addLoanPayment = (loanId: string, payment: Payment): void => {
       loans[index].returned = true
     }
     
-    localStorage.setItem('loans', JSON.stringify(loans))
+    const storageKey = getUserStorageKey('loans')
+    localStorage.setItem(storageKey, JSON.stringify(loans))
   }
 }
 
@@ -186,7 +223,8 @@ export const deleteLoanPayment = (loanId: string, paymentId: string): void => {
     const totalPaid = loans[index].payments!.reduce((sum, p) => sum + p.amount, 0)
     loans[index].returned = totalPaid >= loans[index].amount
     
-    localStorage.setItem('loans', JSON.stringify(loans))
+    const storageKey = getUserStorageKey('loans')
+    localStorage.setItem(storageKey, JSON.stringify(loans))
   }
 }
 
@@ -205,7 +243,8 @@ export const addLoanIncrease = (loanId: string, increase: AmountIncrease): void 
       amount: typeof increase.amount === 'string' ? parseFloat(increase.amount) : increase.amount
     }
     loans[index].increases!.push(increaseWithNumberAmount)
-    localStorage.setItem('loans', JSON.stringify(loans))
+    const storageKey = getUserStorageKey('loans')
+    localStorage.setItem(storageKey, JSON.stringify(loans))
   }
 }
 
@@ -215,7 +254,8 @@ export const deleteLoanIncrease = (loanId: string, increaseId: string): void => 
   const index = loans.findIndex(l => l.id === loanId)
   if (index !== -1 && loans[index].increases) {
     loans[index].increases = loans[index].increases!.filter(i => i.id !== increaseId)
-    localStorage.setItem('loans', JSON.stringify(loans))
+    const storageKey = getUserStorageKey('loans')
+    localStorage.setItem(storageKey, JSON.stringify(loans))
   }
 }
 
@@ -234,7 +274,8 @@ export const addDebtIncrease = (debtId: string, increase: AmountIncrease): void 
       amount: typeof increase.amount === 'string' ? parseFloat(increase.amount) : increase.amount
     }
     debts[index].increases!.push(increaseWithNumberAmount)
-    localStorage.setItem('debts', JSON.stringify(debts))
+    const storageKey = getUserStorageKey('debts')
+    localStorage.setItem(storageKey, JSON.stringify(debts))
   }
 }
 
@@ -244,7 +285,8 @@ export const deleteDebtIncrease = (debtId: string, increaseId: string): void => 
   const index = debts.findIndex(d => d.id === debtId)
   if (index !== -1 && debts[index].increases) {
     debts[index].increases = debts[index].increases!.filter(i => i.id !== increaseId)
-    localStorage.setItem('debts', JSON.stringify(debts))
+    const storageKey = getUserStorageKey('debts')
+    localStorage.setItem(storageKey, JSON.stringify(debts))
   }
 }
 
@@ -255,15 +297,18 @@ export const cleanupData = (): void => {
   
   // Clean up reminders
   const reminders = getReminders()
-  localStorage.setItem('reminders', JSON.stringify(reminders))
+  const remindersKey = getUserStorageKey('reminders')
+  localStorage.setItem(remindersKey, JSON.stringify(reminders))
   
   // Clean up debts
   const debts = getDebts()
-  localStorage.setItem('debts', JSON.stringify(debts))
+  const debtsKey = getUserStorageKey('debts')
+  localStorage.setItem(debtsKey, JSON.stringify(debts))
   
   // Clean up loans
   const loans = getLoans()
-  localStorage.setItem('loans', JSON.stringify(loans))
+  const loansKey = getUserStorageKey('loans')
+  localStorage.setItem(loansKey, JSON.stringify(loans))
   
   console.log('Data cleanup completed')
 }
@@ -276,7 +321,8 @@ export const validateData = (): void => {
   const reminders = getReminders().filter(r => 
     r.id && r.title && r.scheduledTime && r.createdAt
   )
-  localStorage.setItem('reminders', JSON.stringify(reminders))
+  const remindersKey = getUserStorageKey('reminders')
+  localStorage.setItem(remindersKey, JSON.stringify(reminders))
   
   // Validate and fix debts
   const debts = getDebts().filter(d => 
@@ -292,7 +338,8 @@ export const validateData = (): void => {
       amount: Number(p.amount)
     })) || []
   }))
-  localStorage.setItem('debts', JSON.stringify(debts))
+  const debtsKey = getUserStorageKey('debts')
+  localStorage.setItem(debtsKey, JSON.stringify(debts))
   
   // Validate and fix loans
   const loans = getLoans().filter(l => 
@@ -308,7 +355,8 @@ export const validateData = (): void => {
       amount: Number(p.amount)
     })) || []
   }))
-  localStorage.setItem('loans', JSON.stringify(loans))
+  const loansKey = getUserStorageKey('loans')
+  localStorage.setItem(loansKey, JSON.stringify(loans))
   
   console.log('Data validation completed')
 }

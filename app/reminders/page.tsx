@@ -9,6 +9,8 @@ import { bn } from 'date-fns/locale'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
 import Modal, { ActionButton } from '@/components/Modal'
+import { useAuth } from '@/lib/auth'
+import { useRouter } from 'next/navigation'
 
 export default function RemindersPage() {
   const [reminders, setReminders] = useState<Reminder[]>([])
@@ -17,8 +19,14 @@ export default function RemindersPage() {
   const [description, setDescription] = useState('')
   const [scheduledTime, setScheduledTime] = useState('')
   const [mounted, setMounted] = useState(false)
+  const { user, loading } = useAuth()
+  const router = useRouter()
 
   useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login')
+      return
+    }
     setMounted(true)
     loadReminders()
     setupServiceWorker()

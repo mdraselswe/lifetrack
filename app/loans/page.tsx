@@ -7,6 +7,8 @@ import { format } from 'date-fns'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
 import Modal, { ActionButton } from '@/components/Modal'
+import { useAuth } from '@/lib/auth'
+import { useRouter } from 'next/navigation'
 
 export default function LoansPage() {
   const [loans, setLoans] = useState<Loan[]>([])
@@ -16,6 +18,8 @@ export default function LoansPage() {
   const [reason, setReason] = useState('')
   const [date, setDate] = useState('')
   const [mounted, setMounted] = useState(false)
+  const { user, loading } = useAuth()
+  const router = useRouter()
   const [showPaymentForm, setShowPaymentForm] = useState<string | null>(null)
   const [paymentAmount, setPaymentAmount] = useState('')
   const [paymentDate, setPaymentDate] = useState('')
@@ -40,13 +44,17 @@ export default function LoansPage() {
   const [increaseReason, setIncreaseReason] = useState('')
 
   useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login')
+      return
+    }
     setMounted(true)
     loadLoans()
     // Set default date after mount
     setDate(new Date().toISOString().slice(0, 16))
     setPaymentDate(new Date().toISOString().slice(0, 16))
     setIncreaseDate(new Date().toISOString().slice(0, 16))
-  }, [])
+  }, [user, loading, router])
 
   const loadLoans = () => {
     setLoans(getLoans())
