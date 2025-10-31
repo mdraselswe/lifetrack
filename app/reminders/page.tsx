@@ -372,14 +372,14 @@ export default function RemindersPage() {
   const dismissedReminders = reminders.filter(r => r.dismissed)
 
   return (
-    <div className="min-h-full bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-100 relative overflow-hidden">
+    <div className="min-h-full full-vh bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-100 relative overflow-hidden safe-area-top safe-area-left safe-area-right">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-purple-400/20 to-indigo-500/20 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-indigo-400/20 to-blue-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
       </div>
 
-      <div className="relative z-10 max-w-4xl mx-auto px-4 py-6">
+      <div className="relative z-10 max-w-4xl mx-auto sm:px-6 py-4 sm:py-6">
         {/* Header Section */}
         <div className="text-center mb-8 sm:mb-12 fade-in">
           <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl shadow-xl mb-4 sm:mb-6 float-gentle">

@@ -144,7 +144,7 @@ export default function Dashboard() {
   const netBalance = totalLent - totalBorrowed
 
   return (
-    <div className="min-h-full bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden">
+    <div className="min-h-full full-vh bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 relative overflow-hidden safe-area-top safe-area-left safe-area-right">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
@@ -152,7 +152,7 @@ export default function Dashboard() {
         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-purple-400/10 to-pink-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
       </div>
 
-      <div className="relative z-10 max-w-4xl mx-auto px-4 py-6">
+      <div className="relative z-10 max-w-4xl mx-auto sm:px-6 py-4 sm:py-6">
         {/* Header Section */}
         <div className="text-center mb-10 sm:mb-16">
           <div className="inline-flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 bg-gradient-to-br from-blue-500 via-purple-500 to-indigo-600 rounded-3xl shadow-2xl mb-6 sm:mb-8 transform hover:scale-105 transition-transform duration-300">

@@ -576,14 +576,14 @@ export default function DebtsPage() {
   }, 0)
 
   return (
-    <div className="min-h-full bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100 relative overflow-hidden">
+    <div className="min-h-full full-vh bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100 relative overflow-hidden safe-area-top safe-area-left safe-area-right">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-green-400/20 to-emerald-500/20 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-emerald-400/20 to-teal-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
       </div>
 
-      <div className="relative z-10 max-w-4xl mx-auto px-4 py-6">
+      <div className="relative z-10 max-w-4xl mx-auto sm:px-6 py-4 sm:py-6">
         {/* Header Section */}
         <div className="text-center mb-8 sm:mb-12 fade-in">
           <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-xl mb-4 sm:mb-6 float-gentle">
@@ -1004,78 +1004,77 @@ export default function DebtsPage() {
                     <div key={debt.id} className="space-y-6">
                       {/* Main Debt Card */}
                       <div className="group relative overflow-hidden bg-gradient-to-br from-red-50 to-red-100 rounded-2xl shadow-lg border border-red-200 hover:shadow-xl transition-all duration-300">
-                        <div className="p-6">
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center">
-                                <span className="text-white text-xl">👤</span>
+                        {/* Header Section */}
+                        <div className="px-4 pt-4 sm:px-6 sm:pt-6">
+                          <div className="flex items-start justify-between gap-3 mb-4">
+                            <div className="flex items-center gap-3 min-w-0 flex-1">
+                              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                                <span className="text-white text-lg sm:text-xl">👤</span>
                               </div>
-                              <div>
-                                <h3 className="font-bold text-xl text-gray-900 mb-1">
+                              <div className="min-w-0 flex-1">
+                                <h3 className="font-bold text-lg sm:text-xl text-gray-900 mb-1 break-words truncate">
                                   {debt.personName}
                                 </h3>
                               </div>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 flex-shrink-0">
                               <button
                                 onClick={() => handleToggleReturned(debt)}
-                                className="p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-all duration-200 hover:scale-110"
+                                className="p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-all duration-200 active:scale-95"
                                 title="ফেরত পেয়েছি"
                               >
                                 ✓
                               </button>
                               <button
                                 onClick={() => handleDelete(debt.id)}
-                                className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-all duration-200 hover:scale-110"
+                                className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-all duration-200 active:scale-95"
                               >
                                 🗑️
                               </button>
                             </div>
                           </div>
                           
-                          <div className="grid grid-cols-3 gap-3 mb-4">
-                            <div className="text-center p-3 bg-gradient-to-br from-red-100 to-red-200 rounded-xl border border-red-300">
-                              <div className="text-xs text-red-700 mb-2 font-medium">মোট</div>
-                              <div className="text-lg sm:text-xl font-bold text-red-800">৳{debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)}</div>
+                          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
+                            <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-red-100 to-red-200 rounded-xl border border-red-300 min-w-0">
+                              <div className="text-xs text-red-700 mb-1 sm:mb-2 font-medium truncate">মোট</div>
+                              <div className="text-sm sm:text-lg font-bold text-red-800 truncate">৳{debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)}</div>
                             </div>
-                            <div className="text-center p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
-                              <div className="text-xs text-gray-500 mb-2 font-medium">পরিশোধিত</div>
-                              <div className="text-lg sm:text-xl font-bold text-blue-600">৳{totalPaid}</div>
+                            <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200 min-w-0">
+                              <div className="text-xs text-gray-500 mb-1 sm:mb-2 font-medium truncate">পরিশোধিত</div>
+                              <div className="text-sm sm:text-lg font-bold text-blue-600 truncate">৳{totalPaid}</div>
                             </div>
-                            <div className="text-center p-3 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border border-orange-200">
-                              <div className="text-xs text-orange-700 mb-2 font-medium">বাকি</div>
-                              <div className="text-lg sm:text-xl font-bold text-orange-600">৳{remaining}</div>
+                            <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border border-orange-200 min-w-0">
+                              <div className="text-xs text-orange-700 mb-1 sm:mb-2 font-medium truncate">বাকি</div>
+                              <div className="text-sm sm:text-lg font-bold text-orange-600 truncate">৳{remaining}</div>
                             </div>
                           </div>
                         </div>
 
                         {/* Initial Payment Section */}
-                        <div className="mt-6 pt-4 border-t border-gray-200">
-                          <div className="flex items-center gap-2 mb-4 px-6">
-                            <div className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center">
-                              <span className="text-green-600 text-sm">💰</span>
+                        <div className="pt-4 border-t border-gray-200">
+                          <div className="flex items-center gap-2 mb-3 px-4 sm:px-6">
+                            <div className="w-5 h-5 sm:w-6 sm:h-6 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <span className="text-green-600 text-xs sm:text-sm">💰</span>
                             </div>
-                            <h4 className="text-sm font-semibold text-gray-700">প্রাথমিক পরিমাণ</h4>
+                            <h4 className="text-xs sm:text-sm font-semibold text-gray-700">প্রাথমিক পরিমাণ</h4>
                           </div>
-                          <div className="px-6 pb-4">
-                            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                                  <span className="text-white text-sm font-bold">৳</span>
-                                </div>
-                                <div>
-                                  <div className="font-bold text-green-700">৳{getInitialAmount(debt)}</div>
-                                  <div className="text-xs text-gray-600">{format(new Date(debt.date), 'PP p')}</div>
-                                  <div className="text-xs text-gray-500 italic mt-1">প্রাথমিক ধার</div>
-                                  {getInitialReason(debt) && (
-                                    <div className="text-xs text-gray-500 italic mt-1">📝 {getInitialReason(debt)}</div>
-                                  )}
-                                </div>
+                          <div className="px-4 sm:px-6 pb-4">
+                            <div className="flex items-start gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
+                              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <span className="text-white text-sm font-bold">৳</span>
                               </div>
-                              <div className="flex items-center gap-2">
+                              <div className="min-w-0 flex-1">
+                                <div className="font-bold text-green-700 text-sm sm:text-base break-words">৳{getInitialAmount(debt)}</div>
+                                <div className="text-xs text-gray-600 break-words">{format(new Date(debt.date), 'PP p')}</div>
+                                <div className="text-xs text-gray-500 italic mt-1 break-words">প্রাথমিক ধার</div>
+                                {getInitialReason(debt) && (
+                                  <div className="text-xs text-gray-500 italic mt-1 break-words">📝 {getInitialReason(debt)}</div>
+                                )}
+                              </div>
+                              <div className="flex items-start gap-2 flex-shrink-0">
                                 <button
                                   onClick={() => handleEdit(debt)}
-                                  className="p-2 bg-green-100 hover:bg-green-200 text-green-600 rounded-lg text-xs transition-all duration-200 hover:scale-110"
+                                  className="p-2 bg-green-100 hover:bg-green-200 text-green-600 rounded-lg text-xs transition-all duration-200 active:scale-95"
                                   title="প্রাথমিক কারণ সম্পাদনা করুন"
                                 >
                                   ✏️
@@ -1087,39 +1086,37 @@ export default function DebtsPage() {
 
                         {/* Payment History - Inside main card */}
                         {debt.payments && debt.payments.length > 0 && (
-                          <div className="mt-6 pt-4 border-t border-gray-200">
-                            <div className="flex items-center gap-2 mb-4 px-6">
-                              <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <span className="text-blue-600 text-sm">📋</span>
+                          <div className="pt-4 border-t border-gray-200">
+                            <div className="flex items-center gap-2 mb-3 px-4 sm:px-6">
+                              <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <span className="text-blue-600 text-xs sm:text-sm">📋</span>
                               </div>
-                              <h4 className="text-sm font-semibold text-gray-700">পরিশোধের ইতিহাস</h4>
+                              <h4 className="text-xs sm:text-sm font-semibold text-gray-700">পরিশোধের ইতিহাস</h4>
                             </div>
-                            <div className="space-y-3 px-6 pb-4">
+                            <div className="space-y-2 sm:space-y-3 px-4 sm:px-6 pb-4">
                               {debt.payments.map((payment) => (
-                                <div key={payment.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                                      <span className="text-white text-sm font-bold">৳</span>
-                                    </div>
-                                    <div>
-                                      <div className="font-bold text-blue-700">৳{payment.amount}</div>
-                                      <div className="text-xs text-gray-600">{format(new Date(payment.date), 'PP p')}</div>
-                                      {payment.note && (
-                                        <div className="text-xs text-gray-500 italic mt-1">📝 {payment.note}</div>
-                                      )}
-                                    </div>
+                                <div key={payment.id} className="flex items-start gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                                  <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <span className="text-white text-sm font-bold">৳</span>
                                   </div>
-                                  <div className="flex items-center gap-2">
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-bold text-blue-700 text-sm sm:text-base break-words">৳{payment.amount}</div>
+                                    <div className="text-xs text-gray-600 break-words">{format(new Date(payment.date), 'PP p')}</div>
+                                    {payment.note && (
+                                      <div className="text-xs text-gray-500 italic mt-1 break-words">📝 {payment.note}</div>
+                                    )}
+                                  </div>
+                                  <div className="flex items-start gap-2 flex-shrink-0">
                                     <button
                                       onClick={() => handleEditPayment(debt.id, payment)}
-                                      className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg text-xs transition-all duration-200 hover:scale-110"
+                                      className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg text-xs transition-all duration-200 active:scale-95"
                                       title="সম্পাদনা করুন"
                                     >
                                       ✏️
                                     </button>
                                     <button
                                       onClick={() => handleDeletePayment(debt.id, payment.id)}
-                                      className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg text-xs transition-all duration-200 hover:scale-110"
+                                      className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg text-xs transition-all duration-200 active:scale-95"
                                       title="মুছুন"
                                     >
                                       ✕
@@ -1133,14 +1130,14 @@ export default function DebtsPage() {
 
                         {/* Amount Increase History */}
                         {debt.increases && debt.increases.length > 0 && (
-                          <div className="mt-6 pt-4 border-t border-gray-200">
-                            <div className="flex items-center gap-2 mb-4 px-6">
-                              <div className="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center">
-                                <span className="text-purple-600 text-sm">➕</span>
+                          <div className="mt-4 pt-4 border-t border-gray-200">
+                            <div className="flex items-center gap-2 mb-3 px-4 sm:px-6">
+                              <div className="w-5 h-5 sm:w-6 sm:h-6 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <span className="text-purple-600 text-xs sm:text-sm">➕</span>
                               </div>
-                              <h4 className="text-sm font-semibold text-gray-700">পরিমাণ বৃদ্ধির তালিকা</h4>
+                              <h4 className="text-xs sm:text-sm font-semibold text-gray-700">পরিমাণ বৃদ্ধির তালিকা</h4>
                             </div>
-                            <div className="space-y-3 px-6 pb-4">
+                            <div className="space-y-2 sm:space-y-3 px-4 sm:px-6 pb-4">
                               {debt.increases.map((increase, index) => {
                                 // Calculate initial amount and total after this increase
                                 const previousIncreases = debt.increases?.slice(0, index) || []
@@ -1149,34 +1146,32 @@ export default function DebtsPage() {
                                 const totalAfterThisIncrease = initialAmount + previousIncreasesTotal + increase.amount
                                 
                                 return (
-                                  <div key={increase.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                                        <span className="text-white text-sm font-bold">➕</span>
-                                      </div>
-                                      <div>
-                                        <div className="font-bold text-purple-700">বৃদ্ধির পরিমাণ (৳): ৳{increase.amount}</div>
-                                        <div className="text-xs text-gray-600">{format(new Date(increase.date), 'PP p')}</div>
-                                        <div className="text-xs text-gray-500 mt-1">
-                                          <span className="font-medium">প্রাথমিক: ৳{initialAmount}</span> → 
-                                          <span className="font-medium text-purple-600"> মোট: ৳{totalAfterThisIncrease}</span>
-                                        </div>
-                                        {increase.reason && (
-                                          <div className="text-xs text-gray-500 italic mt-1">কারণ (ঐচ্ছিক): {increase.reason}</div>
-                                        )}
-                                      </div>
+                                  <div key={increase.id} className="flex items-start gap-3 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
+                                    <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                      <span className="text-white text-sm font-bold">➕</span>
                                     </div>
-                                    <div className="flex items-center gap-2">
+                                    <div className="min-w-0 flex-1">
+                                      <div className="font-bold text-purple-700 text-sm sm:text-base break-words">বৃদ্ধির পরিমাণ (৳): ৳{increase.amount}</div>
+                                      <div className="text-xs text-gray-600 break-words">{format(new Date(increase.date), 'PP p')}</div>
+                                      <div className="text-xs text-gray-500 mt-1 break-words">
+                                        <span className="font-medium">প্রাথমিক: ৳{initialAmount}</span> → 
+                                        <span className="font-medium text-purple-600"> মোট: ৳{totalAfterThisIncrease}</span>
+                                      </div>
+                                      {increase.reason && (
+                                        <div className="text-xs text-gray-500 italic mt-1 break-words">কারণ (ঐচ্ছিক): {increase.reason}</div>
+                                      )}
+                                    </div>
+                                    <div className="flex items-start gap-2 flex-shrink-0">
                                       <button
                                         onClick={() => handleEditIncrease(debt.id, increase)}
-                                        className="p-2 bg-purple-100 hover:bg-purple-200 text-purple-600 rounded-lg text-xs transition-all duration-200 hover:scale-110"
+                                        className="p-2 bg-purple-100 hover:bg-purple-200 text-purple-600 rounded-lg text-xs transition-all duration-200 active:scale-95"
                                         title="সম্পাদনা করুন"
                                       >
                                         ✏️
                                       </button>
                                       <button
                                         onClick={() => handleDeleteIncrease(debt.id, increase.id)}
-                                        className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg text-xs transition-all duration-200 hover:scale-110"
+                                        className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg text-xs transition-all duration-200 active:scale-95"
                                         title="মুছে ফেলুন"
                                       >
                                         🗑️
@@ -1191,9 +1186,9 @@ export default function DebtsPage() {
 
                         {/* Add Payment Button/Form - Inside main card */}
                         {remaining > 0 && (
-                          <div className="mt-6 pt-4 border-t border-gray-200">
+                          <div className="pt-4 border-t border-gray-200">
                             {showPaymentForm === debt.id ? (
-                              <div className="space-y-4 px-6 pb-4">
+                              <div className="space-y-4 px-4 sm:px-6 pb-4">
                                 <div className="flex items-center gap-2 mb-4">
                                   <div className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center">
                                     <span className="text-green-600 text-sm">💵</span>
@@ -1269,7 +1264,7 @@ export default function DebtsPage() {
                               </div>
                             </div>
                           ) : (
-                            <div className="px-6 py-4">
+                            <div className="px-4 sm:px-6 py-4">
                               <div className="grid grid-cols-2 gap-3">
                                 <button
                                   onClick={() => handleOpenPaymentModal(debt.id)}
@@ -1312,29 +1307,30 @@ export default function DebtsPage() {
                   const totalPaid = getTotalPaid(debt)
                   return (
                     <div key={debt.id} className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl shadow-lg border border-green-200 overflow-hidden">
-                      <div className="p-6">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
-                              <span className="text-white text-xl">✅</span>
+                      {/* Header Section */}
+                      <div className="px-4 pt-4 sm:px-6 sm:pt-6">
+                        <div className="flex items-start justify-between gap-3 mb-4">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center flex-shrink-0">
+                              <span className="text-white text-lg sm:text-xl">✅</span>
                             </div>
-                            <div>
-                              <h3 className="font-bold text-xl text-gray-900 mb-1">
+                            <div className="min-w-0 flex-1">
+                              <h3 className="font-bold text-lg sm:text-xl text-gray-900 mb-1 break-words truncate">
                                 {debt.personName}
                               </h3>
                             </div>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 flex-shrink-0">
                             <button
                               onClick={() => handleToggleReturned(debt)}
-                              className="p-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-lg transition-all duration-200 hover:scale-110"
+                              className="p-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-lg transition-all duration-200 active:scale-95"
                               title="ফেরত পাইনি"
                             >
                               ↺
                             </button>
                             <button
                               onClick={() => handleDelete(debt.id)}
-                              className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-all duration-200 hover:scale-110"
+                              className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-all duration-200 active:scale-95"
                               title="মুছে ফেলুন"
                             >
                               🗑️
@@ -1342,39 +1338,38 @@ export default function DebtsPage() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div className="text-center p-4 bg-green-100 rounded-xl border border-green-200">
-                            <div className="text-xs text-green-700 mb-2 font-medium">মূল পরিমাণ</div>
-                            <div className="text-lg sm:text-xl font-bold text-green-800">৳{debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)}</div>
+                        <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4">
+                          <div className="text-center p-3 sm:p-4 bg-green-100 rounded-xl border border-green-200 min-w-0">
+                            <div className="text-xs text-green-700 mb-1 sm:mb-2 font-medium truncate">মূল পরিমাণ</div>
+                            <div className="text-sm sm:text-lg font-bold text-green-800 truncate">৳{debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)}</div>
                           </div>
-                          <div className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200">
-                            <div className="text-xs text-gray-500 mb-2 font-medium">পরিশোধিত</div>
-                            <div className="text-lg sm:text-xl font-bold text-blue-600">৳{totalPaid}</div>
+                          <div className="text-center p-3 sm:p-4 bg-blue-50 rounded-xl border border-blue-200 min-w-0">
+                            <div className="text-xs text-gray-500 mb-1 sm:mb-2 font-medium truncate">পরিশোধিত</div>
+                            <div className="text-sm sm:text-lg font-bold text-blue-600 truncate">৳{totalPaid}</div>
                           </div>
                         </div>
+                      </div>
 
                         {/* Initial Payment Section */}
-                        <div className="mt-6 pt-4 border-t border-gray-200">
-                          <div className="flex items-center gap-2 mb-4">
-                            <div className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center">
-                              <span className="text-green-600 text-sm">💰</span>
+                        <div className="pt-4 border-t border-gray-200">
+                          <div className="flex items-center gap-2 mb-3 px-4 sm:px-6">
+                            <div className="w-5 h-5 sm:w-6 sm:h-6 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <span className="text-green-600 text-xs sm:text-sm">💰</span>
                             </div>
-                            <h4 className="text-sm font-semibold text-gray-700">প্রাথমিক পরিমাণ</h4>
+                            <h4 className="text-xs sm:text-sm font-semibold text-gray-700">প্রাথমিক পরিমাণ</h4>
                           </div>
-                          <div className="px-6 pb-4">
-                            <div className="flex items-center justify-between p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                              <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
-                                  <span className="text-white text-sm font-bold">৳</span>
-                                </div>
-                                <div>
-                                  <div className="font-bold text-green-700">৳{getInitialAmount(debt)}</div>
-                                  <div className="text-xs text-gray-600">{format(new Date(debt.date), 'PP p')}</div>
-                                  <div className="text-xs text-gray-500 italic mt-1">প্রাথমিক ধার</div>
-                                  {getInitialReason(debt) && (
-                                    <div className="text-xs text-gray-500 italic mt-1">📝 {getInitialReason(debt)}</div>
-                                  )}
-                                </div>
+                          <div className="px-4 sm:px-6 pb-4">
+                            <div className="flex items-start gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
+                              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <span className="text-white text-sm font-bold">৳</span>
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <div className="font-bold text-green-700 text-sm sm:text-base break-words">৳{getInitialAmount(debt)}</div>
+                                <div className="text-xs text-gray-600 break-words">{format(new Date(debt.date), 'PP p')}</div>
+                                <div className="text-xs text-gray-500 italic mt-1 break-words">প্রাথমিক ধার</div>
+                                {getInitialReason(debt) && (
+                                  <div className="text-xs text-gray-500 italic mt-1 break-words">📝 {getInitialReason(debt)}</div>
+                                )}
                               </div>
                             </div>
                           </div>
@@ -1382,27 +1377,25 @@ export default function DebtsPage() {
 
                         {/* Payment History */}
                         {debt.payments && debt.payments.length > 0 && (
-                          <div className="mt-6 pt-4 border-t border-gray-200">
-                            <div className="flex items-center gap-2 mb-4">
-                              <div className="w-6 h-6 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <span className="text-blue-600 text-sm">📋</span>
+                          <div className="pt-4 border-t border-gray-200">
+                            <div className="flex items-center gap-2 mb-3 px-4 sm:px-6">
+                              <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <span className="text-blue-600 text-xs sm:text-sm">📋</span>
                               </div>
-                              <h4 className="text-sm font-semibold text-gray-700">পরিশোধের ইতিহাস</h4>
+                              <h4 className="text-xs sm:text-sm font-semibold text-gray-700">পরিশোধের ইতিহাস</h4>
                             </div>
-                            <div className="space-y-3">
+                            <div className="space-y-2 sm:space-y-3 px-4 sm:px-6 pb-4">
                               {debt.payments.map((payment) => (
-                                <div key={payment.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
-                                      <span className="text-white text-sm font-bold">৳</span>
-                                    </div>
-                                    <div>
-                                      <div className="font-bold text-blue-700">৳{payment.amount}</div>
-                                      <div className="text-xs text-gray-600">{format(new Date(payment.date), 'PP p')}</div>
-                                      {payment.note && (
-                                        <div className="text-xs text-gray-500 italic mt-1">📝 {payment.note}</div>
-                                      )}
-                                    </div>
+                                <div key={payment.id} className="flex items-start gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
+                                  <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                    <span className="text-white text-sm font-bold">৳</span>
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="font-bold text-blue-700 text-sm sm:text-base break-words">৳{payment.amount}</div>
+                                    <div className="text-xs text-gray-600 break-words">{format(new Date(payment.date), 'PP p')}</div>
+                                    {payment.note && (
+                                      <div className="text-xs text-gray-500 italic mt-1 break-words">📝 {payment.note}</div>
+                                    )}
                                   </div>
                                 </div>
                               ))}
@@ -1412,14 +1405,14 @@ export default function DebtsPage() {
 
                         {/* Amount Increase History */}
                         {debt.increases && debt.increases.length > 0 && (
-                          <div className="mt-6 pt-4 border-t border-gray-200">
-                            <div className="flex items-center gap-2 mb-4">
-                              <div className="w-6 h-6 bg-purple-100 rounded-lg flex items-center justify-center">
-                                <span className="text-purple-600 text-sm">➕</span>
+                          <div className="pt-4 border-t border-gray-200">
+                            <div className="flex items-center gap-2 mb-3 px-4 sm:px-6">
+                              <div className="w-5 h-5 sm:w-6 sm:h-6 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <span className="text-purple-600 text-xs sm:text-sm">➕</span>
                               </div>
-                              <h4 className="text-sm font-semibold text-gray-700">পরিমাণ বৃদ্ধির তালিকা</h4>
+                              <h4 className="text-xs sm:text-sm font-semibold text-gray-700">পরিমাণ বৃদ্ধির তালিকা</h4>
                             </div>
-                            <div className="space-y-3">
+                            <div className="space-y-2 sm:space-y-3 px-4 sm:px-6 pb-4">
                               {debt.increases.map((increase, index) => {
                                 // Calculate initial amount and total after this increase
                                 const previousIncreases = debt.increases?.slice(0, index) || []
@@ -1428,22 +1421,20 @@ export default function DebtsPage() {
                                 const totalAfterThisIncrease = initialAmount + previousIncreasesTotal + increase.amount
                                 
                                 return (
-                                  <div key={increase.id} className="flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center">
-                                        <span className="text-white text-sm font-bold">➕</span>
+                                  <div key={increase.id} className="flex items-start gap-3 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
+                                    <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
+                                      <span className="text-white text-sm font-bold">➕</span>
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="font-bold text-purple-700 text-sm sm:text-base break-words">বৃদ্ধির পরিমাণ (৳): ৳{increase.amount}</div>
+                                      <div className="text-xs text-gray-600 break-words">{format(new Date(increase.date), 'PP p')}</div>
+                                      <div className="text-xs text-gray-500 mt-1 break-words">
+                                        <span className="font-medium">প্রাথমিক: ৳{initialAmount}</span> → 
+                                        <span className="font-medium text-purple-600"> মোট: ৳{totalAfterThisIncrease}</span>
                                       </div>
-                                      <div>
-                                        <div className="font-bold text-purple-700">বৃদ্ধির পরিমাণ (৳): ৳{increase.amount}</div>
-                                        <div className="text-xs text-gray-600">{format(new Date(increase.date), 'PP p')}</div>
-                                        <div className="text-xs text-gray-500 mt-1">
-                                          <span className="font-medium">প্রাথমিক: ৳{initialAmount}</span> → 
-                                          <span className="font-medium text-purple-600"> মোট: ৳{totalAfterThisIncrease}</span>
-                                        </div>
-                                        {increase.reason && (
-                                          <div className="text-xs text-gray-500 italic mt-1">কারণ (ঐচ্ছিক): {increase.reason}</div>
-                                        )}
-                                      </div>
+                                      {increase.reason && (
+                                        <div className="text-xs text-gray-500 italic mt-1 break-words">কারণ (ঐচ্ছিক): {increase.reason}</div>
+                                      )}
                                     </div>
                                   </div>
                                 )
@@ -1451,7 +1442,6 @@ export default function DebtsPage() {
                             </div>
                           </div>
                         )}
-                      </div>
                     </div>
                   )
                 })}

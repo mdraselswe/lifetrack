@@ -126,19 +126,24 @@ export default function ConditionalLayout({ children }: ConditionalLayoutProps) 
   }
   
   return (
-    <div className="flex flex-col h-full min-h-screen">
+    <div className="flex flex-col h-full min-h-screen app-container no-bounce">
       <main 
-        className={`flex-1 overflow-auto ${showNavigation ? 'pb-16' : ''} ${swipeDirection ? 'transition-transform duration-300' : ''}`}
+        className={`flex-1 overflow-auto app-scroll ${showNavigation ? 'pb-16 safe-area-bottom' : ''} ${swipeDirection ? 'transition-transform duration-300' : ''}`}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         style={{
           touchAction: showNavigation ? 'pan-y' : 'auto', // Allow vertical scroll but enable touch handlers
+          WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
         }}
       >
         {children}
       </main>
-      {showNavigation && <Navigation />}
+      {showNavigation && (
+        <div className="safe-area-bottom">
+          <Navigation />
+        </div>
+      )}
     </div>
   )
 }

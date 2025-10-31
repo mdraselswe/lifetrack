@@ -5,15 +5,50 @@
 @layer base {
   html {
     @apply h-full;
+    /* Prevent bounce scroll on iOS */
+    overscroll-behavior: none;
+    /* Smooth scrolling */
+    scroll-behavior: smooth;
+    /* Mobile app-like viewport */
+    -webkit-text-size-adjust: 100%;
+    -moz-text-size-adjust: 100%;
+    text-size-adjust: 100%;
   }
   
   body {
     @apply h-full bg-gray-50 text-gray-900 antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    /* Mobile app optimizations */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Prevent pull-to-refresh on mobile */
+    overscroll-behavior-y: contain;
+    /* Touch optimizations */
+    touch-action: pan-y pinch-zoom;
+    /* Safe area support */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 
   #__next {
     @apply h-full;
+  }
+
+  /* Prevent text selection on mobile app-like elements */
+  .app-no-select {
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Mobile app-like scrolling */
+  .app-scroll {
+    -webkit-overflow-scrolling: touch;
+    overflow-scrolling: touch;
   }
 
   /* Custom scrollbar */
@@ -323,6 +358,44 @@
     .safe-area-bottom {
       padding-bottom: max(1rem, env(safe-area-inset-bottom));
     }
+    
+    .safe-area-top {
+      padding-top: max(1rem, env(safe-area-inset-top));
+    }
+    
+    .safe-area-left {
+      padding-left: max(1rem, env(safe-area-inset-left));
+    }
+    
+    .safe-area-right {
+      padding-right: max(1rem, env(safe-area-inset-right));
+    }
+  }
+
+  /* Mobile app-like status bar */
+  .status-bar {
+    height: env(safe-area-inset-top);
+    background-color: var(--status-bar-color, #0ea5e9);
+  }
+
+  /* Full viewport height for mobile */
+  .full-vh {
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
+  }
+
+  /* Mobile app container */
+  .app-container {
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Prevent bounce on iOS */
+  .no-bounce {
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
   }
 
   /* Modal specific styles - simplified for mobile-first approach */
