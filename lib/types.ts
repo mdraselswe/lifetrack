@@ -5,6 +5,20 @@ export interface Reminder {
   scheduledTime: string
   dismissed: boolean
   createdAt: string
+  // Repetitive reminder fields
+  isRepetitive?: boolean
+  repeatInterval?: number // number of days/weeks/months
+  repeatType?: 'days' | 'weeks' | 'months'
+  completionCount?: number // how many times completed
+  occurrences?: ReminderOccurrence[] // history of completions
+  originalReminderId?: string // reference to original reminder if this is a repetition
+}
+
+export interface ReminderOccurrence {
+  id: string
+  scheduledTime: string
+  completedTime: string
+  note?: string
 }
 
 export interface Payment {

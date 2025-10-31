@@ -9,9 +9,10 @@ interface ModalProps {
   children?: ReactNode
   className?: string
   footerActions?: ReactNode
+  zIndex?: number // Custom z-index for stacked modals
 }
 
-export default function Modal({ isOpen, onClose, title, children, className = '', footerActions }: ModalProps) {
+export default function Modal({ isOpen, onClose, title, children, className = '', footerActions, zIndex = 9999 }: ModalProps) {
   const [isVisible, setIsVisible] = useState(false)
 
   useEffect(() => {
@@ -48,9 +49,9 @@ export default function Modal({ isOpen, onClose, title, children, className = ''
   if (!isOpen) return null
 
   return (
-    <div className="fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" style={{ zIndex }}>
       {/* Mobile: Full screen modal */}
-      <div className="sm:hidden fixed inset-0 z-[9999] bg-black/60 backdrop-blur-sm">
+      <div className="sm:hidden fixed inset-0 bg-black/60 backdrop-blur-sm" style={{ zIndex }}>
         <div
           className={`
             bg-white w-full
