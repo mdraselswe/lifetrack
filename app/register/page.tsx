@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/firebase-auth'
 import { toast } from '@/lib/toast'
 import Link from 'next/link'
+import { validateRegistrationForm, isValidEmail, isValidName, isValidPassword } from '@/lib/validation'
 
 export default function RegisterPage() {
   const [name, setName] = useState('')
@@ -12,24 +13,54 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState<{[key: string]: string}>({})
   const { register } = useAuth()
   const router = useRouter()
+
+  // Real-time validation functions
+  const validateName = (value: string) => {
+    const validation = isValidName(value)
+    setErrors(prev => ({
+      ...prev,
+      name: validation.isValid ? '' : (validation.message || '')
+    }))
+  }
+
+  const validateEmail = (value: string) => {
+    setErrors(prev => ({
+      ...prev,
+      email: isValidEmail(value) ? '' : 'সঠিক ইমেইল ঠিকানা দিন'
+    }))
+  }
+
+  const validatePassword = (value: string) => {
+    const validation = isValidPassword(value)
+    setErrors(prev => ({
+      ...prev,
+      password: validation.isValid ? '' : (validation.message || '')
+    }))
+  }
+
+  const validateConfirmPassword = (value: string) => {
+    setErrors(prev => ({
+      ...prev,
+      confirmPassword: value === password ? '' : 'পাসওয়ার্ড মিলছে না'
+    }))
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     
-    if (!name || !email || !password || !confirmPassword) {
-      toast.error('সব ফিল্ড পূরণ করুন')
-      return
-    }
+    // Validate form using utility function
+    const validation = validateRegistrationForm({
+      name,
+      email,
+      password,
+      confirmPassword
+    })
 
-    if (password !== confirmPassword) {
-      toast.error('পাসওয়ার্ড মিলছে না')
-      return
-    }
-
-    if (password.length < 6) {
-      toast.error('পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে')
+    if (!validation.isValid) {
+      toast.error(validation.message || 'ফর্ম ভুলভাবে পূরণ হয়েছে')
       return
     }
 
@@ -67,11 +98,19 @@ export default function RegisterPage() {
                 type="text"
                 id="name"
                 value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                onChange={(e) => {
+                  setName(e.target.value)
+                  validateName(e.target.value)
+                }}
+                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                  errors.name ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
                 placeholder="আপনার নাম দিন"
                 required
               />
+              {errors.name && (
+                <p className="mt-1 text-sm text-red-600">{errors.name}</p>
+              )}
             </div>
 
             <div>
@@ -82,11 +121,19 @@ export default function RegisterPage() {
                 type="email"
                 id="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  validateEmail(e.target.value)
+                }}
+                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                  errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
                 placeholder="আপনার ইমেইল দিন"
                 required
               />
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+              )}
             </div>
 
             <div>
@@ -97,11 +144,23 @@ export default function RegisterPage() {
                 type="password"
                 id="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                onChange={(e) => {
+                  setPassword(e.target.value)
+                  validatePassword(e.target.value)
+                  // Re-validate confirm password when password changes
+                  if (confirmPassword) {
+                    validateConfirmPassword(confirmPassword)
+                  }
+                }}
+                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                  errors.password ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
                 placeholder="পাসওয়ার্ড দিন (কমপক্ষে ৬ অক্ষর)"
                 required
               />
+              {errors.password && (
+                <p className="mt-1 text-sm text-red-600">{errors.password}</p>
+              )}
             </div>
 
             <div>
@@ -112,11 +171,19 @@ export default function RegisterPage() {
                 type="password"
                 id="confirmPassword"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200"
+                onChange={(e) => {
+                  setConfirmPassword(e.target.value)
+                  validateConfirmPassword(e.target.value)
+                }}
+                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all duration-200 ${
+                  errors.confirmPassword ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
                 placeholder="পাসওয়ার্ড আবার দিন"
                 required
               />
+              {errors.confirmPassword && (
+                <p className="mt-1 text-sm text-red-600">{errors.confirmPassword}</p>
+              )}
             </div>
 
             <button

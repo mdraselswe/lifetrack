@@ -41,7 +41,7 @@ if (isBrowser) {
 }
 
 // Helper to get current user ID from Firebase Auth
-const getCurrentUserId = (): string | null => {
+export const getCurrentUserId = (): string | null => {
   if (!isBrowser) return null
   
   // Return the cached user ID

@@ -115,11 +115,19 @@ export default function RemindersPage() {
     
     if (hasPermission === false) {
       toast.error('নোটিফিকেশন পাঠাতে পারমিশন দিন')
+      toast.info('ব্রাউজার সেটিংস থেকে নোটিফিকেশন পারমিশন দিন', 8000)
       return
     }
     
     toast.success('রিমাইন্ডার সফলভাবে সেট করা হয়েছে!')
-    toast.warning('ব্রাউজার খোলা রাখুন নোটিফিকেশনের জন্য!', 6000)
+    
+    // Check if browser supports background notifications
+    const supportsBackground = 'serviceWorker' in navigator && navigator.serviceWorker.controller
+    if (supportsBackground) {
+      toast.info('নোটিফিকেশন background এ কাজ করবে (browser বন্ধ থাকলেও)', 6000)
+    } else {
+      toast.warning('ব্রাউজার খোলা রাখুন নোটিফিকেশনের জন্য', 6000)
+    }
 
     setTitle('')
     setDescription('')

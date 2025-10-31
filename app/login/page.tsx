@@ -5,19 +5,35 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/firebase-auth'
 import { toast } from '@/lib/toast'
 import Link from 'next/link'
+import { validateLoginForm, isValidEmail } from '@/lib/validation'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [errors, setErrors] = useState<{[key: string]: string}>({})
   const { login } = useAuth()
   const router = useRouter()
+
+  // Real-time validation function
+  const validateEmail = (value: string) => {
+    setErrors(prev => ({
+      ...prev,
+      email: isValidEmail(value) ? '' : 'সঠিক ইমেইল ঠিকানা দিন'
+    }))
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     
-    if (!email || !password) {
-      toast.error('সব ফিল্ড পূরণ করুন')
+    // Validate form using utility function
+    const validation = validateLoginForm({
+      email,
+      password
+    })
+
+    if (!validation.isValid) {
+      toast.error(validation.message || 'ফর্ম ভুলভাবে পূরণ হয়েছে')
       return
     }
 
@@ -55,11 +71,19 @@ export default function LoginPage() {
                 type="email"
                 id="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200"
+                onChange={(e) => {
+                  setEmail(e.target.value)
+                  validateEmail(e.target.value)
+                }}
+                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 ${
+                  errors.email ? 'border-red-300 bg-red-50' : 'border-gray-300'
+                }`}
                 placeholder="আপনার ইমেইল দিন"
                 required
               />
+              {errors.email && (
+                <p className="mt-1 text-sm text-red-600">{errors.email}</p>
+              )}
             </div>
 
             <div>

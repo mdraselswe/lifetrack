@@ -48,6 +48,15 @@
 # প্যাকেজ ইনস্টল করুন
 npm install
 
+# Firebase environment variables setup করুন
+# .env.local file create করুন:
+NEXT_PUBLIC_FIREBASE_API_KEY=your-api-key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your-auth-domain
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your-project-id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your-storage-bucket
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+NEXT_PUBLIC_FIREBASE_APP_ID=your-app-id
+
 # ডেভেলপমেন্ট সার্ভার চালু করুন
 npm run dev
 
@@ -58,14 +67,22 @@ npm run build
 npm start
 ```
 
+### Firebase Setup
+
+1. Firebase Console-এ project create করুন
+2. Firestore Database enable করুন
+3. Authentication enable করুন (Email/Password)
+4. Firebase config values copy করুন
+5. `.env.local` file-এ add করুন
+
 ## 🛠️ প্রযুক্তি স্ট্যাক
 
 - **Next.js 15**: সর্বশেষ React ফ্রেমওয়ার্ক
 - **TypeScript**: টাইপ সেফটি
 - **Tailwind CSS**: সুন্দর ও আধুনিক UI
+- **Firebase**: Authentication & Firestore Database
 - **PWA**: অফলাইন সাপোর্ট ও মোবাইল ইনস্টলেশন
 - **Service Worker**: নোটিফিকেশন ম্যানেজমেন্ট
-- **LocalStorage**: ক্লায়েন্ট-সাইড ডেটা স্টোরেজ
 
 ## 📱 PWA ফিচার
 
@@ -80,11 +97,14 @@ npm start
 
 ## 🔔 নোটিফিকেশন
 
-**গুরুত্বপূর্ণ**: নোটিফিকেশন পেতে ব্রাউজার খোলা রাখতে হবে।
+**গুরুত্বপূর্ণ**: নোটিফিকেশন পেতে ব্রাউজার খোলা রাখতে হবে। Browser notification API ব্যবহার করে reminders-এর জন্য notifications দেখানো হয়।
 
 ## 📦 ডেটা স্টোরেজ
 
-সকল ডেটা ব্রাউজারের LocalStorage-এ সংরক্ষিত থাকে। কোনো সার্ভার বা ক্লাউড সংযোগ প্রয়োজন নেই।
+- **Firebase Firestore**: সকল ডেটা Firebase-এ সংরক্ষিত হয়
+- **User Authentication**: Firebase Authentication ব্যবহার করে
+- **Real-time Sync**: সব device-এ automatic sync
+- **Offline Support**: Service Worker দিয়ে offline access
 
 ## 🎨 UI/UX ডিজাইন
 
