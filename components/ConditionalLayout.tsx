@@ -71,20 +71,6 @@ export default function ConditionalLayout({ children }: ConditionalLayoutProps) 
     touchStartTime.current = Date.now()
   }
   
-  const handleTouchMove = (e: React.TouchEvent) => {
-    // Prevent default scrolling during horizontal swipe
-    if (touchStartX.current !== null && touchStartY.current !== null) {
-      const touch = e.touches[0]
-      const deltaX = Math.abs(touch.clientX - touchStartX.current)
-      const deltaY = Math.abs(touch.clientY - touchStartY.current)
-      
-      // If horizontal swipe is more dominant, prevent vertical scroll
-      if (deltaX > deltaY && deltaX > 10) {
-        e.preventDefault()
-      }
-    }
-  }
-  
   const handleTouchEnd = (e: React.TouchEvent) => {
     if (touchStartX.current === null || touchStartY.current === null || touchStartTime.current === null) {
       return
@@ -126,24 +112,21 @@ export default function ConditionalLayout({ children }: ConditionalLayoutProps) 
   }
   
   return (
-    <div className="flex flex-col h-full min-h-screen app-container no-bounce">
-      <main 
-        className={`flex-1 overflow-auto app-scroll ${showNavigation ? 'pb-16 safe-area-bottom' : ''} ${swipeDirection ? 'transition-transform duration-300' : ''}`}
+    <div className="app-container no-bounce">
+      <main
+        className={`flex-1 ${showNavigation ? 'pb-nav' : ''}`}
         onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
         style={{
-          touchAction: showNavigation ? 'pan-y' : 'auto', // Allow vertical scroll but enable touch handlers
-          WebkitOverflowScrolling: 'touch', // Smooth scrolling on iOS
+          // Let the document scroll natively (no inner scroll container) so the
+          // browser's dynamic toolbar and momentum scrolling work correctly on
+          // mobile. pan-y keeps vertical scroll while enabling swipe detection.
+          touchAction: showNavigation ? 'pan-y' : 'auto',
         }}
       >
         {children}
       </main>
-      {showNavigation && (
-        <div className="safe-area-bottom">
-          <Navigation />
-        </div>
-      )}
+      {showNavigation && <Navigation />}
     </div>
   )
 }
