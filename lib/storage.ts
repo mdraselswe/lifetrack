@@ -18,57 +18,47 @@ import {
 } from './firebase-db'
 import { auth } from './firebase'
 
+// Re-export realtime listeners so pages can subscribe for cross-device sync
+export { subscribeToDebts, subscribeToLoans, subscribeToReminders } from './firebase-db'
+
 // Helper to check if we're in browser
 const isBrowser = typeof window !== 'undefined'
 
 // Global variable to store current user ID
 let currentUserId: string | null = null
 
-// Initialize auth state listener
+// Keep the cached user ID in sync with Firebase Auth.
+// NOTE: We intentionally do NOT clear localStorage here anymore — the old
+// implementation wiped local data on login, which caused user data loss.
 if (isBrowser) {
   auth.onAuthStateChanged((user) => {
     currentUserId = user ? user.uid : null
-    
-    // Clear localStorage data when user logs in to ensure Firebase-only data
-    if (user) {
-      const keys = ['reminders', 'debts', 'loans']
-      keys.forEach(key => {
-        const storageKey = `${key}_${user.uid}`
-        localStorage.removeItem(storageKey)
-      })
-    }
   })
 }
 
-// Helper to get current user ID from Firebase Auth
+// Synchronous best-effort user ID (may be null right after page load,
+// before Firebase Auth has restored the session). Prefer resolveUserId()
+// for reads/writes; use this only where a synchronous value is required.
 export const getCurrentUserId = (): string | null => {
   if (!isBrowser) return null
-  
-  // Return the cached user ID
-  if (currentUserId) {
-    return currentUserId
-  }
-  
-  // Fallback: Get current user from Firebase Auth
+  if (currentUserId) return currentUserId
   const currentUser = auth.currentUser
   if (currentUser) {
     currentUserId = currentUser.uid
     return currentUserId
   }
-  
-  // Fallback: Try to get from localStorage (for development/testing)
-  const firebaseUser = localStorage.getItem('firebase:authUser')
-  if (firebaseUser) {
-    try {
-      const user = JSON.parse(firebaseUser)
-      currentUserId = user.uid
-      return currentUserId
-    } catch (error) {
-      console.error('Error parsing Firebase user:', error)
-    }
-  }
-  
   return null
+}
+
+// Reliable user ID resolution: waits until Firebase Auth has finished
+// restoring the persisted session, so saves fired right after load don't
+// fail with "User must be logged in".
+const resolveUserId = async (): Promise<string | null> => {
+  if (!isBrowser) return null
+  if (currentUserId) return currentUserId
+  await auth.authStateReady()
+  currentUserId = auth.currentUser?.uid ?? null
+  return currentUserId
 }
 
 // Helper to get user-specific storage key
@@ -92,7 +82,7 @@ const removeDuplicates = <T extends { id: string }>(items: T[]): T[] => {
 // Reminders
 export const getReminders = async (): Promise<Reminder[]> => {
   if (!isBrowser) return []
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   if (!userId) {
     console.warn('No user ID found - user must be logged in to access data')
     return []
@@ -108,7 +98,7 @@ export const getReminders = async (): Promise<Reminder[]> => {
 
 export const saveReminder = async (reminder: Reminder): Promise<void> => {
   if (!isBrowser) return
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   
   if (!userId) {
     throw new Error('User must be logged in to save data')
@@ -125,7 +115,7 @@ export const saveReminder = async (reminder: Reminder): Promise<void> => {
 
 export const updateReminder = async (id: string, updates: Partial<Reminder>): Promise<void> => {
   if (!isBrowser) return
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   
   if (!userId) {
     throw new Error('User must be logged in to update data')
@@ -141,7 +131,7 @@ export const updateReminder = async (id: string, updates: Partial<Reminder>): Pr
 
 export const deleteReminder = async (id: string): Promise<void> => {
   if (!isBrowser) return
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   
   if (!userId) {
     throw new Error('User must be logged in to delete data')
@@ -158,7 +148,7 @@ export const deleteReminder = async (id: string): Promise<void> => {
 // Debts (money lent)
 export const getDebts = async (): Promise<Debt[]> => {
   if (!isBrowser) return []
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   if (!userId) {
     console.warn('No user ID found - user must be logged in to access data')
     return []
@@ -174,7 +164,7 @@ export const getDebts = async (): Promise<Debt[]> => {
 
 export const saveDebt = async (debt: Debt): Promise<void> => {
   if (!isBrowser) return
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   
   if (!userId) {
     throw new Error('User must be logged in to save data')
@@ -191,7 +181,7 @@ export const saveDebt = async (debt: Debt): Promise<void> => {
 
 export const updateDebt = async (id: string, updates: Partial<Debt>): Promise<void> => {
   if (!isBrowser) return
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   
   if (!userId) {
     throw new Error('User must be logged in to update data')
@@ -207,7 +197,7 @@ export const updateDebt = async (id: string, updates: Partial<Debt>): Promise<vo
 
 export const deleteDebt = async (id: string): Promise<void> => {
   if (!isBrowser) return
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   
   if (!userId) {
     throw new Error('User must be logged in to delete data')
@@ -224,7 +214,7 @@ export const deleteDebt = async (id: string): Promise<void> => {
 // Loans (money borrowed)
 export const getLoans = async (): Promise<Loan[]> => {
   if (!isBrowser) return []
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   if (!userId) {
     console.warn('No user ID found - user must be logged in to access data')
     return []
@@ -240,7 +230,7 @@ export const getLoans = async (): Promise<Loan[]> => {
 
 export const saveLoan = async (loan: Loan): Promise<void> => {
   if (!isBrowser) return
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   
   if (!userId) {
     throw new Error('User must be logged in to save data')
@@ -257,7 +247,7 @@ export const saveLoan = async (loan: Loan): Promise<void> => {
 
 export const updateLoan = async (id: string, updates: Partial<Loan>): Promise<void> => {
   if (!isBrowser) return
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   
   if (!userId) {
     throw new Error('User must be logged in to update data')
@@ -273,7 +263,7 @@ export const updateLoan = async (id: string, updates: Partial<Loan>): Promise<vo
 
 export const deleteLoan = async (id: string): Promise<void> => {
   if (!isBrowser) return
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   
   if (!userId) {
     throw new Error('User must be logged in to delete data')
@@ -290,7 +280,7 @@ export const deleteLoan = async (id: string): Promise<void> => {
 // Payment management for Debts
 export const addDebtPayment = async (debtId: string, payment: Payment): Promise<void> => {
   if (!isBrowser) return
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   
   if (!userId) {
     throw new Error('User must be logged in to add payment')
@@ -329,7 +319,7 @@ export const addDebtPayment = async (debtId: string, payment: Payment): Promise<
 
 export const deleteDebtPayment = async (debtId: string, paymentId: string): Promise<void> => {
   if (!isBrowser) return
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   
   if (!userId) {
     throw new Error('User must be logged in to delete payment')
@@ -363,7 +353,7 @@ export const deleteDebtPayment = async (debtId: string, paymentId: string): Prom
 // Payment management for Loans
 export const addLoanPayment = async (loanId: string, payment: Payment): Promise<void> => {
   if (!isBrowser) return
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   
   if (!userId) {
     throw new Error('User must be logged in to add payment')
@@ -453,7 +443,7 @@ export const deleteLoanIncrease = async (loanId: string, increaseId: string): Pr
 export const addDebtIncrease = async (debtId: string, increase: AmountIncrease): Promise<void> => {
   if (!isBrowser) return
   
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   if (!userId) {
     throw new Error('User must be logged in to add increase')
   }
@@ -486,7 +476,7 @@ export const addDebtIncrease = async (debtId: string, increase: AmountIncrease):
 
 export const deleteDebtIncrease = async (debtId: string, increaseId: string): Promise<void> => {
   if (!isBrowser) return
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   
   if (!userId) {
     throw new Error('User must be logged in to delete increase')
@@ -534,7 +524,7 @@ export const cleanupData = (): void => {
 export const validateData = async (): Promise<void> => {
   if (!isBrowser) return
   
-  const userId = getCurrentUserId()
+  const userId = await resolveUserId()
   if (!userId) {
     console.warn('No user ID found - cannot validate data')
     return

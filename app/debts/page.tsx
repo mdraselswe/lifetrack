@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
-import { getDebts, saveDebt, updateDebt, deleteDebt, addDebtPayment, deleteDebtPayment, addDebtIncrease, deleteDebtIncrease } from '@/lib/storage'
+import { getDebts, saveDebt, updateDebt, deleteDebt, addDebtPayment, deleteDebtPayment, addDebtIncrease, deleteDebtIncrease, subscribeToDebts } from '@/lib/storage'
 import type { Debt, Payment, AmountIncrease } from '@/lib/types'
+import { round2 } from '@/lib/format'
 import { format } from 'date-fns'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
@@ -46,16 +47,26 @@ export default function DebtsPage() {
   const [editIncreaseReason, setEditIncreaseReason] = useState('')
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login')
-      return
-    }
     setMounted(true)
-    loadDebts().catch(console.error)
     // Set default date after mount
     setDate(new Date().toISOString().slice(0, 16))
     setPaymentDate(new Date().toISOString().slice(0, 16))
     setIncreaseDate(new Date().toISOString().slice(0, 16))
+  }, [])
+
+  // Realtime sync across all devices
+  useEffect(() => {
+    if (loading) return
+    if (!user) {
+      router.push('/login')
+      return
+    }
+    setDataLoading(true)
+    const unsubscribe = subscribeToDebts(user.uid, (data) => {
+      setDebts(data)
+      setDataLoading(false)
+    })
+    return () => unsubscribe()
   }, [user, loading, router])
 
   const loadDebts = async () => {
@@ -110,7 +121,7 @@ export default function DebtsPage() {
     const confirmText = newStatus ? 'ফেরত পেয়েছি' : 'ফেরত পাইনি'
     
     // Calculate total amount including increments
-    const totalAmount = debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)
+    const totalAmount = round2(debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))
     
     confirm.custom(
       'ধারের অবস্থা পরিবর্তন করুন',
@@ -121,7 +132,7 @@ export default function DebtsPage() {
           const totalPaid = getTotalPaid(debt)
           if (totalPaid < totalAmount) {
             // Add remaining payment to make it fully paid
-            const remainingAmount = totalAmount - totalPaid
+            const remainingAmount = round2(totalAmount - totalPaid)
             const remainingPayment: Payment = {
               id: crypto.randomUUID(),
               amount: remainingAmount,
@@ -256,8 +267,8 @@ export default function DebtsPage() {
     if (!debt) return
 
     // Calculate current total amount (initial + all increases)
-    const currentTotalAmount = debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)
-    const newTotalAmount = currentTotalAmount + amount
+    const currentTotalAmount = round2(debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))
+    const newTotalAmount = round2(currentTotalAmount + amount)
 
     confirm.update(
       'ধারের পরিমাণ বৃদ্ধি করুন',
@@ -304,8 +315,8 @@ export default function DebtsPage() {
     if (!debt || !increase) return
 
     // Calculate current total amount (initial + all increases)
-    const currentTotalAmount = debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)
-    const newTotalAmount = currentTotalAmount - increase.amount
+    const currentTotalAmount = round2(debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))
+    const newTotalAmount = round2(currentTotalAmount - increase.amount)
 
     confirm.delete(
       'পরিমাণ বৃদ্ধি মুছুন',
@@ -326,20 +337,20 @@ export default function DebtsPage() {
 
   const calculateRemaining = (debt: Debt): number => {
     // Calculate total amount including increments
-    const totalAmount = debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)
-    
+    const totalAmount = round2(debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))
+
     if (!debt.payments || debt.payments.length === 0) {
-      return totalAmount
+      return round2(totalAmount)
     }
     const totalPaid = debt.payments.reduce((sum, p) => sum + p.amount, 0)
-    return totalAmount - totalPaid
+    return round2(totalAmount - totalPaid)
   }
 
   const getTotalPaid = (debt: Debt): number => {
     if (!debt.payments || debt.payments.length === 0) {
       return 0
     }
-    return debt.payments.reduce((sum, p) => sum + p.amount, 0)
+    return round2(debt.payments.reduce((sum, p) => sum + p.amount, 0))
   }
 
   // Helper function to get initial amount (always the original amount, never affected by increments)
@@ -462,7 +473,7 @@ export default function DebtsPage() {
     // Calculate remaining amount excluding the current payment being edited
     const otherPayments = debt.payments?.filter(p => p.id !== editingPayment.payment.id) || []
     const otherPaymentsTotal = otherPayments.reduce((sum, p) => sum + p.amount, 0)
-    const remaining = debt.amount - otherPaymentsTotal
+    const remaining = round2(debt.amount - otherPaymentsTotal)
     
     if (amount > remaining) {
       toast.error(`বাকি পরিমাণ: ৳${remaining}. তার চেয়ে বেশি পরিশোধ করা যাবে না।`)
@@ -563,17 +574,17 @@ export default function DebtsPage() {
   const returnedDebts = debts.filter(d => d.returned)
   
   // Calculate remaining amounts after payments
-  const totalActive = activeDebts.reduce((sum, d) => {
+  const totalActive = round2(activeDebts.reduce((sum, d) => {
     const totalPaid = d.payments?.reduce((paymentSum, payment) => paymentSum + payment.amount, 0) || 0
     const totalAmount = d.amount + (d.increases?.reduce((incSum, inc) => incSum + inc.amount, 0) || 0)
     const remaining = totalAmount - totalPaid
     return sum + Math.max(0, remaining)
-  }, 0)
-  
-  const totalReturned = returnedDebts.reduce((sum, d) => {
+  }, 0))
+
+  const totalReturned = round2(returnedDebts.reduce((sum, d) => {
     const totalPaid = d.payments?.reduce((paymentSum, payment) => paymentSum + payment.amount, 0) || 0
     return sum + totalPaid
-  }, 0)
+  }, 0))
 
   return (
     <div className="min-h-full full-vh bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100 relative overflow-hidden safe-area-top safe-area-left safe-area-right">
@@ -879,7 +890,7 @@ export default function DebtsPage() {
                   if (!debt) return 0
                   const otherPayments = debt.payments?.filter(p => p.id !== editingPayment.payment.id) || []
                   const otherPaymentsTotal = otherPayments.reduce((sum, p) => sum + p.amount, 0)
-                  return debt.amount - otherPaymentsTotal
+                  return round2(debt.amount - otherPaymentsTotal)
                 })() : 0}
                 step="0.01"
                 required
@@ -1037,7 +1048,7 @@ export default function DebtsPage() {
                           <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
                             <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-red-100 to-red-200 rounded-xl border border-red-300 min-w-0">
                               <div className="text-xs text-red-700 mb-1 sm:mb-2 font-medium truncate">মোট</div>
-                              <div className="text-sm sm:text-lg font-bold text-red-800 truncate">৳{debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)}</div>
+                              <div className="text-sm sm:text-lg font-bold text-red-800 truncate">৳{round2(debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))}</div>
                             </div>
                             <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200 min-w-0">
                               <div className="text-xs text-gray-500 mb-1 sm:mb-2 font-medium truncate">পরিশোধিত</div>
@@ -1143,7 +1154,7 @@ export default function DebtsPage() {
                                 const previousIncreases = debt.increases?.slice(0, index) || []
                                 const previousIncreasesTotal = previousIncreases.reduce((sum, inc) => sum + inc.amount, 0)
                                 const initialAmount = debt.amount  // debt.amount is always the initial amount
-                                const totalAfterThisIncrease = initialAmount + previousIncreasesTotal + increase.amount
+                                const totalAfterThisIncrease = round2(initialAmount + previousIncreasesTotal + increase.amount)
                                 
                                 return (
                                   <div key={increase.id} className="flex items-start gap-3 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
@@ -1341,7 +1352,7 @@ export default function DebtsPage() {
                         <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4">
                           <div className="text-center p-3 sm:p-4 bg-green-100 rounded-xl border border-green-200 min-w-0">
                             <div className="text-xs text-green-700 mb-1 sm:mb-2 font-medium truncate">মূল পরিমাণ</div>
-                            <div className="text-sm sm:text-lg font-bold text-green-800 truncate">৳{debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)}</div>
+                            <div className="text-sm sm:text-lg font-bold text-green-800 truncate">৳{round2(debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))}</div>
                           </div>
                           <div className="text-center p-3 sm:p-4 bg-blue-50 rounded-xl border border-blue-200 min-w-0">
                             <div className="text-xs text-gray-500 mb-1 sm:mb-2 font-medium truncate">পরিশোধিত</div>
@@ -1418,7 +1429,7 @@ export default function DebtsPage() {
                                 const previousIncreases = debt.increases?.slice(0, index) || []
                                 const previousIncreasesTotal = previousIncreases.reduce((sum, inc) => sum + inc.amount, 0)
                                 const initialAmount = debt.amount  // debt.amount is always the initial amount
-                                const totalAfterThisIncrease = initialAmount + previousIncreasesTotal + increase.amount
+                                const totalAfterThisIncrease = round2(initialAmount + previousIncreasesTotal + increase.amount)
                                 
                                 return (
                                   <div key={increase.id} className="flex items-start gap-3 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">

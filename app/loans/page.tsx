@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
-import { getLoans, saveLoan, updateLoan, deleteLoan, addLoanPayment, deleteLoanPayment, addLoanIncrease, deleteLoanIncrease } from '@/lib/storage'
+import { getLoans, saveLoan, updateLoan, deleteLoan, addLoanPayment, deleteLoanPayment, addLoanIncrease, deleteLoanIncrease, subscribeToLoans } from '@/lib/storage'
 import type { Loan, Payment, AmountIncrease } from '@/lib/types'
+import { round2 } from '@/lib/format'
 import { format } from 'date-fns'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
@@ -46,16 +47,26 @@ export default function LoansPage() {
   const [increaseReason, setIncreaseReason] = useState('')
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login')
-      return
-    }
     setMounted(true)
-    loadLoans().catch(console.error)
     // Set default date after mount
     setDate(new Date().toISOString().slice(0, 16))
     setPaymentDate(new Date().toISOString().slice(0, 16))
     setIncreaseDate(new Date().toISOString().slice(0, 16))
+  }, [])
+
+  // Realtime sync across all devices
+  useEffect(() => {
+    if (loading) return
+    if (!user) {
+      router.push('/login')
+      return
+    }
+    setDataLoading(true)
+    const unsubscribe = subscribeToLoans(user.uid, (data) => {
+      setLoans(data)
+      setDataLoading(false)
+    })
+    return () => unsubscribe()
   }, [user, loading, router])
 
   const loadLoans = async () => {
@@ -79,7 +90,7 @@ export default function LoansPage() {
     }
 
     const loan: Loan = {
-      id: Date.now().toString(),
+      id: '', // Will be set by Firebase
       personName,
       amount: parseFloat(amount),
       reason,
@@ -90,14 +101,17 @@ export default function LoansPage() {
       increases: [],
     }
 
-    saveLoan(loan)
-    setPersonName('')
-    setAmount('')
-    setReason('')
-    setDate(new Date().toISOString().slice(0, 16))
-    setShowForm(false)
-    loadLoans().catch(console.error)
-    toast.success('ধার সফলভাবে যোগ করা হয়েছে')
+    saveLoan(loan).then(() => {
+      setPersonName('')
+      setAmount('')
+      setReason('')
+      setDate(new Date().toISOString().slice(0, 16))
+      setShowForm(false)
+      toast.success('ধার সফলভাবে যোগ করা হয়েছে')
+    }).catch((error) => {
+      console.error('Error saving loan:', error)
+      toast.error('ধার যোগ করতে সমস্যা হয়েছে')
+    })
   }
 
   const handleToggleReturned = (loan: Loan) => {
@@ -106,7 +120,7 @@ export default function LoansPage() {
     const confirmText = newStatus ? 'ফেরত দিয়েছি' : 'ফেরত দেইনি'
     
     // Calculate total amount including increments
-    const totalAmount = loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)
+    const totalAmount = round2(loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))
     
     confirm.custom(
       'ধারের অবস্থা পরিবর্তন করুন',
@@ -117,7 +131,7 @@ export default function LoansPage() {
           const totalPaid = getTotalPaid(loan)
           if (totalPaid < totalAmount) {
             // Add remaining payment to make it fully paid
-            const remainingAmount = totalAmount - totalPaid
+            const remainingAmount = round2(totalAmount - totalPaid)
             const remainingPayment: Payment = {
               id: Date.now().toString(),
               amount: remainingAmount,
@@ -211,8 +225,8 @@ export default function LoansPage() {
     if (!loan) return
 
     // Calculate current total amount (initial + all increases)
-    const currentTotalAmount = loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)
-    const newTotalAmount = currentTotalAmount + amount
+    const currentTotalAmount = round2(loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))
+    const newTotalAmount = round2(currentTotalAmount + amount)
 
     confirm.update(
       'ধারের পরিমাণ বৃদ্ধি করুন',
@@ -289,8 +303,8 @@ export default function LoansPage() {
     if (!loan || !increase) return
 
     // Calculate current total amount (initial + all increases)
-    const currentTotalAmount = loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)
-    const newTotalAmount = currentTotalAmount - increase.amount
+    const currentTotalAmount = round2(loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))
+    const newTotalAmount = round2(currentTotalAmount - increase.amount)
 
     confirm.delete(
       'পরিমাণ বৃদ্ধি মুছুন',
@@ -308,20 +322,20 @@ export default function LoansPage() {
 
   const calculateRemaining = (loan: Loan): number => {
     // Calculate total amount including increments
-    const totalAmount = loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)
-    
+    const totalAmount = round2(loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))
+
     if (!loan.payments || loan.payments.length === 0) {
-      return totalAmount
+      return round2(totalAmount)
     }
     const totalPaid = loan.payments.reduce((sum, p) => sum + p.amount, 0)
-    return totalAmount - totalPaid
+    return round2(totalAmount - totalPaid)
   }
 
   const getTotalPaid = (loan: Loan): number => {
     if (!loan.payments || loan.payments.length === 0) {
       return 0
     }
-    return loan.payments.reduce((sum, p) => sum + p.amount, 0)
+    return round2(loan.payments.reduce((sum, p) => sum + p.amount, 0))
   }
 
   // Helper function to get initial amount (always the original amount, never affected by increments)
@@ -442,7 +456,7 @@ export default function LoansPage() {
     // Calculate remaining amount excluding the current payment being edited
     const otherPayments = loan.payments?.filter(p => p.id !== editingPayment.payment.id) || []
     const otherPaymentsTotal = otherPayments.reduce((sum, p) => sum + p.amount, 0)
-    const remaining = loan.amount - otherPaymentsTotal
+    const remaining = round2(loan.amount - otherPaymentsTotal)
     
     if (amount > remaining) {
       toast.error(`বাকি পরিমাণ: ৳${remaining}. তার চেয়ে বেশি পরিশোধ করা যাবে না।`)
@@ -539,17 +553,17 @@ export default function LoansPage() {
   const returnedLoans = loans.filter(l => l.returned)
   
   // Calculate remaining amounts after payments
-  const totalActive = activeLoans.reduce((sum, l) => {
+  const totalActive = round2(activeLoans.reduce((sum, l) => {
     const totalPaid = l.payments?.reduce((paymentSum, payment) => paymentSum + payment.amount, 0) || 0
     const totalAmount = l.amount + (l.increases?.reduce((incSum, inc) => incSum + inc.amount, 0) || 0)
     const remaining = totalAmount - totalPaid
     return sum + Math.max(0, remaining)
-  }, 0)
-  
-  const totalReturned = returnedLoans.reduce((sum, l) => {
+  }, 0))
+
+  const totalReturned = round2(returnedLoans.reduce((sum, l) => {
     const totalPaid = l.payments?.reduce((paymentSum, payment) => paymentSum + payment.amount, 0) || 0
     return sum + totalPaid
-  }, 0)
+  }, 0))
 
   return (
     <div className="min-h-full full-vh bg-gradient-to-br from-slate-50 via-red-50 to-rose-100 relative overflow-hidden safe-area-top safe-area-left safe-area-right">
@@ -855,7 +869,7 @@ export default function LoansPage() {
                   if (!loan) return 0
                   const otherPayments = loan.payments?.filter(p => p.id !== editingPayment.payment.id) || []
                   const otherPaymentsTotal = otherPayments.reduce((sum, p) => sum + p.amount, 0)
-                  return loan.amount - otherPaymentsTotal
+                  return round2(loan.amount - otherPaymentsTotal)
                 })() : 0}
                 step="0.01"
                 required
@@ -1013,7 +1027,7 @@ export default function LoansPage() {
                           <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
                             <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl border border-orange-300 min-w-0">
                               <div className="text-xs text-orange-700 mb-1 sm:mb-2 font-medium truncate">মোট</div>
-                              <div className="text-sm sm:text-lg font-bold text-orange-800 truncate">৳{loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)}</div>
+                              <div className="text-sm sm:text-lg font-bold text-orange-800 truncate">৳{round2(loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))}</div>
                             </div>
                             <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200 min-w-0">
                               <div className="text-xs text-gray-500 mb-1 sm:mb-2 font-medium truncate">পরিশোধিত</div>
@@ -1119,7 +1133,7 @@ export default function LoansPage() {
                                 const previousIncreases = loan.increases?.slice(0, index) || []
                                 const previousIncreasesTotal = previousIncreases.reduce((sum, inc) => sum + inc.amount, 0)
                                 const initialAmount = loan.amount  // loan.amount is always the initial amount
-                                const totalAfterThisIncrease = initialAmount + previousIncreasesTotal + increase.amount
+                                const totalAfterThisIncrease = round2(initialAmount + previousIncreasesTotal + increase.amount)
                                 
                                 return (
                                   <div key={increase.id} className="flex items-start gap-3 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
@@ -1317,7 +1331,7 @@ export default function LoansPage() {
                         <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4">
                           <div className="text-center p-3 sm:p-4 bg-blue-100 rounded-xl border border-blue-200 min-w-0">
                             <div className="text-xs text-blue-700 mb-1 sm:mb-2 font-medium truncate">মূল পরিমাণ</div>
-                            <div className="text-sm sm:text-lg font-bold text-blue-800 truncate">৳{loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0)}</div>
+                            <div className="text-sm sm:text-lg font-bold text-blue-800 truncate">৳{round2(loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))}</div>
                           </div>
                           <div className="text-center p-3 sm:p-4 bg-green-50 rounded-xl border border-green-200 min-w-0">
                             <div className="text-xs text-green-700 mb-1 sm:mb-2 font-medium truncate">পরিশোধিত</div>
@@ -1394,7 +1408,7 @@ export default function LoansPage() {
                                 const previousIncreases = loan.increases?.slice(0, index) || []
                                 const previousIncreasesTotal = previousIncreases.reduce((sum, inc) => sum + inc.amount, 0)
                                 const initialAmount = loan.amount  // loan.amount is always the initial amount
-                                const totalAfterThisIncrease = initialAmount + previousIncreasesTotal + increase.amount
+                                const totalAfterThisIncrease = round2(initialAmount + previousIncreasesTotal + increase.amount)
                                 
                                 return (
                                   <div key={increase.id} className="flex items-start gap-3 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">

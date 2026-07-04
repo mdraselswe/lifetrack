@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
-import { getReminders, saveReminder, updateReminder, deleteReminder } from '@/lib/storage'
+import { getReminders, saveReminder, updateReminder, deleteReminder, subscribeToReminders } from '@/lib/storage'
 import { scheduleNotification } from '@/lib/notifications'
 import type { Reminder, ReminderOccurrence } from '@/lib/types'
 import { addDays, addWeeks, addMonths } from 'date-fns'
@@ -36,12 +36,7 @@ export default function RemindersPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login')
-      return
-    }
     setMounted(true)
-    loadReminders()
     setupServiceWorker()
     // Set default date after mount
     setScheduledTime(new Date().toISOString().slice(0, 16))
@@ -49,6 +44,21 @@ export default function RemindersPage() {
     setRepeatInterval(1)
     setRepeatType('weeks')
   }, [])
+
+  // Realtime sync: keeps this device in sync with every other device live
+  useEffect(() => {
+    if (loading) return
+    if (!user) {
+      router.push('/login')
+      return
+    }
+    setDataLoading(true)
+    const unsubscribe = subscribeToReminders(user.uid, (data) => {
+      setReminders(data)
+      setDataLoading(false)
+    })
+    return () => unsubscribe()
+  }, [user, loading, router])
 
   const setupServiceWorker = async () => {
     if ('serviceWorker' in navigator) {
@@ -166,8 +176,14 @@ export default function RemindersPage() {
         ] : [],
       }
 
-      saveReminder(reminder)
-      
+      try {
+        await saveReminder(reminder)
+      } catch (error) {
+        console.error('Error saving reminder:', error)
+        toast.error('রিমাইন্ডার সংরক্ষণ করতে সমস্যা হয়েছে')
+        return
+      }
+
       // Schedule notification
       const hasPermission = await scheduleNotification(
         reminder.id,
