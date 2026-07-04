@@ -167,17 +167,17 @@ export default function Dashboard() {
 
         {/* Two-up summary */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="stat-tile">
+          <div className="stat-tile tint-pos">
             <div className="flex items-center gap-2 text-positive mb-2">
               <ArrowUpRightIcon className="w-5 h-5" />
-              <span className="text-xs font-medium text-muted">পাবেন</span>
+              <span className="text-xs font-medium text-positive">পাবেন</span>
             </div>
             <p className="text-2xl font-bold text-content">৳{round2(totalLent).toLocaleString('bn-BD')}</p>
           </div>
-          <div className="stat-tile">
+          <div className="stat-tile tint-neg">
             <div className="flex items-center gap-2 text-negative mb-2">
               <ArrowDownLeftIcon className="w-5 h-5" />
-              <span className="text-xs font-medium text-muted">দিতে হবে</span>
+              <span className="text-xs font-medium text-negative">দিতে হবে</span>
             </div>
             <p className="text-2xl font-bold text-content">৳{round2(totalBorrowed).toLocaleString('bn-BD')}</p>
           </div>
@@ -185,8 +185,8 @@ export default function Dashboard() {
 
         {/* Receivables list */}
         {debtDetails.length > 0 && (
-          <div className="card">
-            <p className="text-sm font-semibold text-content mb-3">যারা আপনাকে দেবে</p>
+          <div className="card bar-pos">
+            <p className="text-sm font-semibold text-positive mb-3">যারা আপনাকে দেবে</p>
             <div className="space-y-2">
               {debtDetails.map((d, i) => (
                 <div key={i} className="flex items-center justify-between py-1.5">
@@ -200,8 +200,8 @@ export default function Dashboard() {
 
         {/* Payables list */}
         {loanDetails.length > 0 && (
-          <div className="card">
-            <p className="text-sm font-semibold text-content mb-3">যাদের আপনি দেবেন</p>
+          <div className="card bar-neg">
+            <p className="text-sm font-semibold text-negative mb-3">যাদের আপনি দেবেন</p>
             <div className="space-y-2">
               {loanDetails.map((l, i) => (
                 <div key={i} className="flex items-center justify-between py-1.5">
@@ -220,12 +220,12 @@ export default function Dashboard() {
             <span className="text-xs font-medium text-content">রিমাইন্ডার</span>
             <span className="text-[11px] text-muted">{reminderCount} সক্রিয়</span>
           </Link>
-          <Link href="/debts" className="card card-interactive flex flex-col items-center gap-2 py-4 text-center">
+          <Link href="/debts" className="card card-interactive bar-pos flex flex-col items-center gap-2 py-4 text-center">
             <span className="text-positive"><ArrowUpRightIcon className="w-6 h-6" /></span>
             <span className="text-xs font-medium text-content">দিয়েছি</span>
             <span className="text-[11px] text-muted">৳{round2(totalLent).toLocaleString('bn-BD')}</span>
           </Link>
-          <Link href="/loans" className="card card-interactive flex flex-col items-center gap-2 py-4 text-center">
+          <Link href="/loans" className="card card-interactive bar-neg flex flex-col items-center gap-2 py-4 text-center">
             <span className="text-negative"><ArrowDownLeftIcon className="w-6 h-6" /></span>
             <span className="text-xs font-medium text-content">নিয়েছি</span>
             <span className="text-[11px] text-muted">৳{round2(totalBorrowed).toLocaleString('bn-BD')}</span>

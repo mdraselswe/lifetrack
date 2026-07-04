@@ -586,17 +586,17 @@ export default function LoansPage() {
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in">
         {/* Summary */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="stat-tile">
+          <div className="stat-tile tint-neg">
             <div className="flex items-center gap-2 mb-2 text-negative">
               <ArrowDownLeftIcon className="w-5 h-5" />
-              <span className="text-xs font-medium text-muted">দিতে হবে</span>
+              <span className="text-xs font-medium text-negative">দিতে হবে</span>
             </div>
             <p className="text-2xl font-bold text-content">৳{bn(totalActive)}</p>
           </div>
-          <div className="stat-tile">
+          <div className="stat-tile tint-accent">
             <div className="flex items-center gap-2 mb-2 text-accent">
               <WalletIcon className="w-5 h-5" />
-              <span className="text-xs font-medium text-muted">ফেরত দিয়েছি</span>
+              <span className="text-xs font-medium text-accent">ফেরত দিয়েছি</span>
             </div>
             <p className="text-2xl font-bold text-content">৳{bn(totalReturned)}</p>
           </div>
@@ -626,7 +626,7 @@ export default function LoansPage() {
                   const total = round2(loan.amount + (loan.increases?.reduce((s, i) => s + i.amount, 0) || 0))
                   const pct = total > 0 ? Math.min(100, Math.round((totalPaid / total) * 100)) : 0
                   return (
-                    <div key={loan.id} className="card space-y-4">
+                    <div key={loan.id} className="card bar-neg space-y-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <h3 className="font-semibold text-content truncate">{loan.personName}</h3>
@@ -650,11 +650,11 @@ export default function LoansPage() {
 
                       {loan.payments && loan.payments.length > 0 && (
                         <div className="space-y-1.5">
-                          <p className="text-xs font-medium text-muted">পরিশোধের ইতিহাস</p>
+                          <p className="text-xs font-semibold text-positive">পরিশোধের ইতিহাস</p>
                           {loan.payments.map((p) => (
-                            <div key={p.id} className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2">
+                            <div key={p.id} className="flex items-center justify-between rounded-xl tint-pos px-3 py-2">
                               <div className="min-w-0">
-                                <p className="text-sm font-medium text-content">৳{bn(p.amount)}</p>
+                                <p className="text-sm font-semibold text-positive">৳{bn(p.amount)}</p>
                                 <p className="text-xs text-muted truncate">{bnDate(p.date)}{p.note ? ` · ${p.note}` : ''}</p>
                               </div>
                               <div className="flex items-center gap-1">
@@ -667,10 +667,10 @@ export default function LoansPage() {
                       )}
 
                       <div className="space-y-1.5">
-                        <p className="text-xs font-medium text-muted">প্রাথমিক ধার</p>
-                        <div className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2">
+                        <p className="text-xs font-semibold text-accent">প্রাথমিক ধার</p>
+                        <div className="flex items-center justify-between rounded-xl tint-accent px-3 py-2">
                           <div className="min-w-0">
-                            <p className="text-sm font-medium text-content">৳{bn(getInitialAmount(loan))}</p>
+                            <p className="text-sm font-semibold text-content">৳{bn(getInitialAmount(loan))}</p>
                             <p className="text-xs text-muted truncate">{bnDate(loan.date)}{getInitialReason(loan) ? ` · ${getInitialReason(loan)}` : ''}</p>
                           </div>
                         </div>
@@ -678,13 +678,13 @@ export default function LoansPage() {
 
                       {loan.increases && loan.increases.length > 0 && (
                         <div className="space-y-1.5">
-                          <p className="text-xs font-medium text-muted">পরিমাণ বৃদ্ধি</p>
+                          <p className="text-xs font-semibold text-caution">পরিমাণ বৃদ্ধি</p>
                           {loan.increases.map((inc, idx) => {
                             const runningTotal = round2(loan.amount + (loan.increases ?? []).slice(0, idx + 1).reduce((s, i) => s + i.amount, 0))
                             return (
-                              <div key={inc.id} className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2">
+                              <div key={inc.id} className="flex items-center justify-between rounded-xl tint-warn px-3 py-2">
                                 <div className="min-w-0">
-                                  <p className="text-sm font-medium text-content">+৳{bn(inc.amount)} <span className="text-muted font-normal">→ মোট ৳{bn(runningTotal)}</span></p>
+                                  <p className="text-sm font-semibold text-caution">+৳{bn(inc.amount)} <span className="text-muted font-normal">→ মোট ৳{bn(runningTotal)}</span></p>
                                   <p className="text-xs text-muted truncate">{bnDate(inc.date)}{inc.reason ? ` · ${inc.reason}` : ''}</p>
                                 </div>
                                 <div className="flex items-center gap-1">
@@ -699,9 +699,13 @@ export default function LoansPage() {
 
                       <div className="flex gap-2 pt-1">
                         <button className="btn btn-secondary flex-1" onClick={() => handleOpenIncreaseModal(loan.id)}>বৃদ্ধি</button>
-                        {remaining > 0 && (
+                        {remaining > 0 ? (
                           <button className="btn btn-primary flex-1" onClick={() => handleOpenPaymentModal(loan.id)}>
                             <CheckIcon className="w-4 h-4" /> ফেরত দিয়েছি
+                          </button>
+                        ) : (
+                          <button className="btn btn-primary flex-1" onClick={() => handleToggleReturned(loan)}>
+                            <CheckIcon className="w-4 h-4" /> পরিশোধিত চিহ্নিত করুন
                           </button>
                         )}
                       </div>
@@ -718,7 +722,7 @@ export default function LoansPage() {
                   const totalPaid = getTotalPaid(loan)
                   const total = round2(loan.amount + (loan.increases?.reduce((s, i) => s + i.amount, 0) || 0))
                   return (
-                    <div key={loan.id} className="card space-y-3 opacity-95">
+                    <div key={loan.id} className="card card-settled bar-muted space-y-3">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
@@ -734,11 +738,11 @@ export default function LoansPage() {
                       </div>
                       {loan.payments && loan.payments.length > 0 && (
                         <div className="space-y-1.5">
-                          <p className="text-xs font-medium text-muted">পরিশোধের ইতিহাস</p>
+                          <p className="text-xs font-semibold text-positive">পরিশোধের ইতিহাস</p>
                           {loan.payments.map((p) => (
-                            <div key={p.id} className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2">
+                            <div key={p.id} className="flex items-center justify-between rounded-xl tint-pos px-3 py-2">
                               <span className="text-xs text-muted truncate">{bnDate(p.date)}{p.note ? ` · ${p.note}` : ''}</span>
-                              <span className="text-sm font-medium text-content flex-shrink-0 ml-2">৳{bn(p.amount)}</span>
+                              <span className="text-sm font-semibold text-positive flex-shrink-0 ml-2">৳{bn(p.amount)}</span>
                             </div>
                           ))}
                         </div>

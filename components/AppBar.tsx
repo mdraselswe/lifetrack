@@ -1,6 +1,7 @@
 'use client'
 
 import type { ReactNode } from 'react'
+import ProfileMenu from './ProfileMenu'
 import ThemeToggle from './ThemeToggle'
 
 interface AppBarProps {
@@ -19,6 +20,7 @@ export default function AppBar({ title, subtitle, action }: AppBarProps) {
       <div className="flex items-center gap-1">
         {action}
         <ThemeToggle />
+        <ProfileMenu />
       </div>
     </header>
   )

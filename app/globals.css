@@ -182,6 +182,31 @@
   }
   .chip-accent { background-color: var(--accent-soft); color: var(--accent); border-color: transparent; }
 
+  /* -------- Semantic tints (soft bg + border), light & dark safe -------- */
+  .tint-pos {
+    background-color: color-mix(in srgb, var(--positive) 10%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--positive) 22%, var(--border));
+  }
+  .tint-neg {
+    background-color: color-mix(in srgb, var(--negative) 10%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--negative) 22%, var(--border));
+  }
+  .tint-accent {
+    background-color: var(--accent-soft);
+    border: 1px solid color-mix(in srgb, var(--accent) 20%, var(--border));
+  }
+  .tint-warn {
+    background-color: color-mix(in srgb, var(--caution) 12%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--caution) 24%, var(--border));
+  }
+
+  /* Left accent bar for cards — clean, keeps rounded corners */
+  .bar-pos { box-shadow: inset 4px 0 0 var(--positive); }
+  .bar-neg { box-shadow: inset 4px 0 0 var(--negative); }
+  .bar-muted { box-shadow: inset 4px 0 0 var(--muted); }
+  /* Settled / paid-off card — distinct muted surface */
+  .card-settled { background-color: var(--surface-2); }
+
   /* -------- Icon button -------- */
   .icon-btn {
     color: var(--muted);
