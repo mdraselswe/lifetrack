@@ -4,76 +4,93 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/firebase-auth'
 import { useState } from 'react'
+import { HomeIcon, ClockIcon, ArrowUpRightIcon, ArrowDownLeftIcon, UserIcon, LogoutIcon } from './Icons'
+import ThemeToggle from './ThemeToggle'
+
+const navItems = [
+  { href: '/', label: 'হোম', Icon: HomeIcon },
+  { href: '/reminders', label: 'রিমাইন্ডার', Icon: ClockIcon },
+  { href: '/debts', label: 'দিয়েছি', Icon: ArrowUpRightIcon },
+  { href: '/loans', label: 'নিয়েছি', Icon: ArrowDownLeftIcon },
+]
 
 export default function Navigation() {
   const pathname = usePathname()
   const { user, logout } = useAuth()
   const [showUserMenu, setShowUserMenu] = useState(false)
 
-  const navItems = [
-    { href: '/', label: 'হোম', icon: '🏠' },
-    { href: '/reminders', label: 'রিমাইন্ডার', icon: '⏰' },
-    { href: '/debts', label: 'ধার দিয়েছি', icon: '💰' },
-    { href: '/loans', label: 'ধার নিয়েছি', icon: '💸' },
-  ]
+  if (!user) return null
 
   const handleLogout = () => {
     logout()
     setShowUserMenu(false)
   }
 
-  if (!user) {
-    return null // Don't show navigation if user is not logged in
-  }
-
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-200 shadow-xl z-50 transition-transform duration-300">
-      <div className="flex justify-around items-center h-16 px-2">
-        {navItems.map((item) => {
-          const isActive = pathname === item.href
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-line"
+      style={{
+        backgroundColor: 'color-mix(in srgb, var(--surface) 88%, transparent)',
+        backdropFilter: 'saturate(180%) blur(12px)',
+        paddingBottom: 'env(safe-area-inset-bottom)',
+      }}
+    >
+      <div className="flex items-stretch justify-around h-16 max-w-2xl mx-auto px-1">
+        {navItems.map(({ href, label, Icon }) => {
+          const isActive = pathname === href
           return (
             <Link
-              key={item.href}
-              href={item.href}
-              className={`flex flex-col items-center justify-center flex-1 h-full transition-colors duration-300 rounded-t-lg ${
-                isActive
-                  ? 'text-blue-600 bg-blue-50 shadow-md'
-                  : 'text-gray-600 hover:text-blue-600 hover:bg-blue-50/50'
+              key={href}
+              href={href}
+              className={`relative flex flex-col items-center justify-center flex-1 gap-1 transition-colors duration-200 ${
+                isActive ? 'text-accent' : 'text-muted'
               }`}
             >
-              <span className="text-xl sm:text-2xl mb-1">{item.icon}</span>
-              <span className="text-xs font-medium leading-tight">{item.label}</span>
+              {isActive && (
+                <span className="absolute top-0 h-0.5 w-8 rounded-full bg-accent" />
+              )}
+              <Icon className="w-6 h-6" />
+              <span className="text-[11px] font-medium leading-none">{label}</span>
             </Link>
           )
         })}
-        
-        {/* User Menu */}
-        <div className="relative">
+
+        {/* Profile */}
+        <div className="relative flex-1">
           <button
-            onClick={() => setShowUserMenu(!showUserMenu)}
-            className="flex flex-col items-center justify-center h-full px-2 text-gray-600 hover:text-blue-600 hover:bg-blue-50/50 transition-colors duration-300 rounded-t-lg"
+            onClick={() => setShowUserMenu(v => !v)}
+            className={`flex flex-col items-center justify-center gap-1 w-full h-full transition-colors duration-200 ${
+              showUserMenu ? 'text-accent' : 'text-muted'
+            }`}
           >
-            <span className="text-xl sm:text-2xl mb-1">👤</span>
-            <span className="text-xs font-medium leading-tight">প্রোফাইল</span>
+            <UserIcon className="w-6 h-6" />
+            <span className="text-[11px] font-medium leading-none">প্রোফাইল</span>
           </button>
-          
+
           {showUserMenu && (
-            <div className="absolute bottom-full right-0 mb-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-2">
-              <div className="px-4 py-2 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-900">{user.displayName || user.email}</p>
-                <p className="text-xs text-gray-500">{user.email}</p>
+            <>
+              <div className="fixed inset-0 z-10" onClick={() => setShowUserMenu(false)} />
+              <div className="absolute bottom-full right-0 mb-3 w-56 rounded-2xl surface shadow-pop overflow-hidden z-20">
+                <div className="px-4 py-3 border-b border-line">
+                  <p className="text-sm font-semibold text-content truncate">{user.displayName || 'ব্যবহারকারী'}</p>
+                  <p className="text-xs text-muted truncate">{user.email}</p>
+                </div>
+                <div className="flex items-center justify-between px-4 py-2.5 border-b border-line">
+                  <span className="text-sm text-content">থিম</span>
+                  <ThemeToggle />
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm font-medium text-negative hover:bg-surface-2 transition-colors"
+                >
+                  <LogoutIcon className="w-5 h-5" />
+                  লগআউট
+                </button>
               </div>
-              <button
-                onClick={handleLogout}
-                className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 transition-colors duration-200"
-              >
-                লগআউট
-              </button>
-            </div>
+            </>
           )}
         </div>
       </div>
     </nav>
   )
 }
-

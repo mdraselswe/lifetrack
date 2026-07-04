@@ -13,6 +13,11 @@ import Modal, { ActionButton } from '@/components/Modal'
 import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
 import { ListSkeleton } from '@/components/SkeletonLoader'
+import AppBar from '@/components/AppBar'
+import { ClockIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, HistoryIcon } from '@/components/Icons'
+import { toBnDigits } from '@/lib/format'
+
+const fmtDate = (v?: string) => (v && !isNaN(new Date(v).getTime()) ? toBnDigits(format(new Date(v), 'MMMM d, yyyy, h:mm a', { locale: bn })) : 'অবৈধ তারিখ')
 
 export default function RemindersPage() {
   const [reminders, setReminders] = useState<Reminder[]>([])
@@ -387,587 +392,218 @@ export default function RemindersPage() {
   const activeReminders = reminders.filter(r => !r.dismissed)
   const dismissedReminders = reminders.filter(r => r.dismissed)
 
+
   return (
-    <div className="min-h-full full-vh bg-gradient-to-br from-slate-50 via-purple-50 to-indigo-100 relative overflow-hidden safe-area-top safe-area-left safe-area-right">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-purple-400/20 to-indigo-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-indigo-400/20 to-blue-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-      </div>
+    <div className="min-h-full">
+      <AppBar title="রিমাইন্ডার" subtitle="সময়মতো মনে করিয়ে দেবে" />
 
-      <div className="relative z-10 max-w-4xl mx-auto sm:px-6 py-4 sm:py-6">
-        {/* Header Section */}
-        <div className="text-center mb-8 sm:mb-12 fade-in">
-          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-2xl shadow-xl mb-4 sm:mb-6 float-gentle">
-            <span className="text-2xl sm:text-3xl">⏰</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-purple-800 to-indigo-800 bg-clip-text text-transparent mb-3 sm:mb-4 float-gentle">
-            রিমাইন্ডার
-          </h1>
-          <p className="text-lg sm:text-xl text-gray-600 slide-up max-w-md mx-auto leading-relaxed px-4">
-            সময়মতো নোটিফিকেশন পান
-          </p>
-        </div>
-
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300 stagger-item">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">সক্রিয় রিমাইন্ডার</p>
-                <p className="text-2xl font-bold text-purple-600">{activeReminders.length}</p>
-                <p className="text-xs text-gray-500">চালু আছে</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-purple-100 flex items-center justify-center">
-                <span className="text-2xl">⏰</span>
-              </div>
+      <div className="max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in">
+        {/* Summary */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="stat-tile">
+            <div className="flex items-center gap-2 mb-2 text-accent">
+              <ClockIcon className="w-5 h-5" />
+              <span className="text-xs font-medium text-muted">সক্রিয়</span>
             </div>
+            <p className="text-2xl font-bold text-content">{activeReminders.length.toLocaleString('bn-BD')}</p>
           </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300 stagger-item">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">বাতিল রিমাইন্ডার</p>
-                <p className="text-2xl font-bold text-gray-600">{dismissedReminders.length}</p>
-                <p className="text-xs text-gray-500">বন্ধ আছে</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
-                <span className="text-2xl">⏸️</span>
-              </div>
+          <div className="stat-tile">
+            <div className="flex items-center gap-2 mb-2 text-positive">
+              <CheckIcon className="w-5 h-5" />
+              <span className="text-xs font-medium text-muted">সম্পন্ন</span>
             </div>
+            <p className="text-2xl font-bold text-content">{dismissedReminders.length.toLocaleString('bn-BD')}</p>
           </div>
         </div>
 
-        {/* Add Button */}
-        <div className="flex justify-center mb-8">
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="group relative overflow-hidden bg-gradient-to-br from-purple-500 via-indigo-600 to-blue-600 rounded-2xl px-8 py-4 shadow-2xl hover:shadow-purple-500/25 transition-all duration-500 cursor-pointer transform hover:scale-105 hover:-translate-y-1"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="relative z-10 flex items-center gap-3 text-white font-semibold text-lg">
-              <span className="text-2xl group-hover:scale-110 transition-transform duration-300">
-                {showForm ? '✕' : '➕'}
-              </span>
-              {showForm ? 'বাতিল করুন' : 'নতুন রিমাইন্ডার যোগ করুন'}
+        {dataLoading ? (
+          <ListSkeleton count={3} />
+        ) : reminders.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-surface-2 flex items-center justify-center text-muted mb-4">
+              <ClockIcon className="w-8 h-8" />
             </div>
-          </button>
-        </div>
-
-        {/* Add/Edit Reminder Modal */}
-        <Modal
-          isOpen={showForm}
-          onClose={handleCancelEdit}
-          title={editingReminder ? "রিমাইন্ডার সম্পাদনা করুন" : "নতুন রিমাইন্ডার যোগ করুন"}
-          className="border-purple-200"
-          footerActions={
-            <div className="flex justify-end space-x-3">
-              <ActionButton
-                onClick={handleCancelEdit}
-                variant="secondary"
-              >
-                বাতিল
-              </ActionButton>
-              <ActionButton
-                onClick={(e) => e && handleSubmit(e)}
-                variant="primary"
-              >
-                {editingReminder ? "আপডেট করুন" : "রিমাইন্ডার সংরক্ষণ করুন"}
-              </ActionButton>
-            </div>
-          }
-        >
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="label">শিরোনাম *</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="input focus:ring-purple-500/50 focus:border-purple-500/50"
-                placeholder="যেমন: ওষুধ খাওয়া"
-                required
-              />
-            </div>
-            <div>
-              <label className="label">বিবরণ (ঐচ্ছিক)</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="input focus:ring-purple-500/50 focus:border-purple-500/50"
-                rows={3}
-                placeholder="অতিরিক্ত বিবরণ"
-              />
-            </div>
-            <div>
-              <label className="label">সময় *</label>
-              <input
-                type="datetime-local"
-                value={scheduledTime}
-                onChange={(e) => setScheduledTime(e.target.value)}
-                className="input focus:ring-purple-500/50 focus:border-purple-500/50"
-                required
-              />
-            </div>
-            
-            {/* Multiple Times Track Option */}
-            <div className="border-t pt-4 mt-4">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={isRepetitive}
-                  onChange={(e) => setIsRepetitive(e.target.checked)}
-                  className="w-5 h-5 text-purple-600 rounded focus:ring-purple-500"
-                />
-                <span className="label mb-0">একাধিক বার track করতে হবে</span>
-              </label>
-              
-              {isRepetitive && (
-                <div className="mt-4 bg-purple-50 p-4 rounded-lg">
-                  <p className="text-sm text-gray-600">
-                    ✓ এই reminder একাধিক বার complete করতে পারবেন<br/>
-                    ✓ প্রতিবার complete করার সময় তারিখ/সময় set করতে পারবেন<br/>
-                    ✓ সব completions history-তে রাখা হবে
-                  </p>
-                </div>
-              )}
-            </div>
-          </form>
-        </Modal>
-
-        {/* Completion Modal */}
-        <Modal
-          isOpen={showCompleteModal}
-          onClose={() => {
-            setShowCompleteModal(false)
-            setReminderToComplete(null)
-            setCompletionDateTime('')
-          }}
-          title={`${reminderToComplete?.title} - সম্পন্ন করুন`}
-          className="border-green-200"
-          footerActions={
-            <div className="flex justify-end space-x-3">
-              <ActionButton
-                onClick={() => {
-                  setShowCompleteModal(false)
-                  setReminderToComplete(null)
-                  setCompletionDateTime('')
-                }}
-                variant="secondary"
-              >
-                বাতিল
-              </ActionButton>
-              <ActionButton
-                onClick={handleSaveCompletion}
-                variant="primary"
-              >
-                সম্পন্ন করুন
-              </ActionButton>
-            </div>
-          }
-        >
-          {reminderToComplete && (
-            <div className="space-y-4">
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <p className="text-sm text-gray-700 mb-2">
-                  <strong>Reminder:</strong> {reminderToComplete.title}
-                </p>
-                {reminderToComplete.completionCount && reminderToComplete.completionCount > 0 && (
-                  <p className="text-sm text-gray-600">
-                    পূর্বে {reminderToComplete.completionCount} বার সম্পন্ন হয়েছে
-                  </p>
-                )}
-              </div>
-              
-              <div>
-                <label className="label">কখন সম্পন্ন করেছেন? *</label>
-                <input
-                  type="datetime-local"
-                  value={completionDateTime}
-                  onChange={(e) => setCompletionDateTime(e.target.value)}
-                  className="input focus:ring-green-500/50 focus:border-green-500/50"
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-2 space-y-1">
-                  <span className="block">
-                    যে তারিখ এবং সময়ে আপনি এই কাজটি সম্পন্ন করেছেন, সেই date এবং time সিলেক্ট করুন।
-                  </span>
-                  {(() => {
-                    const exampleDate = addDays(new Date(), -2)
-                    const formattedDate = format(exampleDate, 'EEEE, d MMMM yyyy, h:mm a', { locale: bn })
-                    const isoDateTime = exampleDate.toISOString().slice(0, 16)
-                    return (
-                      <span className="block mt-2 font-medium text-gray-700 bg-gray-50 p-2 rounded">
-                        উদাহরণ: যদি {formattedDate} সম্পন্ন করে থাকেন,<br />
-                        তাহলে উপরের field-এ <code className="text-xs bg-white px-1 py-0.5 rounded">{isoDateTime}</code> সিলেক্ট করুন
-                      </span>
-                    )
-                  })()}
-                </p>
-              </div>
-            </div>
-          )}
-        </Modal>
-
-        {/* Edit Occurrence Modal */}
-        <Modal
-          isOpen={!!editingOccurrence}
-          onClose={() => {
-            setEditingOccurrence(null)
-            setEditOccurrenceDateTime('')
-          }}
-          title="সম্পন্নের তারিখ/সময় সম্পাদনা করুন"
-          className="border-yellow-200"
-          zIndex={10000}
-          footerActions={
-            <div className="flex justify-end space-x-3">
-              <ActionButton
-                onClick={() => {
-                  setEditingOccurrence(null)
-                  setEditOccurrenceDateTime('')
-                }}
-                variant="secondary"
-              >
-                বাতিল
-              </ActionButton>
-              <ActionButton
-                onClick={handleSaveOccurrenceEdit}
-                variant="primary"
-              >
-                আপডেট করুন
-              </ActionButton>
-            </div>
-          }
-        >
-          {editingOccurrence && (
-            <div className="space-y-4">
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <p className="text-sm text-gray-700 mb-2">
-                  <strong>Reminder:</strong> {editingOccurrence.reminder.title}
-                </p>
-                <p className="text-sm text-gray-600">
-                  <strong>বর্তমান তারিখ:</strong> {
-                    editingOccurrence.occurrence.completedTime && !isNaN(new Date(editingOccurrence.occurrence.completedTime).getTime())
-                      ? format(new Date(editingOccurrence.occurrence.completedTime), 'PPpp', { locale: bn })
-                      : 'Invalid date'
-                  }
-                </p>
-              </div>
-              
-              <div>
-                <label className="label">সম্পন্ন তারিখ/সময় *</label>
-                <input
-                  type="datetime-local"
-                  value={editOccurrenceDateTime}
-                  onChange={(e) => setEditOccurrenceDateTime(e.target.value)}
-                  className="input focus:ring-yellow-500/50 focus:border-yellow-500/50"
-                  required
-                />
-              </div>
-            </div>
-          )}
-        </Modal>
-
-        {/* History Modal */}
-        <Modal
-          isOpen={!!selectedReminderForHistory}
-          onClose={() => setSelectedReminderForHistory(null)}
-          title={`${selectedReminderForHistory?.title} - ইতিহাস`}
-          className="border-purple-200"
-          footerActions={
-            <ActionButton
-              onClick={() => setSelectedReminderForHistory(null)}
-              variant="secondary"
-            >
-              বন্ধ করুন
-            </ActionButton>
-          }
-        >
-          {selectedReminderForHistory && (
-            <div className="space-y-4">
-              <div className="bg-purple-50 p-4 rounded-lg">
-                <p className="text-sm text-gray-600 mb-1">
-                  <strong>মোট সম্পন্ন:</strong> {selectedReminderForHistory.completionCount || 0} বার
-                </p>
-              </div>
-              
-              {selectedReminderForHistory.occurrences && selectedReminderForHistory.occurrences.length > 0 ? (
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  <h3 className="font-semibold text-gray-800 mb-3">সম্পন্নের তালিকা (পুরানো থেকে নতুন):</h3>
-                  {[...selectedReminderForHistory.occurrences]
-                    .sort((a, b) => new Date(a.completedTime).getTime() - new Date(b.completedTime).getTime())
-                    .map((occurrence, index) => (
-                    <div
-                      key={occurrence.id}
-                      className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow"
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-lg font-bold text-purple-600">#{index + 1}</span>
-                            <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
-                              ✓ সম্পন্ন
-                            </span>
-                          </div>
-                          <div className="space-y-1 text-sm text-gray-600">
-                            <p>
-                              <strong>সম্পন্ন তারিখ/সময়:</strong> {
-                                occurrence.completedTime && !isNaN(new Date(occurrence.completedTime).getTime())
-                                  ? format(new Date(occurrence.completedTime), 'PPpp', { locale: bn })
-                                  : 'Invalid date'
-                              }
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 flex-shrink-0">
-                          <button
-                            onClick={() => handleEditOccurrence(selectedReminderForHistory, occurrence)}
-                            className="px-3 py-1.5 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md text-sm"
-                            title="সম্পাদনা করুন"
-                          >
-                            ✏️
-                          </button>
-                          <button
-                            onClick={() => handleDeleteOccurrence(selectedReminderForHistory, occurrence)}
-                            className="px-3 py-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md text-sm"
-                            title="মুছুন"
-                          >
-                            🗑️
-                          </button>
-                        </div>
+            <h3 className="text-base font-semibold text-content mb-1">কোনো রিমাইন্ডার নেই</h3>
+            <p className="text-sm text-muted mb-5">এখনো কোনো রিমাইন্ডার সেট করেননি</p>
+            <button onClick={() => setShowForm(true)} className="btn btn-primary mx-auto">
+              <PlusIcon className="w-5 h-5" /> প্রথম রিমাইন্ডার যোগ করুন
+            </button>
+          </div>
+        ) : (
+          <>
+            {activeReminders.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="text-sm font-semibold text-muted px-1">সক্রিয়</h2>
+                {activeReminders.map((r) => (
+                  <div key={r.id} className="card space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <h3 className="font-semibold text-content truncate">{r.title}</h3>
+                        <p className="text-xs text-muted flex items-center gap-1 mt-0.5">
+                          <ClockIcon className="w-3.5 h-3.5" /> {fmtDate(r.scheduledTime)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <button className="icon-btn" onClick={() => handleEdit(r)} title="সম্পাদনা"><EditIcon className="w-5 h-5" /></button>
+                        <button className="icon-btn" onClick={() => handleDelete(r.id)} title="মুছুন"><TrashIcon className="w-5 h-5" /></button>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <p>এখনো কোনো সম্পন্নের রেকর্ড নেই</p>
-                </div>
-              )}
-            </div>
-          )}
-        </Modal>
 
-        <div className="space-y-8">
-          {activeReminders.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
-                  <span className="text-purple-600">⏰</span>
-                </div>
-                সক্রিয় রিমাইন্ডার
-              </h2>
-              <div className="grid gap-6">
-                {activeReminders.map((reminder) => (
-                  <div key={reminder.id} className="group relative overflow-hidden bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300">
-                    <div className="p-4 sm:p-6">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                        <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <span className="text-white text-lg sm:text-xl">⏰</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                              <h3 className="font-bold text-lg sm:text-xl text-gray-900 break-words">
-                                {reminder.title}
-                              </h3>
-                              {reminder.isRepetitive && (
-                                <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full whitespace-nowrap">
-                                  📝 একাধিক বার
-                                </span>
-                              )}
-                              {reminder.isRepetitive && reminder.completionCount && reminder.completionCount > 0 && (
-                                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full whitespace-nowrap">
-                                  ✓ {reminder.completionCount} বার সম্পন্ন
-                                </span>
-                              )}
-                            </div>
-                            {reminder.description && (
-                              <p className="text-gray-600 text-sm mb-3 leading-relaxed break-words">{reminder.description}</p>
-                            )}
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
-                                <span>📅</span>
-                                <span className="break-words">
-                                  {reminder.scheduledTime && !isNaN(new Date(reminder.scheduledTime).getTime())
-                                    ? format(new Date(reminder.scheduledTime), 'PPpp', { locale: bn })
-                                    : 'Invalid date'}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                        {/* Action buttons - mobile friendly */}
-                        <div className="flex flex-wrap gap-2 sm:flex-nowrap sm:flex-col lg:flex-row justify-start sm:justify-end">
-                          <button
-                            onClick={() => handleEdit(reminder)}
-                            className="px-3 sm:px-3 py-2 sm:py-2 bg-yellow-100 hover:bg-yellow-200 text-yellow-700 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 text-sm sm:text-base flex items-center justify-center gap-1 sm:gap-0 min-w-[44px] sm:min-w-0"
-                            title="সম্পাদনা করুন"
-                          >
-                            <span className="text-base sm:text-lg">✏️</span>
-                            <span className="sm:hidden text-xs">সম্পাদনা</span>
-                          </button>
-                          {reminder.isRepetitive && (
-                            <button
-                              onClick={() => handleCompleteReminder(reminder)}
-                              className="px-3 sm:px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 font-semibold text-sm sm:text-base flex items-center justify-center gap-1 sm:gap-0 flex-1 sm:flex-none"
-                              title="সম্পন্ন করুন (date/time set করুন)"
-                            >
-                              <span className="text-base sm:text-lg">✓</span>
-                              <span className="sm:hidden">সম্পন্ন</span>
-                              <span className="hidden sm:inline">সম্পন্ন</span>
-                            </button>
-                          )}
-                          {!reminder.isRepetitive && (
-                            <button
-                              onClick={() => handleToggleDismiss(reminder)}
-                              className="px-3 sm:px-4 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 text-base sm:text-lg flex items-center justify-center min-w-[44px] sm:min-w-0"
-                              title="সম্পন্ন করুন"
-                            >
-                              ✓
-                            </button>
-                          )}
-                          {reminder.occurrences && reminder.occurrences.length > 0 && (
-                            <button
-                              onClick={() => setSelectedReminderForHistory(reminder)}
-                              className="px-3 sm:px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 text-sm sm:text-base flex items-center justify-center gap-1 sm:gap-0 min-w-[44px] sm:min-w-0"
-                              title="ইতিহাস দেখুন"
-                            >
-                              <span className="text-base sm:text-lg">📊</span>
-                              <span className="sm:hidden text-xs">ইতিহাস</span>
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleDelete(reminder.id)}
-                            className="px-3 sm:px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 text-sm sm:text-base flex items-center justify-center gap-1 sm:gap-0 min-w-[44px] sm:min-w-0"
-                            title="মুছুন"
-                          >
-                            <span className="text-base sm:text-lg">🗑️</span>
-                            <span className="sm:hidden text-xs">মুছুন</span>
-                          </button>
-                        </div>
+                    {r.description && <p className="text-sm text-muted">{r.description}</p>}
+
+                    {(r.isRepetitive || (r.completionCount ?? 0) > 0) && (
+                      <div className="flex flex-wrap gap-2">
+                        {r.isRepetitive && <span className="chip chip-accent">একাধিকবার</span>}
+                        {(r.completionCount ?? 0) > 0 && <span className="chip">✓ {r.completionCount} বার সম্পন্ন</span>}
                       </div>
+                    )}
+
+                    <div className="flex gap-2 pt-1">
+                      <button
+                        className="btn btn-primary flex-1"
+                        onClick={() => (r.isRepetitive ? handleCompleteReminder(r) : handleToggleDismiss(r))}
+                      >
+                        <CheckIcon className="w-4 h-4" /> সম্পন্ন
+                      </button>
+                      {r.occurrences && r.occurrences.length > 0 && (
+                        <button className="btn btn-secondary" onClick={() => setSelectedReminderForHistory(r)}>
+                          <HistoryIcon className="w-4 h-4" /> ইতিহাস
+                        </button>
+                      )}
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
+              </section>
+            )}
 
-          {dismissedReminders.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-                <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
-                  <span className="text-gray-600">✓</span>
-                </div>
-                সম্পন্ন রিমাইন্ডার
-              </h2>
-              <div className="grid gap-4 sm:gap-6">
-                {dismissedReminders.map((reminder) => (
-                  <div key={reminder.id} className="group relative overflow-hidden bg-white/60 backdrop-blur-sm rounded-2xl shadow-lg border border-gray-200/50 hover:shadow-xl transition-all duration-300">
-                    <div className="p-4 sm:p-6">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                        <div className="flex items-start gap-3 sm:gap-4 flex-1 min-w-0">
-                          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-gray-400 to-gray-500 rounded-xl flex items-center justify-center flex-shrink-0">
-                            <span className="text-white text-lg sm:text-xl">✓</span>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex flex-wrap items-center gap-2 mb-2">
-                              <h3 className="font-bold text-lg sm:text-xl text-gray-700 line-through break-words">
-                                {reminder.title}
-                              </h3>
-                              {reminder.isRepetitive && (
-                                <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full whitespace-nowrap">
-                                  📝 একাধিক বার
-                                </span>
-                              )}
-                              {reminder.isRepetitive && reminder.completionCount && reminder.completionCount > 0 && (
-                                <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full whitespace-nowrap">
-                                  ✓ {reminder.completionCount} বার সম্পন্ন
-                                </span>
-                              )}
-                            </div>
-                            {reminder.description && (
-                              <p className="text-gray-600 text-sm mb-3 leading-relaxed break-words">{reminder.description}</p>
-                            )}
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500 bg-gray-50 px-3 py-2 rounded-lg">
-                                <span>📅</span>
-                                <span className="break-words">
-                                  {reminder.scheduledTime && !isNaN(new Date(reminder.scheduledTime).getTime())
-                                    ? format(new Date(reminder.scheduledTime), 'PPpp', { locale: bn })
-                                    : 'Invalid date'}
-                                </span>
-                              </div>
-                              {reminder.createdAt && !isNaN(new Date(reminder.createdAt).getTime()) && (
-                                <div className="flex items-center gap-2 text-xs text-gray-400">
-                                  <span>তৈরি:</span>
-                                  <span>
-                                    {format(new Date(reminder.createdAt), 'PPp', { locale: bn })}
-                                  </span>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        {/* Action buttons - mobile friendly */}
-                        <div className="flex flex-wrap gap-2 sm:flex-nowrap sm:flex-col lg:flex-row justify-start sm:justify-end">
-                          {reminder.occurrences && reminder.occurrences.length > 0 && (
-                            <button
-                              onClick={() => setSelectedReminderForHistory(reminder)}
-                              className="px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 text-sm sm:text-base flex items-center justify-center gap-1 sm:gap-0 min-w-[44px] sm:min-w-0"
-                              title="ইতিহাস দেখুন"
-                            >
-                              <span className="text-base sm:text-lg">📊</span>
-                              <span className="sm:hidden text-xs">ইতিহাস</span>
-                            </button>
-                          )}
-                          <button
-                            onClick={() => handleToggleDismiss(reminder)}
-                            className="px-3 py-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 text-sm sm:text-base flex items-center justify-center gap-1 sm:gap-0 min-w-[44px] sm:min-w-0"
-                            title="সক্রিয় করুন"
-                          >
-                            <span className="text-base sm:text-lg">↺</span>
-                            <span className="sm:hidden text-xs">সক্রিয়</span>
-                          </button>
-                          <button
-                            onClick={() => handleDelete(reminder.id)}
-                            className="px-3 py-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md active:scale-95 text-sm sm:text-base flex items-center justify-center gap-1 sm:gap-0 min-w-[44px] sm:min-w-0"
-                            title="মুছুন"
-                          >
-                            <span className="text-base sm:text-lg">🗑️</span>
-                            <span className="sm:hidden text-xs">মুছুন</span>
-                          </button>
-                        </div>
-                      </div>
+            {dismissedReminders.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="text-sm font-semibold text-muted px-1">সম্পন্ন</h2>
+                {dismissedReminders.map((r) => (
+                  <div key={r.id} className="card flex items-center justify-between gap-3 opacity-90">
+                    <div className="min-w-0">
+                      <h3 className="font-medium text-content truncate line-through">{r.title}</h3>
+                      <p className="text-xs text-muted mt-0.5">{fmtDate(r.scheduledTime)}</p>
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {r.occurrences && r.occurrences.length > 0 && (
+                        <button className="icon-btn" onClick={() => setSelectedReminderForHistory(r)} title="ইতিহাস"><HistoryIcon className="w-5 h-5" /></button>
+                      )}
+                      <button className="icon-btn" onClick={() => handleToggleDismiss(r)} title="সক্রিয় করুন"><RotateIcon className="w-5 h-5" /></button>
+                      <button className="icon-btn" onClick={() => handleDelete(r.id)} title="মুছুন"><TrashIcon className="w-5 h-5" /></button>
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {dataLoading ? (
-            <ListSkeleton count={3} />
-          ) : reminders.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mb-6">
-                <span className="text-4xl text-gray-400">⏰</span>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">কোনো রিমাইন্ডার নেই</h3>
-              <p className="text-gray-500 mb-6">এখনো কোনো রিমাইন্ডার সেট করেননি</p>
-              <button
-                onClick={() => setShowForm(true)}
-                className="inline-flex items-center gap-2 bg-gradient-to-br from-purple-500 to-indigo-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 hover:scale-105"
-              >
-                <span>➕</span>
-                প্রথম রিমাইন্ডার যোগ করুন
-              </button>
-            </div>
-          ) : null}
-        </div>
+              </section>
+            )}
+          </>
+        )}
       </div>
+
+      {/* FAB */}
+      <button className="fab" onClick={() => setShowForm(true)} aria-label="নতুন রিমাইন্ডার যোগ করুন">
+        <PlusIcon className="w-6 h-6" />
+      </button>
+
+      {/* Add / Edit reminder */}
+      <Modal
+        isOpen={showForm}
+        onClose={handleCancelEdit}
+        title={editingReminder ? 'রিমাইন্ডার সম্পাদনা করুন' : 'নতুন রিমাইন্ডার'}
+        footerActions={<>
+          <ActionButton onClick={handleCancelEdit} variant="secondary">বাতিল</ActionButton>
+          <ActionButton onClick={(e) => e && handleSubmit(e)} variant="primary">{editingReminder ? 'আপডেট' : 'সংরক্ষণ'}</ActionButton>
+        </>}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="label label-required">শিরোনাম</label>
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="input" placeholder="যেমন: ওষুধ খাওয়া" required />
+          </div>
+          <div>
+            <label className="label">বিবরণ (ঐচ্ছিক)</label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input min-h-[80px] resize-none" placeholder="অতিরিক্ত বিবরণ" rows={3} />
+          </div>
+          <div>
+            <label className="label label-required">সময়</label>
+            <input type="datetime-local" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} className="input" required />
+          </div>
+          <label className="flex items-center gap-3 cursor-pointer pt-1">
+            <input type="checkbox" checked={isRepetitive} onChange={(e) => setIsRepetitive(e.target.checked)} className="w-5 h-5 rounded accent-[color:var(--accent)]" />
+            <span className="text-sm text-content">একাধিকবার সম্পন্ন করব (ইতিহাস রাখা হবে)</span>
+          </label>
+        </form>
+      </Modal>
+
+      {/* Complete reminder */}
+      <Modal
+        isOpen={showCompleteModal}
+        onClose={() => { setShowCompleteModal(false); setReminderToComplete(null); setCompletionDateTime('') }}
+        title={reminderToComplete ? `${reminderToComplete.title} — সম্পন্ন` : 'সম্পন্ন করুন'}
+        footerActions={<>
+          <ActionButton onClick={() => { setShowCompleteModal(false); setReminderToComplete(null); setCompletionDateTime('') }} variant="secondary">বাতিল</ActionButton>
+          <ActionButton onClick={handleSaveCompletion} variant="primary">সম্পন্ন</ActionButton>
+        </>}
+      >
+        <div className="space-y-3">
+          {reminderToComplete && (reminderToComplete.completionCount ?? 0) > 0 && (
+            <p className="text-sm text-muted">পূর্বে {reminderToComplete.completionCount} বার সম্পন্ন হয়েছে</p>
+          )}
+          <div>
+            <label className="label label-required">কখন সম্পন্ন করেছেন?</label>
+            <input type="datetime-local" value={completionDateTime} onChange={(e) => setCompletionDateTime(e.target.value)} className="input" required />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Edit occurrence */}
+      <Modal
+        isOpen={!!editingOccurrence}
+        onClose={() => { setEditingOccurrence(null); setEditOccurrenceDateTime('') }}
+        title="সম্পন্নের সময় সম্পাদনা"
+        zIndex={10000}
+        footerActions={<>
+          <ActionButton onClick={() => { setEditingOccurrence(null); setEditOccurrenceDateTime('') }} variant="secondary">বাতিল</ActionButton>
+          <ActionButton onClick={handleSaveOccurrenceEdit} variant="primary">আপডেট</ActionButton>
+        </>}
+      >
+        <div>
+          <label className="label label-required">সম্পন্ন তারিখ/সময়</label>
+          <input type="datetime-local" value={editOccurrenceDateTime} onChange={(e) => setEditOccurrenceDateTime(e.target.value)} className="input" required />
+        </div>
+      </Modal>
+
+      {/* History */}
+      <Modal
+        isOpen={!!selectedReminderForHistory}
+        onClose={() => setSelectedReminderForHistory(null)}
+        title={selectedReminderForHistory ? `${selectedReminderForHistory.title} — ইতিহাস` : 'ইতিহাস'}
+        footerActions={<ActionButton onClick={() => setSelectedReminderForHistory(null)} variant="secondary">বন্ধ করুন</ActionButton>}
+      >
+        {selectedReminderForHistory && (
+          <div className="space-y-3">
+            <p className="text-sm text-muted">মোট সম্পন্ন: {selectedReminderForHistory.completionCount || 0} বার</p>
+            {selectedReminderForHistory.occurrences && selectedReminderForHistory.occurrences.length > 0 ? (
+              [...selectedReminderForHistory.occurrences]
+                .sort((a, b) => new Date(a.completedTime).getTime() - new Date(b.completedTime).getTime())
+                .map((occ, index) => (
+                  <div key={occ.id} className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-content">#{(index + 1).toLocaleString('bn-BD')}</p>
+                      <p className="text-xs text-muted truncate">{fmtDate(occ.completedTime)}</p>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button className="icon-btn w-8 h-8" onClick={() => handleEditOccurrence(selectedReminderForHistory, occ)}><EditIcon className="w-4 h-4" /></button>
+                      <button className="icon-btn w-8 h-8" onClick={() => handleDeleteOccurrence(selectedReminderForHistory, occ)}><TrashIcon className="w-4 h-4" /></button>
+                    </div>
+                  </div>
+                ))
+            ) : (
+              <p className="text-sm text-muted text-center py-6">এখনো কোনো সম্পন্নের রেকর্ড নেই</p>
+            )}
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }
-

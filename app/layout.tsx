@@ -1,6 +1,14 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
+import { Noto_Sans_Bengali } from 'next/font/google'
 import './globals.css'
+
+const notoSansBengali = Noto_Sans_Bengali({
+  subsets: ['bengali', 'latin'],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-sans',
+  display: 'swap',
+})
 import PWARegistration from '@/components/PWARegistration'
 import ToastContainer from '@/components/Toast'
 import ConfirmToastContainer from '@/components/ConfirmToast'
@@ -85,19 +93,26 @@ export default function RootLayout({
   children: ReactNode
 }) {
   return (
-    <html lang="bn" suppressHydrationWarning>
+    <html lang="bn" className={notoSansBengali.variable} suppressHydrationWarning>
       <head>
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
         <link rel="manifest" href="/manifest.json" />
-        <meta name="theme-color" content="#0ea5e9" />
+        <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f5f7" />
+        <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0d14" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="apple-mobile-web-app-title" content="LifeTrack" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
+        {/* Apply saved / system theme before paint to avoid a flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,
+          }}
+        />
       </head>
-      <body className="antialiased" suppressHydrationWarning={true}>
+      <body suppressHydrationWarning={true}>
         <AuthProvider>
           <PWARegistration />
           <ToastContainer />

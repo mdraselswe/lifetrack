@@ -3,14 +3,20 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getDebts, saveDebt, updateDebt, deleteDebt, addDebtPayment, deleteDebtPayment, addDebtIncrease, deleteDebtIncrease, subscribeToDebts } from '@/lib/storage'
 import type { Debt, Payment, AmountIncrease } from '@/lib/types'
-import { round2 } from '@/lib/format'
+import { round2, toBnDigits } from '@/lib/format'
 import { format } from 'date-fns'
+import { bn as bnLocale } from 'date-fns/locale'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
 import Modal, { ActionButton } from '@/components/Modal'
 import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
 import { ListSkeleton } from '@/components/SkeletonLoader'
+import AppBar from '@/components/AppBar'
+import { ArrowUpRightIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon } from '@/components/Icons'
+
+const bn = (n: number) => n.toLocaleString('bn-BD')
+const bnDate = (v: string) => toBnDigits(format(new Date(v), 'MMMM d, yyyy', { locale: bnLocale }))
 
 export default function DebtsPage() {
   const [debts, setDebts] = useState<Debt[]>([])
@@ -218,8 +224,10 @@ export default function DebtsPage() {
   }
 
   const handleOpenPaymentModal = (debtId: string) => {
+    const debt = debts.find(d => d.id === debtId)
     setShowPaymentModal(debtId)
-    setPaymentAmount('')
+    // Default to the full remaining amount → one tap = full return; edit down for partial
+    setPaymentAmount(debt ? String(calculateRemaining(debt)) : '')
     setPaymentDate(new Date().toISOString().slice(0, 16))
     setPaymentNote('')
   }
@@ -586,1052 +594,364 @@ export default function DebtsPage() {
     return sum + totalPaid
   }, 0))
 
+
+  const numChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value
+    if (/^\d*\.?\d*$/.test(v)) setter(v)
+  }
+
   return (
-    <div className="min-h-full full-vh bg-gradient-to-br from-slate-50 via-green-50 to-emerald-100 relative overflow-hidden safe-area-top safe-area-left safe-area-right">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-green-400/20 to-emerald-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-emerald-400/20 to-teal-500/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-      </div>
+    <div className="min-h-full">
+      <AppBar title="ধার দিয়েছি" subtitle="আপনার পাওনা" />
 
-      <div className="relative z-10 max-w-4xl mx-auto sm:px-6 py-4 sm:py-6">
-        {/* Header Section */}
-        <div className="text-center mb-8 sm:mb-12 fade-in">
-          <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl shadow-xl mb-4 sm:mb-6 float-gentle">
-            <span className="text-2xl sm:text-3xl">💰</span>
-          </div>
-          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold bg-gradient-to-r from-gray-900 via-green-800 to-emerald-800 bg-clip-text text-transparent mb-3 sm:mb-4 float-gentle">
-            ধার দিয়েছি
-          </h1>
-          <p className="text-lg sm:text-xl text-gray-600 slide-up max-w-md mx-auto leading-relaxed px-4">
-            আপনি যাদের কাছে টাকা ধার দিয়েছেন
-          </p>
-        </div>
-
-        {/* Stats Overview */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-8">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300 stagger-item">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">বাকি আছে</p>
-                <p className="text-2xl font-bold text-green-600">৳{totalActive}</p>
-                <p className="text-xs text-gray-500">পাওনা আছে</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
-                <span className="text-2xl">💸</span>
-              </div>
+      <div className="max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in">
+        {/* Summary */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="stat-tile">
+            <div className="flex items-center gap-2 mb-2 text-positive">
+              <ArrowUpRightIcon className="w-5 h-5" />
+              <span className="text-xs font-medium text-muted">বাকি পাওনা</span>
             </div>
+            <p className="text-2xl font-bold text-content">৳{bn(totalActive)}</p>
           </div>
-
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 hover:shadow-xl transition-all duration-300 stagger-item">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600 mb-1">ফেরত পেয়েছি</p>
-                <p className="text-2xl font-bold text-blue-600">৳{totalReturned}</p>
-                <p className="text-xs text-gray-500">মোট ফেরত</p>
-              </div>
-              <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-                <span className="text-2xl">✅</span>
-              </div>
+          <div className="stat-tile">
+            <div className="flex items-center gap-2 mb-2 text-accent">
+              <WalletIcon className="w-5 h-5" />
+              <span className="text-xs font-medium text-muted">ফেরত পেয়েছি</span>
             </div>
+            <p className="text-2xl font-bold text-content">৳{bn(totalReturned)}</p>
           </div>
         </div>
 
-        {/* Add Button */}
-        <div className="flex justify-center mb-8">
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="group relative overflow-hidden bg-gradient-to-br from-green-500 via-emerald-600 to-teal-600 rounded-2xl px-8 py-4 shadow-2xl hover:shadow-green-500/25 transition-all duration-500 cursor-pointer transform hover:scale-105 hover:-translate-y-1"
-          >
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <div className="relative z-10 flex items-center gap-3 text-white font-semibold text-lg">
-              <span className="text-2xl group-hover:scale-110 transition-transform duration-300">
-                {showForm ? '✕' : '➕'}
-              </span>
-              {showForm ? 'বাতিল করুন' : 'নতুন ধার যোগ করুন'}
+        {dataLoading ? (
+          <ListSkeleton count={3} />
+        ) : debts.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="mx-auto w-16 h-16 rounded-2xl bg-surface-2 flex items-center justify-center text-muted mb-4">
+              <WalletIcon className="w-8 h-8" />
             </div>
-          </button>
-        </div>
-
-        {/* Add Debt Modal */}
-        <Modal
-          isOpen={showForm}
-          onClose={() => setShowForm(false)}
-          title="নতুন ধার যোগ করুন"
-          className="border-green-200"
-          footerActions={
-            <div className="flex justify-end space-x-3">
-              <ActionButton
-                onClick={() => setShowForm(false)}
-                variant="secondary"
-              >
-                বাতিল
-              </ActionButton>
-              <ActionButton
-                onClick={(e) => e && handleSubmit(e)}
-                variant="primary"
-              >
-                সংরক্ষণ করুন
-              </ActionButton>
-            </div>
-          }
-        >
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="label">ব্যক্তির নাম *</label>
-              <input
-                type="text"
-                value={personName}
-                onChange={(e) => setPersonName(e.target.value)}
-                className="input focus:ring-green-500/50 focus:border-green-500/50"
-                placeholder="যেমন: আলী"
-                required
-              />
-            </div>
-            <div>
-              <label className="label">পরিমাণ (৳) *</label>
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => {
-                  const value = e.target.value
-                  // Only allow numbers and decimal point
-                  if (/^\d*\.?\d*$/.test(value)) {
-                    setAmount(value)
-                  }
-                }}
-                onKeyDown={(e) => {
-                  // Prevent non-numeric keys except backspace, delete, tab, escape, enter, decimal point
-                  if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', '.', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                    e.preventDefault()
-                  }
-                }}
-                onPaste={(e) => {
-                  e.preventDefault()
-                  const paste = e.clipboardData.getData('text')
-                  if (/^\d*\.?\d*$/.test(paste)) {
-                    setAmount(paste)
-                  }
-                }}
-                className="input focus:ring-green-500/50 focus:border-green-500/50"
-                placeholder="০"
-                min="0"
-                step="0.01"
-                required
-              />
-            </div>
-            <div>
-              <label className="label">প্রাথমিক কারণ (ঐচ্ছিক)</label>
-              <textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                className="input focus:ring-green-500/50 focus:border-green-500/50 min-h-[80px] resize-none"
-                placeholder="যেমন: জরুরি প্রয়োজন"
-                rows={3}
-              />
-            </div>
-            <div>
-              <label className="label">তারিখ *</label>
-              <input
-                type="datetime-local"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="input focus:ring-green-500/50 focus:border-green-500/50"
-                required
-              />
-            </div>
-          </form>
-        </Modal>
-
-        {/* Edit Debt Modal */}
-        <Modal
-          isOpen={editingDebt !== null}
-          onClose={handleCancelEdit}
-          title="ধার সম্পাদনা করুন"
-          className="border-blue-200"
-          footerActions={
-            <div className="flex justify-end space-x-3">
-              <ActionButton
-                onClick={handleCancelEdit}
-                variant="secondary"
-              >
-                বাতিল
-              </ActionButton>
-              <ActionButton
-                onClick={(e) => e && handleEditSubmit(e)}
-                variant="primary"
-              >
-                আপডেট করুন
-              </ActionButton>
-            </div>
-          }
-        >
-          <form onSubmit={handleEditSubmit} className="space-y-4">
-            <div>
-              <label className="label">ব্যক্তির নাম *</label>
-              <input
-                type="text"
-                value={editPersonName}
-                onChange={(e) => setEditPersonName(e.target.value)}
-                className="input focus:ring-green-500/50 focus:border-green-500/50"
-                placeholder="যেমন: আলী"
-                required
-              />
-            </div>
-            <div>
-              <label className="label">পরিমাণ (৳) *</label>
-              <input
-                type="number"
-                value={editAmount}
-                onChange={(e) => {
-                  const value = e.target.value
-                  // Only allow numbers and decimal point
-                  if (/^\d*\.?\d*$/.test(value)) {
-                    setEditAmount(value)
-                  }
-                }}
-                onKeyDown={(e) => {
-                  // Prevent non-numeric keys except backspace, delete, tab, escape, enter, decimal point
-                  if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', '.', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                    e.preventDefault()
-                  }
-                }}
-                onPaste={(e) => {
-                  e.preventDefault()
-                  const paste = e.clipboardData.getData('text')
-                  if (/^\d*\.?\d*$/.test(paste)) {
-                    setEditAmount(paste)
-                  }
-                }}
-                className="input focus:ring-green-500/50 focus:border-green-500/50"
-                placeholder="০"
-                min={editingDebt ? getTotalPaid(editingDebt) : 0}
-                step="0.01"
-                required
-              />
-            </div>
-            <div>
-              <label className="label">প্রাথমিক কারণ (ঐচ্ছিক)</label>
-              <textarea
-                value={editReason}
-                onChange={(e) => setEditReason(e.target.value)}
-                className="input focus:ring-green-500/50 focus:border-green-500/50 min-h-[80px] resize-none"
-                placeholder="যেমন: জরুরি প্রয়োজন"
-                rows={3}
-              />
-            </div>
-            <div>
-              <label className="label">তারিখ *</label>
-              <input
-                type="datetime-local"
-                value={editDate}
-                onChange={(e) => setEditDate(e.target.value)}
-                className="input focus:ring-green-500/50 focus:border-green-500/50"
-                required
-              />
-            </div>
-          </form>
-        </Modal>
-
-        {/* Edit Payment Modal */}
-        <Modal
-          isOpen={editingPayment !== null}
-          onClose={handleCancelPaymentEdit}
-          title="পেমেন্ট সম্পাদনা করুন"
-          className="border-green-200"
-          footerActions={
-            <div className="flex justify-end space-x-3">
-              <ActionButton
-                onClick={handleCancelPaymentEdit}
-                variant="secondary"
-              >
-                বাতিল
-              </ActionButton>
-              <ActionButton
-                onClick={(e) => e && handleEditPaymentSubmit(e)}
-                variant="primary"
-              >
-                আপডেট করুন
-              </ActionButton>
-            </div>
-          }
-        >
-          <form onSubmit={handleEditPaymentSubmit} className="space-y-4">
-            <div>
-              <label className="label">পরিমাণ (৳) *</label>
-              <input
-                type="number"
-                value={editPaymentAmount}
-                onChange={(e) => {
-                  const value = e.target.value
-                  // Only allow numbers and decimal point
-                  if (/^\d*\.?\d*$/.test(value)) {
-                    setEditPaymentAmount(value)
-                  }
-                }}
-                onKeyDown={(e) => {
-                  // Prevent non-numeric keys except backspace, delete, tab, escape, enter, decimal point
-                  if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', '.', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                    e.preventDefault()
-                  }
-                }}
-                onPaste={(e) => {
-                  e.preventDefault()
-                  const paste = e.clipboardData.getData('text')
-                  if (/^\d*\.?\d*$/.test(paste)) {
-                    setEditPaymentAmount(paste)
-                  }
-                }}
-                className="input focus:ring-green-500/50 focus:border-green-500/50"
-                placeholder="০"
-                min="0"
-                max={editingPayment ? (() => {
-                  const debt = debts.find(d => d.id === editingPayment.debtId)
-                  if (!debt) return 0
-                  const otherPayments = debt.payments?.filter(p => p.id !== editingPayment.payment.id) || []
-                  const otherPaymentsTotal = otherPayments.reduce((sum, p) => sum + p.amount, 0)
-                  return round2(debt.amount - otherPaymentsTotal)
-                })() : 0}
-                step="0.01"
-                required
-              />
-            </div>
-            <div>
-              <label className="label">তারিখ *</label>
-              <input
-                type="datetime-local"
-                value={editPaymentDate}
-                onChange={(e) => setEditPaymentDate(e.target.value)}
-                className="input focus:ring-green-500/50 focus:border-green-500/50"
-                required
-              />
-            </div>
-            <div>
-              <label className="label">নোট (ঐচ্ছিক)</label>
-              <input
-                type="text"
-                value={editPaymentNote}
-                onChange={(e) => setEditPaymentNote(e.target.value)}
-                className="input focus:ring-green-500/50 focus:border-green-500/50"
-                placeholder="যেমন: আংশিক পরিশোধ"
-              />
-            </div>
-          </form>
-        </Modal>
-
-        {/* Edit Increase Modal */}
-        <Modal
-          isOpen={editingIncrease !== null}
-          onClose={handleCancelIncreaseEdit}
-          title="পরিমাণ বৃদ্ধি সম্পাদনা করুন"
-          className="border-purple-200"
-          footerActions={
-            <div className="flex gap-3">
-              <ActionButton
-                onClick={handleCancelIncreaseEdit}
-                variant="secondary"
-              >
-                বাতিল
-              </ActionButton>
-              <ActionButton
-                onClick={(e) => e && handleEditIncreaseSubmit(e)}
-                variant="primary"
-              >
-                আপডেট করুন
-              </ActionButton>
-            </div>
-          }
-        >
-          <form onSubmit={handleEditIncreaseSubmit} className="space-y-4">
-            <div>
-              <label className="label">পরিমাণ (৳) *</label>
-              <input
-                type="number"
-                value={editIncreaseAmount}
-                onChange={(e) => {
-                  const value = e.target.value
-                  // Only allow numbers and decimal point
-                  if (/^\d*\.?\d*$/.test(value)) {
-                    setEditIncreaseAmount(value)
-                  }
-                }}
-                onKeyDown={(e) => {
-                  // Prevent non-numeric keys except backspace, delete, tab, escape, enter, decimal point
-                  if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', '.', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                    e.preventDefault()
-                  }
-                }}
-                onPaste={(e) => {
-                  e.preventDefault()
-                  const paste = e.clipboardData.getData('text')
-                  if (/^\d*\.?\d*$/.test(paste)) {
-                    setEditIncreaseAmount(paste)
-                  }
-                }}
-                className="input focus:ring-purple-500/50 focus:border-purple-500/50"
-                placeholder="০"
-                min="0"
-                step="0.01"
-                required
-              />
-            </div>
-            <div>
-              <label className="label">তারিখ *</label>
-              <input
-                type="datetime-local"
-                value={editIncreaseDate}
-                onChange={(e) => setEditIncreaseDate(e.target.value)}
-                className="input focus:ring-purple-500/50 focus:border-purple-500/50"
-                required
-              />
-            </div>
-            <div>
-              <label className="label">কারণ (ঐচ্ছিক)</label>
-              <textarea
-                value={editIncreaseReason}
-                onChange={(e) => setEditIncreaseReason(e.target.value)}
-                className="input focus:ring-purple-500/50 focus:border-purple-500/50 min-h-[80px] resize-none"
-                placeholder="পরিমাণ বৃদ্ধির কারণ"
-                rows={3}
-              />
-            </div>
-          </form>
-        </Modal>
-
-        <div className="space-y-8">
-          {activeDebts.length > 0 && (
-            <div>
-              <h2 className="text-xl font-bold text-gray-800 mb-6 flex items-center gap-3">
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
-                  <span className="text-green-600">💸</span>
-                </div>
-                বাকি আছে
-              </h2>
-              <div className="grid gap-6">
+            <h3 className="text-base font-semibold text-content mb-1">কোনো ধার নেই</h3>
+            <p className="text-sm text-muted mb-5">এখনো কাউকে টাকা ধার দেননি</p>
+            <button onClick={() => setShowForm(true)} className="btn btn-primary mx-auto">
+              <PlusIcon className="w-5 h-5" /> প্রথম ধার যোগ করুন
+            </button>
+          </div>
+        ) : (
+          <>
+            {activeDebts.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="text-sm font-semibold text-muted px-1">বাকি আছে</h2>
                 {activeDebts.map((debt) => {
                   const remaining = calculateRemaining(debt)
                   const totalPaid = getTotalPaid(debt)
+                  const total = round2(debt.amount + (debt.increases?.reduce((s, i) => s + i.amount, 0) || 0))
+                  const pct = total > 0 ? Math.min(100, Math.round((totalPaid / total) * 100)) : 0
                   return (
-                    <div key={debt.id} className="space-y-6">
-                      {/* Main Debt Card */}
-                      <div className="group relative overflow-hidden bg-gradient-to-br from-red-50 to-red-100 rounded-2xl shadow-lg border border-red-200 hover:shadow-xl transition-all duration-300">
-                        {/* Header Section */}
-                        <div className="px-4 pt-4 sm:px-6 sm:pt-6">
-                          <div className="flex items-start justify-between gap-3 mb-4">
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                                <span className="text-white text-lg sm:text-xl">👤</span>
+                    <div key={debt.id} className="card space-y-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-content truncate">{debt.personName}</h3>
+                          <p className="text-xs text-muted">{bnDate(debt.date)}</p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button className="icon-btn" onClick={() => handleEdit(debt)} title="সম্পাদনা"><EditIcon className="w-5 h-5" /></button>
+                          <button className="icon-btn" onClick={() => handleDelete(debt.id)} title="মুছুন"><TrashIcon className="w-5 h-5" /></button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div><p className="text-xs text-muted mb-0.5">মোট</p><p className="text-sm font-semibold text-content">৳{bn(total)}</p></div>
+                        <div><p className="text-xs text-muted mb-0.5">পরিশোধিত</p><p className="text-sm font-semibold text-positive">৳{bn(totalPaid)}</p></div>
+                        <div><p className="text-xs text-muted mb-0.5">বাকি</p><p className="text-sm font-semibold text-negative">৳{bn(remaining)}</p></div>
+                      </div>
+
+                      <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                        <div className="h-full rounded-full bg-positive transition-all" style={{ width: `${pct}%` }} />
+                      </div>
+
+                      {debt.payments && debt.payments.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-muted">পরিশোধের ইতিহাস</p>
+                          {debt.payments.map((p) => (
+                            <div key={p.id} className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2">
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium text-content">৳{bn(p.amount)}</p>
+                                <p className="text-xs text-muted truncate">{bnDate(p.date)}{p.note ? ` · ${p.note}` : ''}</p>
                               </div>
-                              <div className="min-w-0 flex-1">
-                                <h3 className="font-bold text-lg sm:text-xl text-gray-900 mb-1 break-words truncate">
-                                  {debt.personName}
-                                </h3>
+                              <div className="flex items-center gap-1">
+                                <button className="icon-btn w-8 h-8" onClick={() => handleEditPayment(debt.id, p)}><EditIcon className="w-4 h-4" /></button>
+                                <button className="icon-btn w-8 h-8" onClick={() => handleDeletePayment(debt.id, p.id)}><TrashIcon className="w-4 h-4" /></button>
                               </div>
                             </div>
-                            <div className="flex gap-2 flex-shrink-0">
-                              <button
-                                onClick={() => handleToggleReturned(debt)}
-                                className="p-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-all duration-200 active:scale-95"
-                                title="ফেরত পেয়েছি"
-                              >
-                                ✓
-                              </button>
-                              <button
-                                onClick={() => handleDelete(debt.id)}
-                                className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-all duration-200 active:scale-95"
-                              >
-                                🗑️
-                              </button>
-                            </div>
-                          </div>
-                          
-                          <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-4">
-                            <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-red-100 to-red-200 rounded-xl border border-red-300 min-w-0">
-                              <div className="text-xs text-red-700 mb-1 sm:mb-2 font-medium truncate">মোট</div>
-                              <div className="text-sm sm:text-lg font-bold text-red-800 truncate">৳{round2(debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))}</div>
-                            </div>
-                            <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200 min-w-0">
-                              <div className="text-xs text-gray-500 mb-1 sm:mb-2 font-medium truncate">পরিশোধিত</div>
-                              <div className="text-sm sm:text-lg font-bold text-blue-600 truncate">৳{totalPaid}</div>
-                            </div>
-                            <div className="text-center p-2 sm:p-3 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border border-orange-200 min-w-0">
-                              <div className="text-xs text-orange-700 mb-1 sm:mb-2 font-medium truncate">বাকি</div>
-                              <div className="text-sm sm:text-lg font-bold text-orange-600 truncate">৳{remaining}</div>
-                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="space-y-1.5">
+                        <p className="text-xs font-medium text-muted">প্রাথমিক ধার</p>
+                        <div className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2">
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium text-content">৳{bn(getInitialAmount(debt))}</p>
+                            <p className="text-xs text-muted truncate">{bnDate(debt.date)}{getInitialReason(debt) ? ` · ${getInitialReason(debt)}` : ''}</p>
                           </div>
                         </div>
+                      </div>
 
-                        {/* Initial Payment Section */}
-                        <div className="pt-4 border-t border-gray-200">
-                          <div className="flex items-center gap-2 mb-3 px-4 sm:px-6">
-                            <div className="w-5 h-5 sm:w-6 sm:h-6 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <span className="text-green-600 text-xs sm:text-sm">💰</span>
-                            </div>
-                            <h4 className="text-xs sm:text-sm font-semibold text-gray-700">প্রাথমিক পরিমাণ</h4>
-                          </div>
-                          <div className="px-4 sm:px-6 pb-4">
-                            <div className="flex items-start gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <span className="text-white text-sm font-bold">৳</span>
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="font-bold text-green-700 text-sm sm:text-base break-words">৳{getInitialAmount(debt)}</div>
-                                <div className="text-xs text-gray-600 break-words">{format(new Date(debt.date), 'PP p')}</div>
-                                <div className="text-xs text-gray-500 italic mt-1 break-words">প্রাথমিক ধার</div>
-                                {getInitialReason(debt) && (
-                                  <div className="text-xs text-gray-500 italic mt-1 break-words">📝 {getInitialReason(debt)}</div>
-                                )}
-                              </div>
-                              <div className="flex items-start gap-2 flex-shrink-0">
-                                <button
-                                  onClick={() => handleEdit(debt)}
-                                  className="p-2 bg-green-100 hover:bg-green-200 text-green-600 rounded-lg text-xs transition-all duration-200 active:scale-95"
-                                  title="প্রাথমিক কারণ সম্পাদনা করুন"
-                                >
-                                  ✏️
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Payment History - Inside main card */}
-                        {debt.payments && debt.payments.length > 0 && (
-                          <div className="pt-4 border-t border-gray-200">
-                            <div className="flex items-center gap-2 mb-3 px-4 sm:px-6">
-                              <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <span className="text-blue-600 text-xs sm:text-sm">📋</span>
-                              </div>
-                              <h4 className="text-xs sm:text-sm font-semibold text-gray-700">পরিশোধের ইতিহাস</h4>
-                            </div>
-                            <div className="space-y-2 sm:space-y-3 px-4 sm:px-6 pb-4">
-                              {debt.payments.map((payment) => (
-                                <div key={payment.id} className="flex items-start gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                                  <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <span className="text-white text-sm font-bold">৳</span>
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="font-bold text-blue-700 text-sm sm:text-base break-words">৳{payment.amount}</div>
-                                    <div className="text-xs text-gray-600 break-words">{format(new Date(payment.date), 'PP p')}</div>
-                                    {payment.note && (
-                                      <div className="text-xs text-gray-500 italic mt-1 break-words">📝 {payment.note}</div>
-                                    )}
-                                  </div>
-                                  <div className="flex items-start gap-2 flex-shrink-0">
-                                    <button
-                                      onClick={() => handleEditPayment(debt.id, payment)}
-                                      className="p-2 bg-blue-100 hover:bg-blue-200 text-blue-600 rounded-lg text-xs transition-all duration-200 active:scale-95"
-                                      title="সম্পাদনা করুন"
-                                    >
-                                      ✏️
-                                    </button>
-                                    <button
-                                      onClick={() => handleDeletePayment(debt.id, payment.id)}
-                                      className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg text-xs transition-all duration-200 active:scale-95"
-                                      title="মুছুন"
-                                    >
-                                      ✕
-                                    </button>
-                                  </div>
+                      {debt.increases && debt.increases.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-muted">পরিমাণ বৃদ্ধি</p>
+                          {debt.increases.map((inc, idx) => {
+                            const runningTotal = round2(debt.amount + (debt.increases ?? []).slice(0, idx + 1).reduce((s, i) => s + i.amount, 0))
+                            return (
+                              <div key={inc.id} className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2">
+                                <div className="min-w-0">
+                                  <p className="text-sm font-medium text-content">+৳{bn(inc.amount)} <span className="text-muted font-normal">→ মোট ৳{bn(runningTotal)}</span></p>
+                                  <p className="text-xs text-muted truncate">{bnDate(inc.date)}{inc.reason ? ` · ${inc.reason}` : ''}</p>
                                 </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Amount Increase History */}
-                        {debt.increases && debt.increases.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-gray-200">
-                            <div className="flex items-center gap-2 mb-3 px-4 sm:px-6">
-                              <div className="w-5 h-5 sm:w-6 sm:h-6 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <span className="text-purple-600 text-xs sm:text-sm">➕</span>
+                                <div className="flex items-center gap-1">
+                                  <button className="icon-btn w-8 h-8" onClick={() => handleEditIncrease(debt.id, inc)}><EditIcon className="w-4 h-4" /></button>
+                                  <button className="icon-btn w-8 h-8" onClick={() => handleDeleteIncrease(debt.id, inc.id)}><TrashIcon className="w-4 h-4" /></button>
+                                </div>
                               </div>
-                              <h4 className="text-xs sm:text-sm font-semibold text-gray-700">পরিমাণ বৃদ্ধির তালিকা</h4>
-                            </div>
-                            <div className="space-y-2 sm:space-y-3 px-4 sm:px-6 pb-4">
-                              {debt.increases.map((increase, index) => {
-                                // Calculate initial amount and total after this increase
-                                const previousIncreases = debt.increases?.slice(0, index) || []
-                                const previousIncreasesTotal = previousIncreases.reduce((sum, inc) => sum + inc.amount, 0)
-                                const initialAmount = debt.amount  // debt.amount is always the initial amount
-                                const totalAfterThisIncrease = round2(initialAmount + previousIncreasesTotal + increase.amount)
-                                
-                                return (
-                                  <div key={increase.id} className="flex items-start gap-3 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
-                                    <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                                      <span className="text-white text-sm font-bold">➕</span>
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <div className="font-bold text-purple-700 text-sm sm:text-base break-words">বৃদ্ধির পরিমাণ (৳): ৳{increase.amount}</div>
-                                      <div className="text-xs text-gray-600 break-words">{format(new Date(increase.date), 'PP p')}</div>
-                                      <div className="text-xs text-gray-500 mt-1 break-words">
-                                        <span className="font-medium">প্রাথমিক: ৳{initialAmount}</span> → 
-                                        <span className="font-medium text-purple-600"> মোট: ৳{totalAfterThisIncrease}</span>
-                                      </div>
-                                      {increase.reason && (
-                                        <div className="text-xs text-gray-500 italic mt-1 break-words">কারণ (ঐচ্ছিক): {increase.reason}</div>
-                                      )}
-                                    </div>
-                                    <div className="flex items-start gap-2 flex-shrink-0">
-                                      <button
-                                        onClick={() => handleEditIncrease(debt.id, increase)}
-                                        className="p-2 bg-purple-100 hover:bg-purple-200 text-purple-600 rounded-lg text-xs transition-all duration-200 active:scale-95"
-                                        title="সম্পাদনা করুন"
-                                      >
-                                        ✏️
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteIncrease(debt.id, increase.id)}
-                                        className="p-2 bg-red-100 hover:bg-red-200 text-red-600 rounded-lg text-xs transition-all duration-200 active:scale-95"
-                                        title="মুছে ফেলুন"
-                                      >
-                                        🗑️
-                                      </button>
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )}
+                            )
+                          })}
+                        </div>
+                      )}
 
-                        {/* Add Payment Button/Form - Inside main card */}
+                      <div className="flex gap-2 pt-1">
+                        <button className="btn btn-secondary flex-1" onClick={() => handleOpenIncreaseModal(debt.id)}>বৃদ্ধি</button>
                         {remaining > 0 && (
-                          <div className="pt-4 border-t border-gray-200">
-                            {showPaymentForm === debt.id ? (
-                              <div className="space-y-4 px-4 sm:px-6 pb-4">
-                                <div className="flex items-center gap-2 mb-4">
-                                  <div className="w-6 h-6 bg-green-100 rounded-lg flex items-center justify-center">
-                                    <span className="text-green-600 text-sm">💵</span>
-                                  </div>
-                                  <h4 className="text-sm font-semibold text-gray-700">পেমেন্ট যোগ করুন</h4>
-                                </div>
-                              <div className="grid grid-cols-2 gap-2">
-                                <div>
-                                  <label className="text-xs text-gray-600">পরিমাণ (৳)</label>
-                                  <input
-                                    type="number"
-                                    value={paymentAmount}
-                                    onChange={(e) => {
-                                      const value = e.target.value
-                                      // Only allow numbers and decimal point
-                                      if (/^\d*\.?\d*$/.test(value)) {
-                                        setPaymentAmount(value)
-                                      }
-                                    }}
-                                    onKeyDown={(e) => {
-                                      // Prevent non-numeric keys except backspace, delete, tab, escape, enter, decimal point
-                                      if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', '.', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                                        e.preventDefault()
-                                      }
-                                    }}
-                                    onPaste={(e) => {
-                                      e.preventDefault()
-                                      const paste = e.clipboardData.getData('text')
-                                      if (/^\d*\.?\d*$/.test(paste)) {
-                                        setPaymentAmount(paste)
-                                      }
-                                    }}
-                                    className="input input-sm focus:ring-green-500/50 focus:border-green-500/50"
-                                    placeholder="০"
-                                    min="0"
-                                    max={remaining}
-                                    step="0.01"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="text-xs text-gray-600">তারিখ</label>
-                                  <input
-                                    type="datetime-local"
-                                    value={paymentDate}
-                                    onChange={(e) => setPaymentDate(e.target.value)}
-                                    className="input input-sm focus:ring-green-500/50 focus:border-green-500/50"
-                                  />
-                                </div>
-                              </div>
-                              <div>
-                                <label className="text-xs text-gray-600">নোট (ঐচ্ছিক)</label>
-                                <input
-                                  type="text"
-                                  value={paymentNote}
-                                  onChange={(e) => setPaymentNote(e.target.value)}
-                                  className="input text-sm"
-                                  placeholder="যেমন: আংশিক পরিশোধ"
-                                />
-                              </div>
-                              <div className="flex gap-4 mt-4">
-                                <button
-                                  onClick={() => handleAddPayment(debt.id)}
-                                  className="flex-1 bg-gradient-to-br from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold text-sm hover:shadow-lg transition-all duration-300"
-                                >
-                                  সংরক্ষণ করুন
-                                </button>
-                                <button
-                                  onClick={() => setShowPaymentForm(null)}
-                                  className="px-6 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-semibold text-sm transition-all duration-300"
-                                >
-                                  বাতিল
-                                </button>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="px-4 sm:px-6 py-4">
-                              <div className="grid grid-cols-2 gap-3">
-                                <button
-                                  onClick={() => handleOpenPaymentModal(debt.id)}
-                                  className="group relative overflow-hidden bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl px-4 py-3 w-full shadow-lg hover:shadow-blue-500/25 transition-all duration-300 cursor-pointer"
-                                >
-                                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                  <div className="relative z-10 flex items-center justify-center gap-2 text-white font-semibold text-sm">
-                                    <span className="text-lg">💵</span>
-                                    পেমেন্ট যোগ করুন
-                                  </div>
-                                </button>
-                                <button
-                                  onClick={() => handleOpenIncreaseModal(debt.id)}
-                                  className="group relative overflow-hidden bg-gradient-to-br from-purple-500 to-indigo-600 rounded-xl px-4 py-3 w-full shadow-lg hover:shadow-purple-500/25 transition-all duration-300 cursor-pointer"
-                                >
-                                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                                  <div className="relative z-10 flex items-center justify-center gap-2 text-white font-semibold text-sm">
-                                    <span className="text-lg">➕</span>
-                                    পরিমাণ বৃদ্ধি করুন
-                                  </div>
-                                </button>
-                              </div>
-                            </div>
-                          )}
-                          </div>
+                          <button className="btn btn-primary flex-1" onClick={() => handleOpenPaymentModal(debt.id)}>
+                            <CheckIcon className="w-4 h-4" /> ফেরত পেয়েছি
+                          </button>
                         )}
                       </div>
                     </div>
                   )
                 })}
-              </div>
-            </div>
-          )}
+              </section>
+            )}
 
-          {returnedDebts.length > 0 && (
-            <div>
-              <h2 className="text-lg font-semibold text-gray-800 mb-3">ফেরত পেয়েছি</h2>
-              <div className="space-y-4">
+            {returnedDebts.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="text-sm font-semibold text-muted px-1">ফেরত পেয়েছি</h2>
                 {returnedDebts.map((debt) => {
                   const totalPaid = getTotalPaid(debt)
+                  const total = round2(debt.amount + (debt.increases?.reduce((s, i) => s + i.amount, 0) || 0))
                   return (
-                    <div key={debt.id} className="bg-gradient-to-br from-green-50 to-green-100 rounded-2xl shadow-lg border border-green-200 overflow-hidden">
-                      {/* Header Section */}
-                      <div className="px-4 pt-4 sm:px-6 sm:pt-6">
-                        <div className="flex items-start justify-between gap-3 mb-4">
-                          <div className="flex items-center gap-3 min-w-0 flex-1">
-                            <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center flex-shrink-0">
-                              <span className="text-white text-lg sm:text-xl">✅</span>
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <h3 className="font-bold text-lg sm:text-xl text-gray-900 mb-1 break-words truncate">
-                                {debt.personName}
-                              </h3>
-                            </div>
+                    <div key={debt.id} className="card space-y-3 opacity-95">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="badge badge-success">পরিশোধিত</span>
+                            <h3 className="font-semibold text-content truncate">{debt.personName}</h3>
                           </div>
-                          <div className="flex gap-2 flex-shrink-0">
-                            <button
-                              onClick={() => handleToggleReturned(debt)}
-                              className="p-2 bg-orange-100 hover:bg-orange-200 text-orange-700 rounded-lg transition-all duration-200 active:scale-95"
-                              title="ফেরত পাইনি"
-                            >
-                              ↺
-                            </button>
-                            <button
-                              onClick={() => handleDelete(debt.id)}
-                              className="p-2 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-all duration-200 active:scale-95"
-                              title="মুছে ফেলুন"
-                            >
-                              🗑️
-                            </button>
-                          </div>
+                          <p className="text-xs text-muted mt-1">মোট ৳{bn(total)} · পরিশোধ ৳{bn(totalPaid)}</p>
                         </div>
-
-                        <div className="grid grid-cols-2 gap-2 sm:gap-4 mb-4">
-                          <div className="text-center p-3 sm:p-4 bg-green-100 rounded-xl border border-green-200 min-w-0">
-                            <div className="text-xs text-green-700 mb-1 sm:mb-2 font-medium truncate">মূল পরিমাণ</div>
-                            <div className="text-sm sm:text-lg font-bold text-green-800 truncate">৳{round2(debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))}</div>
-                          </div>
-                          <div className="text-center p-3 sm:p-4 bg-blue-50 rounded-xl border border-blue-200 min-w-0">
-                            <div className="text-xs text-gray-500 mb-1 sm:mb-2 font-medium truncate">পরিশোধিত</div>
-                            <div className="text-sm sm:text-lg font-bold text-blue-600 truncate">৳{totalPaid}</div>
-                          </div>
+                        <div className="flex items-center gap-1 flex-shrink-0">
+                          <button className="icon-btn" onClick={() => handleToggleReturned(debt)} title="ফেরত পাইনি"><RotateIcon className="w-5 h-5" /></button>
+                          <button className="icon-btn" onClick={() => handleDelete(debt.id)} title="মুছুন"><TrashIcon className="w-5 h-5" /></button>
                         </div>
                       </div>
-
-                        {/* Initial Payment Section */}
-                        <div className="pt-4 border-t border-gray-200">
-                          <div className="flex items-center gap-2 mb-3 px-4 sm:px-6">
-                            <div className="w-5 h-5 sm:w-6 sm:h-6 bg-green-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                              <span className="text-green-600 text-xs sm:text-sm">💰</span>
+                      {debt.payments && debt.payments.length > 0 && (
+                        <div className="space-y-1.5">
+                          <p className="text-xs font-medium text-muted">পরিশোধের ইতিহাস</p>
+                          {debt.payments.map((p) => (
+                            <div key={p.id} className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2">
+                              <span className="text-xs text-muted truncate">{bnDate(p.date)}{p.note ? ` · ${p.note}` : ''}</span>
+                              <span className="text-sm font-medium text-content flex-shrink-0 ml-2">৳{bn(p.amount)}</span>
                             </div>
-                            <h4 className="text-xs sm:text-sm font-semibold text-gray-700">প্রাথমিক পরিমাণ</h4>
-                          </div>
-                          <div className="px-4 sm:px-6 pb-4">
-                            <div className="flex items-start gap-3 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-100">
-                              <div className="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <span className="text-white text-sm font-bold">৳</span>
-                              </div>
-                              <div className="min-w-0 flex-1">
-                                <div className="font-bold text-green-700 text-sm sm:text-base break-words">৳{getInitialAmount(debt)}</div>
-                                <div className="text-xs text-gray-600 break-words">{format(new Date(debt.date), 'PP p')}</div>
-                                <div className="text-xs text-gray-500 italic mt-1 break-words">প্রাথমিক ধার</div>
-                                {getInitialReason(debt) && (
-                                  <div className="text-xs text-gray-500 italic mt-1 break-words">📝 {getInitialReason(debt)}</div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
+                          ))}
                         </div>
-
-                        {/* Payment History */}
-                        {debt.payments && debt.payments.length > 0 && (
-                          <div className="pt-4 border-t border-gray-200">
-                            <div className="flex items-center gap-2 mb-3 px-4 sm:px-6">
-                              <div className="w-5 h-5 sm:w-6 sm:h-6 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <span className="text-blue-600 text-xs sm:text-sm">📋</span>
-                              </div>
-                              <h4 className="text-xs sm:text-sm font-semibold text-gray-700">পরিশোধের ইতিহাস</h4>
-                            </div>
-                            <div className="space-y-2 sm:space-y-3 px-4 sm:px-6 pb-4">
-                              {debt.payments.map((payment) => (
-                                <div key={payment.id} className="flex items-start gap-3 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                                  <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <span className="text-white text-sm font-bold">৳</span>
-                                  </div>
-                                  <div className="min-w-0 flex-1">
-                                    <div className="font-bold text-blue-700 text-sm sm:text-base break-words">৳{payment.amount}</div>
-                                    <div className="text-xs text-gray-600 break-words">{format(new Date(payment.date), 'PP p')}</div>
-                                    {payment.note && (
-                                      <div className="text-xs text-gray-500 italic mt-1 break-words">📝 {payment.note}</div>
-                                    )}
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Amount Increase History */}
-                        {debt.increases && debt.increases.length > 0 && (
-                          <div className="pt-4 border-t border-gray-200">
-                            <div className="flex items-center gap-2 mb-3 px-4 sm:px-6">
-                              <div className="w-5 h-5 sm:w-6 sm:h-6 bg-purple-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                <span className="text-purple-600 text-xs sm:text-sm">➕</span>
-                              </div>
-                              <h4 className="text-xs sm:text-sm font-semibold text-gray-700">পরিমাণ বৃদ্ধির তালিকা</h4>
-                            </div>
-                            <div className="space-y-2 sm:space-y-3 px-4 sm:px-6 pb-4">
-                              {debt.increases.map((increase, index) => {
-                                // Calculate initial amount and total after this increase
-                                const previousIncreases = debt.increases?.slice(0, index) || []
-                                const previousIncreasesTotal = previousIncreases.reduce((sum, inc) => sum + inc.amount, 0)
-                                const initialAmount = debt.amount  // debt.amount is always the initial amount
-                                const totalAfterThisIncrease = round2(initialAmount + previousIncreasesTotal + increase.amount)
-                                
-                                return (
-                                  <div key={increase.id} className="flex items-start gap-3 p-3 bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl border border-purple-100">
-                                    <div className="w-8 h-8 bg-purple-500 rounded-lg flex items-center justify-center flex-shrink-0">
-                                      <span className="text-white text-sm font-bold">➕</span>
-                                    </div>
-                                    <div className="min-w-0 flex-1">
-                                      <div className="font-bold text-purple-700 text-sm sm:text-base break-words">বৃদ্ধির পরিমাণ (৳): ৳{increase.amount}</div>
-                                      <div className="text-xs text-gray-600 break-words">{format(new Date(increase.date), 'PP p')}</div>
-                                      <div className="text-xs text-gray-500 mt-1 break-words">
-                                        <span className="font-medium">প্রাথমিক: ৳{initialAmount}</span> → 
-                                        <span className="font-medium text-purple-600"> মোট: ৳{totalAfterThisIncrease}</span>
-                                      </div>
-                                      {increase.reason && (
-                                        <div className="text-xs text-gray-500 italic mt-1 break-words">কারণ (ঐচ্ছিক): {increase.reason}</div>
-                                      )}
-                                    </div>
-                                  </div>
-                                )
-                              })}
-                            </div>
-                          </div>
-                        )}
+                      )}
                     </div>
                   )
                 })}
-              </div>
-            </div>
-          )}
-
-          {dataLoading ? (
-            <ListSkeleton count={3} />
-          ) : debts.length === 0 ? (
-            <div className="text-center py-16">
-              <div className="inline-flex items-center justify-center w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mb-6">
-                <span className="text-4xl text-gray-400">💰</span>
-              </div>
-              <h3 className="text-xl font-semibold text-gray-700 mb-2">কোনো ধার নেই</h3>
-              <p className="text-gray-500 mb-6">এখনো কাউকে টাকা ধার দেননি</p>
-              <button
-                onClick={() => setShowForm(true)}
-                className="inline-flex items-center gap-2 bg-gradient-to-br from-green-500 to-emerald-600 text-white px-6 py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-300 hover:scale-105"
-              >
-                <span>➕</span>
-                প্রথম ধার যোগ করুন
-              </button>
-            </div>
-          ) : null}
-        </div>
+              </section>
+            )}
+          </>
+        )}
       </div>
 
-      {/* Payment Modal */}
-      {showPaymentModal && (
-        <Modal
-          isOpen={!!showPaymentModal}
-          onClose={handleClosePaymentModal}
-          title="পেমেন্ট যোগ করুন"
-          footerActions={
-            <div className="flex justify-end space-x-3">
-              <ActionButton
-                onClick={handleClosePaymentModal}
-                variant="secondary"
-              >
-                বাতিল
-              </ActionButton>
-              <ActionButton
-                onClick={() => handleAddPayment(showPaymentModal)}
-                variant="primary"
-              >
-                সংরক্ষণ করুন
-              </ActionButton>
-            </div>
-          }
-        >
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="label">পরিমাণ (৳)</label>
-                <input
-                  type="number"
-                  value={paymentAmount}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    if (/^\d*\.?\d*$/.test(value)) {
-                      setPaymentAmount(value)
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', '.', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                      e.preventDefault()
-                    }
-                  }}
-                  onPaste={(e) => {
-                    e.preventDefault()
-                    const paste = e.clipboardData.getData('text')
-                    if (/^\d*\.?\d*$/.test(paste)) {
-                      setPaymentAmount(paste)
-                    }
-                  }}
-                  className="input focus:ring-green-500/50 focus:border-green-500/50"
-                  placeholder="০"
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-              <div>
-                <label className="label">তারিখ</label>
-                <input
-                  type="datetime-local"
-                  value={paymentDate}
-                  onChange={(e) => setPaymentDate(e.target.value)}
-                  className="input focus:ring-green-500/50 focus:border-green-500/50"
-                />
-              </div>
-            </div>
-            <div>
-              <label className="label">নোট (ঐচ্ছিক)</label>
-              <textarea
-                value={paymentNote}
-                onChange={(e) => setPaymentNote(e.target.value)}
-                className="input focus:ring-green-500/50 focus:border-green-500/50 min-h-[80px] resize-none"
-                placeholder="যেমন: আংশিক পরিশোধ"
-                rows={3}
-              />
-            </div>
-          </div>
-        </Modal>
-      )}
+      {/* FAB */}
+      <button className="fab" onClick={() => setShowForm(true)} aria-label="নতুন ধার যোগ করুন">
+        <PlusIcon className="w-6 h-6" />
+      </button>
 
-      {/* Increase Amount Modal */}
+      {/* Add debt */}
+      <Modal
+        isOpen={showForm}
+        onClose={() => setShowForm(false)}
+        title="নতুন ধার যোগ করুন"
+        footerActions={<>
+          <ActionButton onClick={() => setShowForm(false)} variant="secondary">বাতিল</ActionButton>
+          <ActionButton onClick={(e) => e && handleSubmit(e)} variant="primary">সংরক্ষণ</ActionButton>
+        </>}
+      >
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="label label-required">ব্যক্তির নাম</label>
+            <input type="text" value={personName} onChange={(e) => setPersonName(e.target.value)} className="input" placeholder="যেমন: আলী" required />
+          </div>
+          <div>
+            <label className="label label-required">পরিমাণ (৳)</label>
+            <input type="text" inputMode="decimal" value={amount} onChange={numChange(setAmount)} className="input" placeholder="০" required />
+          </div>
+          <div>
+            <label className="label">প্রাথমিক কারণ (ঐচ্ছিক)</label>
+            <textarea value={reason} onChange={(e) => setReason(e.target.value)} className="input min-h-[80px] resize-none" placeholder="যেমন: জরুরি প্রয়োজন" rows={3} />
+          </div>
+          <div>
+            <label className="label label-required">তারিখ</label>
+            <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} className="input" required />
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit debt */}
+      <Modal
+        isOpen={editingDebt !== null}
+        onClose={handleCancelEdit}
+        title="ধার সম্পাদনা করুন"
+        footerActions={<>
+          <ActionButton onClick={handleCancelEdit} variant="secondary">বাতিল</ActionButton>
+          <ActionButton onClick={(e) => e && handleEditSubmit(e)} variant="primary">আপডেট</ActionButton>
+        </>}
+      >
+        <form onSubmit={handleEditSubmit} className="space-y-4">
+          <div>
+            <label className="label label-required">ব্যক্তির নাম</label>
+            <input type="text" value={editPersonName} onChange={(e) => setEditPersonName(e.target.value)} className="input" required />
+          </div>
+          <div>
+            <label className="label label-required">পরিমাণ (৳)</label>
+            <input type="text" inputMode="decimal" value={editAmount} onChange={numChange(setEditAmount)} className="input" required />
+          </div>
+          <div>
+            <label className="label">প্রাথমিক কারণ (ঐচ্ছিক)</label>
+            <textarea value={editReason} onChange={(e) => setEditReason(e.target.value)} className="input min-h-[80px] resize-none" rows={3} />
+          </div>
+          <div>
+            <label className="label label-required">তারিখ</label>
+            <input type="datetime-local" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="input" required />
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit payment */}
+      <Modal
+        isOpen={editingPayment !== null}
+        onClose={handleCancelPaymentEdit}
+        title="পেমেন্ট সম্পাদনা করুন"
+        footerActions={<>
+          <ActionButton onClick={handleCancelPaymentEdit} variant="secondary">বাতিল</ActionButton>
+          <ActionButton onClick={(e) => e && handleEditPaymentSubmit(e)} variant="primary">আপডেট</ActionButton>
+        </>}
+      >
+        <form onSubmit={handleEditPaymentSubmit} className="space-y-4">
+          <div>
+            <label className="label label-required">পরিমাণ (৳)</label>
+            <input type="text" inputMode="decimal" value={editPaymentAmount} onChange={numChange(setEditPaymentAmount)} className="input" required />
+          </div>
+          <div>
+            <label className="label label-required">তারিখ</label>
+            <input type="datetime-local" value={editPaymentDate} onChange={(e) => setEditPaymentDate(e.target.value)} className="input" required />
+          </div>
+          <div>
+            <label className="label">নোট (ঐচ্ছিক)</label>
+            <input type="text" value={editPaymentNote} onChange={(e) => setEditPaymentNote(e.target.value)} className="input" placeholder="যেমন: আংশিক পরিশোধ" />
+          </div>
+        </form>
+      </Modal>
+
+      {/* Edit increase */}
+      <Modal
+        isOpen={editingIncrease !== null}
+        onClose={handleCancelIncreaseEdit}
+        title="পরিমাণ বৃদ্ধি সম্পাদনা করুন"
+        footerActions={<>
+          <ActionButton onClick={handleCancelIncreaseEdit} variant="secondary">বাতিল</ActionButton>
+          <ActionButton onClick={(e) => e && handleEditIncreaseSubmit(e)} variant="primary">আপডেট</ActionButton>
+        </>}
+      >
+        <form onSubmit={handleEditIncreaseSubmit} className="space-y-4">
+          <div>
+            <label className="label label-required">পরিমাণ (৳)</label>
+            <input type="text" inputMode="decimal" value={editIncreaseAmount} onChange={numChange(setEditIncreaseAmount)} className="input" required />
+          </div>
+          <div>
+            <label className="label label-required">তারিখ</label>
+            <input type="datetime-local" value={editIncreaseDate} onChange={(e) => setEditIncreaseDate(e.target.value)} className="input" required />
+          </div>
+          <div>
+            <label className="label">কারণ (ঐচ্ছিক)</label>
+            <textarea value={editIncreaseReason} onChange={(e) => setEditIncreaseReason(e.target.value)} className="input min-h-[80px] resize-none" rows={3} />
+          </div>
+        </form>
+      </Modal>
+
+      {/* Return money — partial or full */}
+      {showPaymentModal && (() => {
+        const d = debts.find(x => x.id === showPaymentModal)
+        const rem = d ? calculateRemaining(d) : 0
+        return (
+          <Modal
+            isOpen={!!showPaymentModal}
+            onClose={handleClosePaymentModal}
+            title="ফেরত পেয়েছি"
+            footerActions={<>
+              <ActionButton onClick={handleClosePaymentModal} variant="secondary">বাতিল</ActionButton>
+              <ActionButton onClick={() => handleAddPayment(showPaymentModal)} variant="primary">সংরক্ষণ</ActionButton>
+            </>}
+          >
+            <div className="space-y-4">
+              <div className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2.5">
+                <span className="text-sm text-muted">বাকি</span>
+                <span className="text-base font-semibold text-negative">৳{bn(rem)}</span>
+              </div>
+              <div>
+                <label className="label label-required">কত টাকা ফেরত পেলেন?</label>
+                <input type="text" inputMode="decimal" value={paymentAmount} onChange={numChange(setPaymentAmount)} className="input" placeholder="০" />
+                <button type="button" className="chip chip-accent mt-2" onClick={() => setPaymentAmount(String(rem))}>
+                  সম্পূর্ণ ৳{bn(rem)} ফেরত
+                </button>
+              </div>
+              <div>
+                <label className="label label-required">তারিখ</label>
+                <input type="datetime-local" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="input" />
+              </div>
+              <div>
+                <label className="label">নোট (ঐচ্ছিক)</label>
+                <textarea value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} className="input min-h-[80px] resize-none" placeholder="যেমন: আংশিক ফেরত" rows={3} />
+              </div>
+            </div>
+          </Modal>
+        )
+      })()}
+
+      {/* Increase amount */}
       {showIncreaseModal && (
         <Modal
           isOpen={!!showIncreaseModal}
           onClose={handleCloseIncreaseModal}
           title="ধারের পরিমাণ বৃদ্ধি করুন"
-          footerActions={
-            <div className="flex justify-end space-x-3">
-              <ActionButton
-                onClick={handleCloseIncreaseModal}
-                variant="secondary"
-              >
-                বাতিল
-              </ActionButton>
-              <ActionButton
-                onClick={() => handleIncreaseDebtAmount(showIncreaseModal)}
-                variant="primary"
-              >
-                সংরক্ষণ করুন
-              </ActionButton>
-            </div>
-          }
+          footerActions={<>
+            <ActionButton onClick={handleCloseIncreaseModal} variant="secondary">বাতিল</ActionButton>
+            <ActionButton onClick={() => handleIncreaseDebtAmount(showIncreaseModal)} variant="primary">সংরক্ষণ</ActionButton>
+          </>}
         >
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="label">বৃদ্ধির পরিমাণ (৳)</label>
-                <input
-                  type="number"
-                  value={increaseAmount}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    if (/^\d*\.?\d*$/.test(value)) {
-                      setIncreaseAmount(value)
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (!/[0-9]/.test(e.key) && !['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', '.', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-                      e.preventDefault()
-                    }
-                  }}
-                  onPaste={(e) => {
-                    e.preventDefault()
-                    const paste = e.clipboardData.getData('text')
-                    if (/^\d*\.?\d*$/.test(paste)) {
-                      setIncreaseAmount(paste)
-                    }
-                  }}
-                  className="input focus:ring-purple-500/50 focus:border-purple-500/50"
-                  placeholder="০"
-                  min="0"
-                  step="0.01"
-                />
-              </div>
-              <div>
-                <label className="label">তারিখ</label>
-                <input
-                  type="datetime-local"
-                  value={increaseDate}
-                  onChange={(e) => setIncreaseDate(e.target.value)}
-                  className="input focus:ring-purple-500/50 focus:border-purple-500/50"
-                />
-              </div>
+          <div className="space-y-4">
+            <div>
+              <label className="label label-required">বৃদ্ধির পরিমাণ (৳)</label>
+              <input type="text" inputMode="decimal" value={increaseAmount} onChange={numChange(setIncreaseAmount)} className="input" placeholder="০" />
+            </div>
+            <div>
+              <label className="label label-required">তারিখ</label>
+              <input type="datetime-local" value={increaseDate} onChange={(e) => setIncreaseDate(e.target.value)} className="input" />
             </div>
             <div>
               <label className="label">কারণ (ঐচ্ছিক)</label>
-              <textarea
-                value={increaseReason}
-                onChange={(e) => setIncreaseReason(e.target.value)}
-                className="input focus:ring-purple-500/50 focus:border-purple-500/50 min-h-[80px] resize-none"
-                placeholder="যেমন: অতিরিক্ত প্রয়োজন"
-                rows={3}
-              />
+              <textarea value={increaseReason} onChange={(e) => setIncreaseReason(e.target.value)} className="input min-h-[80px] resize-none" placeholder="যেমন: অতিরিক্ত প্রয়োজন" rows={3} />
             </div>
           </div>
         </Modal>
@@ -1639,4 +959,3 @@ export default function DebtsPage() {
     </div>
   )
 }
-
