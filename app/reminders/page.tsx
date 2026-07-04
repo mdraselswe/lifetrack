@@ -19,6 +19,13 @@ import { toBnDigits } from '@/lib/format'
 
 const fmtDate = (v?: string) => (v && !isNaN(new Date(v).getTime()) ? toBnDigits(format(new Date(v), 'MMMM d, yyyy, h:mm a', { locale: bn })) : 'অবৈধ তারিখ')
 
+// datetime-local expects a LOCAL time string; toISOString() is UTC, so we
+// shift by the timezone offset before slicing to avoid an off-by-hours default.
+const toLocalDateTimeValue = (date: Date = new Date()) => {
+  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+  return local.toISOString().slice(0, 16)
+}
+
 export default function RemindersPage() {
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [showForm, setShowForm] = useState(false)
@@ -37,6 +44,8 @@ export default function RemindersPage() {
   const [editingReminder, setEditingReminder] = useState<Reminder | null>(null)
   const [editingOccurrence, setEditingOccurrence] = useState<{ reminder: Reminder; occurrence: ReminderOccurrence } | null>(null)
   const [editOccurrenceDateTime, setEditOccurrenceDateTime] = useState('')
+  const [rescheduleReminderId, setRescheduleReminderId] = useState<string | null>(null)
+  const [rescheduleHours, setRescheduleHours] = useState('1')
   const { user, loading } = useAuth()
   const router = useRouter()
 
@@ -44,7 +53,7 @@ export default function RemindersPage() {
     setMounted(true)
     setupServiceWorker()
     // Set default date after mount
-    setScheduledTime(new Date().toISOString().slice(0, 16))
+    setScheduledTime(toLocalDateTimeValue())
     setIsRepetitive(false)
     setRepeatInterval(1)
     setRepeatType('weeks')
@@ -87,19 +96,31 @@ export default function RemindersPage() {
       updateReminder(reminderId, { dismissed: true })
       loadReminders()
     } else if (action === 'reschedule') {
-      // Open reschedule modal or prompt
-      const hours = prompt('কত ঘন্টা পরে আবার রিমাইন্ডার দিতে চান?', '1')
-      if (hours) {
-        const newTime = new Date(Date.now() + parseInt(hours) * 60 * 60 * 1000)
-        updateReminder(reminderId, { scheduledTime: newTime.toISOString() })
-        
-        const reminder = reminders.find(r => r.id === reminderId)
-        if (reminder) {
-          scheduleNotification(reminderId, reminder.title, reminder.description || '', newTime)
-        }
-        loadReminders().catch(console.error)
-      }
+      // Open the reschedule modal (replaces native prompt() for a PWA-friendly UX)
+      setRescheduleHours('1')
+      setRescheduleReminderId(reminderId)
     }
+  }
+
+  const handleSaveReschedule = async () => {
+    if (!rescheduleReminderId) return
+
+    const hours = parseFloat(rescheduleHours)
+    if (isNaN(hours) || hours <= 0) {
+      toast.error('সঠিক ঘন্টা সংখ্যা দিন')
+      return
+    }
+
+    const newTime = new Date(Date.now() + hours * 60 * 60 * 1000)
+    await updateReminder(rescheduleReminderId, { scheduledTime: newTime.toISOString() })
+
+    const reminder = reminders.find(r => r.id === rescheduleReminderId)
+    if (reminder) {
+      scheduleNotification(rescheduleReminderId, reminder.title, reminder.description || '', newTime)
+    }
+    loadReminders().catch(console.error)
+    toast.success('রিমাইন্ডার পুনঃনির্ধারণ করা হয়েছে')
+    setRescheduleReminderId(null)
   }
 
   const loadReminders = async () => {
@@ -217,7 +238,7 @@ export default function RemindersPage() {
     // Reset form
     setTitle('')
     setDescription('')
-    setScheduledTime(new Date().toISOString().slice(0, 16))
+    setScheduledTime(toLocalDateTimeValue())
     setIsRepetitive(false)
     setRepeatInterval(1)
     setRepeatType('weeks')
@@ -229,7 +250,7 @@ export default function RemindersPage() {
   const handleCancelEdit = () => {
     setTitle('')
     setDescription('')
-    setScheduledTime(new Date().toISOString().slice(0, 16))
+    setScheduledTime(toLocalDateTimeValue())
     setIsRepetitive(false)
     setRepeatInterval(1)
     setRepeatType('weeks')
@@ -254,7 +275,7 @@ export default function RemindersPage() {
 
   const handleCompleteReminder = (reminder: Reminder) => {
     // Set default completion time to now
-    setCompletionDateTime(new Date().toISOString().slice(0, 16))
+    setCompletionDateTime(toLocalDateTimeValue())
     setReminderToComplete(reminder)
     setShowCompleteModal(true)
   }
@@ -300,7 +321,7 @@ export default function RemindersPage() {
 
   const handleEditOccurrence = (reminder: Reminder, occurrence: ReminderOccurrence) => {
     setEditingOccurrence({ reminder, occurrence })
-    setEditOccurrenceDateTime(new Date(occurrence.completedTime).toISOString().slice(0, 16))
+    setEditOccurrenceDateTime(toLocalDateTimeValue(new Date(occurrence.completedTime)))
   }
 
   const handleSaveOccurrenceEdit = async () => {
@@ -603,6 +624,32 @@ export default function RemindersPage() {
             )}
           </div>
         )}
+      </Modal>
+
+      {/* Reschedule (replaces native prompt) */}
+      <Modal
+        isOpen={!!rescheduleReminderId}
+        onClose={() => setRescheduleReminderId(null)}
+        title="আবার মনে করিয়ে দিন"
+        zIndex={10001}
+        footerActions={<>
+          <ActionButton onClick={() => setRescheduleReminderId(null)} variant="secondary">বাতিল</ActionButton>
+          <ActionButton onClick={handleSaveReschedule} variant="primary">নির্ধারণ করুন</ActionButton>
+        </>}
+      >
+        <div>
+          <label className="label label-required">কত ঘন্টা পরে আবার রিমাইন্ডার দিতে চান?</label>
+          <input
+            type="number"
+            min="0.5"
+            step="0.5"
+            value={rescheduleHours}
+            onChange={(e) => setRescheduleHours(e.target.value)}
+            className="input"
+            placeholder="যেমন: ১"
+            required
+          />
+        </div>
       </Modal>
     </div>
   )

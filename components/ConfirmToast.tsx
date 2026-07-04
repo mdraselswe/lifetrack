@@ -14,7 +14,7 @@ export default function ConfirmToastContainer() {
   if (confirms.length === 0) return null
 
   return (
-    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black bg-opacity-30 pointer-events-auto">
+    <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/50 backdrop-blur-sm pointer-events-auto">
       <div className="space-y-4 max-w-sm w-full mx-4 relative z-[99999]">
         {confirms.map((confirm) => (
           <ConfirmToastItem key={confirm.id} confirm={confirm} />
@@ -45,19 +45,16 @@ function ConfirmToastItem({ confirm }: { confirm: ConfirmToast }) {
     confirmManager.removeConfirm(confirm.id)
   }
 
-  const getConfirmStyles = () => {
-    const baseStyles = "bg-white rounded-lg shadow-2xl border-l-4 p-6 transform transition-all duration-300 ease-in-out relative z-[99999]"
-    
-    switch (confirm.type) {
-      case 'danger':
-        return `${baseStyles} border-red-500`
-      case 'warning':
-        return `${baseStyles} border-yellow-500`
-      case 'info':
-      default:
-        return `${baseStyles} border-blue-500`
-    }
-  }
+  // Token-based accent colour per confirm type (light/dark aware).
+  const accentColor =
+    confirm.type === 'danger'
+      ? 'var(--negative)'
+      : confirm.type === 'warning'
+        ? 'var(--caution)'
+        : 'var(--accent)'
+
+  const getConfirmStyles = () =>
+    "surface rounded-2xl shadow-pop p-6 transform transition-all duration-300 ease-in-out relative z-[99999]"
 
   const getIcon = () => {
     switch (confirm.type) {
@@ -72,21 +69,10 @@ function ConfirmToastItem({ confirm }: { confirm: ConfirmToast }) {
   }
 
   const getButtonStyles = (type: 'confirm' | 'cancel') => {
-    const baseStyles = "px-4 py-2 rounded-md font-medium transition-colors duration-200"
-    
     if (type === 'confirm') {
-      switch (confirm.type) {
-        case 'danger':
-          return `${baseStyles} bg-red-500 text-white hover:bg-red-600`
-        case 'warning':
-          return `${baseStyles} bg-yellow-500 text-white hover:bg-yellow-600`
-        case 'info':
-        default:
-          return `${baseStyles} bg-blue-500 text-white hover:bg-blue-600`
-      }
-    } else {
-      return `${baseStyles} bg-gray-200 text-gray-800 hover:bg-gray-300`
+      return confirm.type === 'danger' ? 'btn btn-danger' : 'btn btn-primary'
     }
+    return 'btn btn-secondary'
   }
 
   return (
@@ -95,12 +81,13 @@ function ConfirmToastItem({ confirm }: { confirm: ConfirmToast }) {
         ${getConfirmStyles()}
         ${isVisible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-4 opacity-0 scale-95'}
       `}
+      style={{ borderLeftWidth: '4px', borderLeftColor: accentColor }}
     >
       <div className="flex items-start space-x-3">
         <span className="text-2xl flex-shrink-0">{getIcon()}</span>
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 mb-2">{confirm.title}</h3>
-          <p className="text-sm text-gray-600 mb-4">{confirm.message}</p>
+          <h3 className="text-lg font-semibold text-content mb-2">{confirm.title}</h3>
+          <p className="text-sm text-muted mb-4">{confirm.message}</p>
           <div className="flex space-x-3">
             <button
               onClick={handleConfirm}

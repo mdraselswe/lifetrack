@@ -1,7 +1,13 @@
 'use client'
 
-import { useEffect, useState, type ReactNode, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type ReactNode, type FormEvent } from 'react'
 import { CloseIcon } from './Icons'
+
+// Module-level stack of open modal ids so only the topmost modal reacts to Escape.
+const modalStack: string[] = []
+
+const FOCUSABLE_SELECTOR =
+  'a[href],button:not([disabled]),textarea:not([disabled]),input:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])'
 
 interface ModalProps {
   isOpen: boolean
@@ -15,6 +21,9 @@ interface ModalProps {
 
 export default function Modal({ isOpen, onClose, title, children, className = '', footerActions, zIndex = 9999 }: ModalProps) {
   const [isVisible, setIsVisible] = useState(false)
+  const modalId = useId()
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const previouslyFocused = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     if (isOpen) {
@@ -26,20 +35,76 @@ export default function Modal({ isOpen, onClose, title, children, className = ''
   }, [isOpen])
 
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
+    if (!isOpen) return
+
+    // Remember what had focus so we can restore it on close.
+    previouslyFocused.current = document.activeElement as HTMLElement | null
+    modalStack.push(modalId)
+    document.body.style.overflow = 'hidden'
+    document.body.classList.add('modal-open')
+
+    // Only the currently-visible panel (mobile OR desktop) is display:visible,
+    // so filter to focusable elements that are actually rendered.
+    const getFocusable = () => {
+      const root = dialogRef.current
+      if (!root) return [] as HTMLElement[]
+      return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter(
+        (el) => el.offsetParent !== null || el === document.activeElement
+      )
     }
-    if (isOpen) {
-      document.addEventListener('keydown', handleEscape)
-      document.body.style.overflow = 'hidden'
-      document.body.classList.add('modal-open')
+
+    // Move focus into the dialog once it has painted.
+    const focusTimer = setTimeout(() => {
+      const focusable = getFocusable()
+      ;(focusable[0] ?? dialogRef.current)?.focus()
+    }, 60)
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only the topmost open modal responds to keys.
+      if (modalStack[modalStack.length - 1] !== modalId) return
+
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+        return
+      }
+
+      if (e.key === 'Tab') {
+        const focusable = getFocusable()
+        if (focusable.length === 0) {
+          e.preventDefault()
+          dialogRef.current?.focus()
+          return
+        }
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+        const active = document.activeElement
+        if (e.shiftKey && (active === first || active === dialogRef.current)) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && active === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
     }
+
+    document.addEventListener('keydown', handleKeyDown)
+
     return () => {
-      document.removeEventListener('keydown', handleEscape)
-      document.body.style.overflow = 'unset'
-      document.body.classList.remove('modal-open')
+      clearTimeout(focusTimer)
+      document.removeEventListener('keydown', handleKeyDown)
+      const idx = modalStack.indexOf(modalId)
+      if (idx !== -1) modalStack.splice(idx, 1)
+      // Only release the body scroll lock once every modal has closed.
+      if (modalStack.length === 0) {
+        document.body.style.overflow = 'unset'
+        document.body.classList.remove('modal-open')
+      }
+      // Restore focus to the element that opened the modal.
+      previouslyFocused.current?.focus?.()
     }
-  }, [isOpen, onClose])
+  }, [isOpen, onClose, modalId])
 
   if (!isOpen) return null
 
@@ -62,7 +127,15 @@ export default function Modal({ isOpen, onClose, title, children, className = ''
   )
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" style={{ zIndex }}>
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+      tabIndex={-1}
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm focus:outline-none"
+      style={{ zIndex }}
+    >
       {/* Mobile: bottom sheet / full height */}
       <div className="sm:hidden fixed inset-0" style={{ zIndex }}>
         <div

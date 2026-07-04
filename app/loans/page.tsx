@@ -17,6 +17,10 @@ import { ArrowDownLeftIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon
 
 const bn = (n: number) => n.toLocaleString('bn-BD')
 const bnDate = (v: string) => toBnDigits(format(new Date(v), 'MMMM d, yyyy', { locale: bnLocale }))
+// datetime-local expects a LOCAL wall-clock string; toISOString() is UTC and
+// would shift the prefilled value by the timezone offset.
+const localDatetimeValue = (d = new Date()) =>
+  new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 
 export default function LoansPage() {
   const [loans, setLoans] = useState<Loan[]>([])
@@ -55,9 +59,9 @@ export default function LoansPage() {
   useEffect(() => {
     setMounted(true)
     // Set default date after mount
-    setDate(new Date().toISOString().slice(0, 16))
-    setPaymentDate(new Date().toISOString().slice(0, 16))
-    setIncreaseDate(new Date().toISOString().slice(0, 16))
+    setDate(localDatetimeValue())
+    setPaymentDate(localDatetimeValue())
+    setIncreaseDate(localDatetimeValue())
   }, [])
 
   // Realtime sync across all devices
@@ -95,10 +99,16 @@ export default function LoansPage() {
       return
     }
 
+    const parsedAmount = parseFloat(amount)
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      toast.error('সঠিক পরিমাণ দিন')
+      return
+    }
+
     const loan: Loan = {
       id: '', // Will be set by Firebase
       personName,
-      amount: parseFloat(amount),
+      amount: parsedAmount,
       reason,
       date,
       returned: false,
@@ -111,7 +121,7 @@ export default function LoansPage() {
       setPersonName('')
       setAmount('')
       setReason('')
-      setDate(new Date().toISOString().slice(0, 16))
+      setDate(localDatetimeValue())
       setShowForm(false)
       toast.success('ধার সফলভাবে যোগ করা হয়েছে')
     }).catch((error) => {
@@ -139,18 +149,22 @@ export default function LoansPage() {
             // Add remaining payment to make it fully paid
             const remainingAmount = round2(totalAmount - totalPaid)
             const remainingPayment: Payment = {
-              id: Date.now().toString(),
+              id: crypto.randomUUID(),
               amount: remainingAmount,
-              date: new Date().toISOString().slice(0, 16),
+              date: localDatetimeValue(),
               note: 'সম্পূর্ণ পরিশোধ',
               createdAt: new Date().toISOString(),
             }
             addLoanPayment(loan.id, remainingPayment)
           }
         }
-        updateLoan(loan.id, { returned: newStatus })
-        loadLoans().catch(console.error)
-        toast.success(`ধার ${actionText} হিসেবে চিহ্নিত করা হয়েছে`)
+        updateLoan(loan.id, { returned: newStatus }).then(() => {
+          loadLoans().catch(console.error)
+          toast.success(`ধার ${actionText} হিসেবে চিহ্নিত করা হয়েছে`)
+        }).catch((error) => {
+          console.error('Error updating loan status:', error)
+          toast.error('ধারের অবস্থা পরিবর্তন করতে সমস্যা হয়েছে')
+        })
       },
       {
         confirmText: confirmText,
@@ -168,9 +182,13 @@ export default function LoansPage() {
       'ধার মুছুন',
       `${loan.personName} এর ${loan.amount} টাকার ধার মুছে ফেলবেন?`,
       () => {
-        deleteLoan(id)
-        loadLoans().catch(console.error)
-        toast.success('ধার সফলভাবে মুছে ফেলা হয়েছে')
+        deleteLoan(id).then(() => {
+          loadLoans().catch(console.error)
+          toast.success('ধার সফলভাবে মুছে ফেলা হয়েছে')
+        }).catch((error) => {
+          console.error('Error deleting loan:', error)
+          toast.error('ধার মুছতে সমস্যা হয়েছে')
+        })
       }
     )
   }
@@ -198,21 +216,25 @@ export default function LoansPage() {
     }
 
     const payment: Payment = {
-      id: Date.now().toString(),
+      id: crypto.randomUUID(),
       amount,
       date: paymentDate,
       note: paymentNote || undefined,
       createdAt: new Date().toISOString(),
     }
 
-    addLoanPayment(loanId, payment)
-    setPaymentAmount('')
-    setPaymentDate(new Date().toISOString().slice(0, 16))
-    setPaymentNote('')
-    setShowPaymentForm(null)
-    setShowPaymentModal(null)
-    loadLoans().catch(console.error)
-    toast.success('পেমেন্ট সফলভাবে যোগ করা হয়েছে')
+    addLoanPayment(loanId, payment).then(() => {
+      setPaymentAmount('')
+      setPaymentDate(localDatetimeValue())
+      setPaymentNote('')
+      setShowPaymentForm(null)
+      setShowPaymentModal(null)
+      loadLoans().catch(console.error)
+      toast.success('পেমেন্ট সফলভাবে যোগ করা হয়েছে')
+    }).catch((error) => {
+      console.error('Error adding payment:', error)
+      toast.error('পেমেন্ট যোগ করতে সমস্যা হয়েছে')
+    })
   }
 
   const handleIncreaseLoanAmount = (loanId: string) => {
@@ -264,28 +286,28 @@ export default function LoansPage() {
     setShowPaymentModal(loanId)
     // Default to full remaining → one tap = full return; edit down for partial
     setPaymentAmount(loan ? String(calculateRemaining(loan)) : '')
-    setPaymentDate(new Date().toISOString().slice(0, 16))
+    setPaymentDate(localDatetimeValue())
     setPaymentNote('')
   }
 
   const handleClosePaymentModal = () => {
     setShowPaymentModal(null)
     setPaymentAmount('')
-    setPaymentDate(new Date().toISOString().slice(0, 16))
+    setPaymentDate(localDatetimeValue())
     setPaymentNote('')
   }
 
   const handleOpenIncreaseModal = (loanId: string) => {
     setShowIncreaseModal(loanId)
     setIncreaseAmount('')
-    setIncreaseDate(new Date().toISOString().slice(0, 16))
+    setIncreaseDate(localDatetimeValue())
     setIncreaseReason('')
   }
 
   const handleCloseIncreaseModal = () => {
     setShowIncreaseModal(null)
     setIncreaseAmount('')
-    setIncreaseDate(new Date().toISOString().slice(0, 16))
+    setIncreaseDate(localDatetimeValue())
     setIncreaseReason('')
   }
 
@@ -298,9 +320,13 @@ export default function LoansPage() {
       'পেমেন্ট মুছুন',
       `${payment.amount} টাকার পেমেন্ট মুছে ফেলবেন?`,
       () => {
-        deleteLoanPayment(loanId, paymentId)
-        loadLoans().catch(console.error)
-        toast.success('পেমেন্ট সফলভাবে মুছে ফেলা হয়েছে')
+        deleteLoanPayment(loanId, paymentId).then(() => {
+          loadLoans().catch(console.error)
+          toast.success('পেমেন্ট সফলভাবে মুছে ফেলা হয়েছে')
+        }).catch((error) => {
+          console.error('Error deleting payment:', error)
+          toast.error('পেমেন্ট মুছতে সমস্যা হয়েছে')
+        })
       }
     )
   }
@@ -320,9 +346,13 @@ export default function LoansPage() {
       () => {
         // Don't update loan.amount - it should always remain the initial amount
         // Just delete the increase record
-        deleteLoanIncrease(loanId, increaseId)
-        loadLoans().catch(console.error)
-        toast.success('পরিমাণ বৃদ্ধি সফলভাবে মুছে ফেলা হয়েছে')
+        deleteLoanIncrease(loanId, increaseId).then(() => {
+          loadLoans().catch(console.error)
+          toast.success('পরিমাণ বৃদ্ধি সফলভাবে মুছে ফেলা হয়েছে')
+        }).catch((error) => {
+          console.error('Error deleting increase:', error)
+          toast.error('পরিমাণ বৃদ্ধি মুছতে সমস্যা হয়েছে')
+        })
       }
     )
   }
@@ -351,18 +381,11 @@ export default function LoansPage() {
     return loan.amount
   }
 
-  // Helper function to get initial reason (only the first part, before any increments)
+  // Return the reason unmodified. (Legacy versions split on ' + ' to strip
+  // appended increase reasons, but that truncated reasons legitimately
+  // containing ' + '. Reasons are no longer concatenated, so return as-is.)
   const getInitialReason = (loan: Loan): string => {
-    if (!loan.reason) return ''
-    
-    // If there are no increases, return the full reason
-    if (!loan.increases || loan.increases.length === 0) {
-      return loan.reason
-    }
-    
-    // Split by ' + ' and take only the first part (initial reason)
-    const parts = loan.reason.split(' + ')
-    return parts[0] || ''
+    return loan.reason || ''
   }
 
 
@@ -400,24 +423,28 @@ export default function LoansPage() {
       'ধার আপডেট করুন',
       `${editPersonName} এর ধারের তথ্য আপডেট করবেন?`,
       () => {
-        // Check if new amount is greater than total paid, then set returned to false
-        const shouldBeReturned = newAmount <= totalPaid
-        
+        // Returned only when total paid covers the full total (base + increases)
+        const increasesTotal = editingLoan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0
+        const shouldBeReturned = round2(totalPaid) >= round2(newAmount + increasesTotal)
+
         updateLoan(editingLoan.id, {
           personName: editPersonName,
           amount: newAmount,
           reason: editReason,
           date: editDate,
           returned: shouldBeReturned,
+        }).then(() => {
+          setEditingLoan(null)
+          setEditPersonName('')
+          setEditAmount('')
+          setEditReason('')
+          setEditDate('')
+          loadLoans().catch(console.error)
+          toast.success('ধার সফলভাবে আপডেট করা হয়েছে')
+        }).catch((error) => {
+          console.error('Error updating loan:', error)
+          toast.error('ধার আপডেট করতে সমস্যা হয়েছে')
         })
-
-        setEditingLoan(null)
-        setEditPersonName('')
-        setEditAmount('')
-        setEditReason('')
-        setEditDate('')
-        loadLoans().catch(console.error)
-        toast.success('ধার সফলভাবে আপডেট করা হয়েছে')
       }
     )
   }
@@ -462,9 +489,11 @@ export default function LoansPage() {
     if (!loan) return
 
     // Calculate remaining amount excluding the current payment being edited
+    // (total base = initial amount + all increases, mirroring calculateRemaining)
     const otherPayments = loan.payments?.filter(p => p.id !== editingPayment.payment.id) || []
     const otherPaymentsTotal = otherPayments.reduce((sum, p) => sum + p.amount, 0)
-    const remaining = round2(loan.amount - otherPaymentsTotal)
+    const increasesTotal = loan.increases?.reduce((sum, i) => sum + i.amount, 0) || 0
+    const remaining = round2(loan.amount + increasesTotal - otherPaymentsTotal)
     
     if (amount > remaining) {
       toast.error(`বাকি পরিমাণ: ৳${remaining}. তার চেয়ে বেশি পরিশোধ করা যাবে না।`)
@@ -482,16 +511,20 @@ export default function LoansPage() {
       'পেমেন্ট আপডেট করুন',
       `${amount} টাকার পেমেন্ট আপডেট করবেন?`,
       () => {
-        // Delete old payment and add updated payment
-        deleteLoanPayment(editingPayment.loanId, editingPayment.payment.id)
-        addLoanPayment(editingPayment.loanId, updatedPayment)
-
-        setEditingPayment(null)
-        setEditPaymentAmount('')
-        setEditPaymentDate('')
-        setEditPaymentNote('')
-        loadLoans().catch(console.error)
-        toast.success('পেমেন্ট সফলভাবে আপডেট করা হয়েছে')
+        // Delete old payment then add updated payment (chained to avoid a race)
+        deleteLoanPayment(editingPayment.loanId, editingPayment.payment.id).then(() => {
+          return addLoanPayment(editingPayment.loanId, updatedPayment)
+        }).then(() => {
+          setEditingPayment(null)
+          setEditPaymentAmount('')
+          setEditPaymentDate('')
+          setEditPaymentNote('')
+          loadLoans().catch(console.error)
+          toast.success('পেমেন্ট সফলভাবে আপডেট করা হয়েছে')
+        }).catch((error) => {
+          console.error('Error updating payment:', error)
+          toast.error('পেমেন্ট আপডেট করতে সমস্যা হয়েছে')
+        })
       }
     )
   }

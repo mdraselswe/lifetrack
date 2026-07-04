@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getFirestore } from 'firebase/firestore'
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
 import { getAuth } from 'firebase/auth'
 
 // Firebase configuration
@@ -17,7 +17,10 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig)
 
 // Initialize Firebase services
-export const db = getFirestore(app)
+// Enable persistent multi-tab local cache so reads/writes work offline and sync on reconnect
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+})
 export const auth = getAuth(app)
 
 export default app

@@ -1,3 +1,16 @@
+// setTimeout stores its delay in a signed 32-bit int; delays above this value
+// overflow and fire immediately. Clamp to the cap and re-schedule the remainder
+// so far-future notifications don't fire instantly.
+const MAX_TIMEOUT = 2147483647 // ~24.8 days
+
+const scheduleTimeout = (callback: () => void, delay: number): void => {
+  if (delay > MAX_TIMEOUT) {
+    setTimeout(() => scheduleTimeout(callback, delay - MAX_TIMEOUT), MAX_TIMEOUT)
+  } else {
+    setTimeout(callback, delay)
+  }
+}
+
 export const requestNotificationPermission = async (): Promise<boolean> => {
   if (!('Notification' in window)) {
     alert('এই ব্রাউজার নোটিফিকেশন সাপোর্ট করে না')
@@ -92,33 +105,37 @@ export const scheduleNotification = async (
       })
     }
 
-    // Also schedule in current context as fallback (important!)
-    console.log('Scheduling fallback notification with setTimeout')
-    setTimeout(() => {
-      try {
-        if ('Notification' in window && Notification.permission === 'granted') {
-          const notification = new Notification(title, {
-            body,
-            icon: '/icon-192x192.png',
-            badge: '/icon-192x192.png',
-            tag: id,
-            requireInteraction: true, // Keep notification until user interacts
-          })
-          
-          // Add click handler to focus window
-          notification.onclick = () => {
-            window.focus()
-            notification.close()
+    // Also schedule in current context as fallback — but ONLY when there is no
+    // active Service Worker controller. Otherwise the SW and this page would
+    // both fire the same notification (duplicate).
+    if (!navigator.serviceWorker?.controller) {
+      console.log('Scheduling fallback notification with setTimeout')
+      scheduleTimeout(() => {
+        try {
+          if ('Notification' in window && Notification.permission === 'granted') {
+            const notification = new Notification(title, {
+              body,
+              icon: '/icon-192x192.png',
+              badge: '/icon-192x192.png',
+              tag: id,
+              requireInteraction: true, // Keep notification until user interacts
+            })
+
+            // Add click handler to focus window
+            notification.onclick = () => {
+              window.focus()
+              notification.close()
+            }
+
+            console.log('Fallback notification shown:', notification)
+          } else {
+            console.warn('Cannot show notification: permission not granted')
           }
-          
-          console.log('Fallback notification shown:', notification)
-        } else {
-          console.warn('Cannot show notification: permission not granted')
+        } catch (error) {
+          console.error('Error showing fallback notification:', error)
         }
-      } catch (error) {
-        console.error('Error showing fallback notification:', error)
-      }
-    }, delay)
+      }, delay)
+    }
 
     console.log('Notification scheduled successfully')
     return true
@@ -127,7 +144,7 @@ export const scheduleNotification = async (
     
     // Last resort: use setTimeout directly
     try {
-      setTimeout(() => {
+      scheduleTimeout(() => {
         if ('Notification' in window && Notification.permission === 'granted') {
           new Notification(title, {
             body,

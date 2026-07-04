@@ -74,8 +74,10 @@ export const getDebts = async (userId: string): Promise<Debt[]> => {
       ...doc.data()
     })) as Debt[]
   } catch (error) {
+    // Rethrow so the storage layer can surface permission/network failures
+    // instead of masking them as "no data" and blanking the UI.
     console.error('Error getting debts:', error)
-    return []
+    throw error
   }
 }
 
@@ -130,8 +132,10 @@ export const getLoans = async (userId: string): Promise<Loan[]> => {
       ...doc.data()
     })) as Loan[]
   } catch (error) {
+    // Rethrow so the storage layer can surface permission/network failures
+    // instead of masking them as "no data" and blanking the UI.
     console.error('Error getting loans:', error)
-    return []
+    throw error
   }
 }
 
@@ -186,8 +190,10 @@ export const getReminders = async (userId: string): Promise<Reminder[]> => {
       ...doc.data()
     })) as Reminder[]
   } catch (error) {
+    // Rethrow so the storage layer can surface permission/network failures
+    // instead of masking them as "no data" and blanking the UI.
     console.error('Error getting reminders:', error)
-    return []
+    throw error
   }
 }
 
@@ -242,8 +248,9 @@ export const subscribeToDebts = (userId: string, callback: (debts: Debt[]) => vo
     })) as Debt[]
     callback(debts)
   }, (error) => {
+    // Log only. Do NOT callback([]) — a transient error would otherwise wipe
+    // the last-known-good data from the UI. Leave existing state in place.
     console.error('Debts subscription error:', error)
-    callback([])
   })
 }
 
@@ -258,8 +265,9 @@ export const subscribeToLoans = (userId: string, callback: (loans: Loan[]) => vo
     })) as Loan[]
     callback(loans)
   }, (error) => {
+    // Log only. Do NOT callback([]) — a transient error would otherwise wipe
+    // the last-known-good data from the UI. Leave existing state in place.
     console.error('Loans subscription error:', error)
-    callback([])
   })
 }
 
@@ -274,7 +282,8 @@ export const subscribeToReminders = (userId: string, callback: (reminders: Remin
     })) as Reminder[]
     callback(reminders)
   }, (error) => {
+    // Log only. Do NOT callback([]) — a transient error would otherwise wipe
+    // the last-known-good data from the UI. Leave existing state in place.
     console.error('Reminders subscription error:', error)
-    callback([])
   })
 }

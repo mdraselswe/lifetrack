@@ -132,20 +132,20 @@ export default function PWARegistration() {
 
   return (
     <div className="fixed bottom-20 left-4 right-4 sm:left-auto sm:right-4 sm:w-96 z-50">
-      <div className="bg-white rounded-xl shadow-2xl border-2 border-blue-500 p-4 animate-slide-up">
+      <div className="surface rounded-2xl shadow-pop p-4 animate-slide-up" style={{ borderLeftWidth: '4px', borderLeftColor: 'var(--accent)' }}>
         <div className="flex items-start gap-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center flex-shrink-0">
+          <div className="w-12 h-12 bg-accent rounded-xl flex items-center justify-center flex-shrink-0">
             <span className="text-2xl">📱</span>
           </div>
           <div className="flex-1">
-            <h3 className="font-bold text-gray-900 mb-1">LifeTrack Install করুন</h3>
-            <p className="text-sm text-gray-600 mb-3">
+            <h3 className="font-bold text-content mb-1">LifeTrack Install করুন</h3>
+            <p className="text-sm text-muted mb-3">
               App home screen-এ add করুন দ্রুত access-এর জন্য
             </p>
             <div className="flex gap-2">
               <button
                 onClick={handleInstallClick}
-                className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 text-white px-4 py-2 rounded-lg font-semibold hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 shadow-lg hover:shadow-xl"
+                className="btn btn-primary flex-1"
               >
                 Install করুন
               </button>
@@ -154,14 +154,14 @@ export default function PWARegistration() {
                   setShowInstallPrompt(false)
                   setDeferredPrompt(null)
                 }}
-                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg font-semibold hover:bg-gray-200 transition-all duration-200"
+                className="btn btn-secondary"
               >
                 পরে
               </button>
             </div>
-            <details className="mt-3 text-xs text-gray-500">
+            <details className="mt-3 text-xs text-muted">
               <summary className="cursor-pointer">Manual install instructions</summary>
-              <div className="mt-2 space-y-1 text-gray-600">
+              <div className="mt-2 space-y-1 text-muted">
                 <p><strong>Desktop:</strong> Address bar-এ install icon</p>
                 <p><strong>Mobile Chrome:</strong> Menu → "Add to Home Screen"</p>
                 <p><strong>Mobile Safari:</strong> Share → "Add to Home Screen"</p>

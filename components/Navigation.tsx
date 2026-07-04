@@ -34,6 +34,7 @@ export default function Navigation() {
             <Link
               key={href}
               href={href}
+              aria-current={isActive ? 'page' : undefined}
               className={`relative flex flex-col items-center justify-center flex-1 gap-1 transition-colors duration-200 ${
                 isActive ? 'text-accent' : 'text-muted'
               }`}

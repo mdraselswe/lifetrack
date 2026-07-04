@@ -15,8 +15,8 @@ export default function Dashboard() {
   const [totalLent, setTotalLent] = useState(0)
   const [totalBorrowed, setTotalBorrowed] = useState(0)
   const [reminderCount, setReminderCount] = useState(0)
-  const [debtDetails, setDebtDetails] = useState<Array<{name: string, amount: number}>>([])
-  const [loanDetails, setLoanDetails] = useState<Array<{name: string, amount: number}>>([])
+  const [debtDetails, setDebtDetails] = useState<Array<{id: string, name: string, amount: number}>>([])
+  const [loanDetails, setLoanDetails] = useState<Array<{id: string, name: string, amount: number}>>([])
   const [mounted, setMounted] = useState(false)
   const [dataLoading, setDataLoading] = useState(true)
   const { user, loading } = useAuth()
@@ -33,15 +33,16 @@ export default function Dashboard() {
     validateData()
     loadData().catch(console.error)
 
-    // Reload data when page becomes visible (after returning from other pages)
+    // Reload data when page becomes visible (after returning from other pages).
+    // Refresh in the background so stale data stays visible (no skeleton flash).
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        loadData().catch(console.error)
+        loadData(true).catch(console.error)
       }
     }
 
     const handleFocus = () => {
-      loadData().catch(console.error)
+      loadData(true).catch(console.error)
     }
 
     document.addEventListener('visibilitychange', handleVisibilityChange)
@@ -53,15 +54,18 @@ export default function Dashboard() {
     }
   }, [user, loading, router])
 
-  const loadData = async () => {
+  const loadData = async (background = false) => {
     try {
-      setDataLoading(true)
-      const debts: Debt[] = await getDebts()
-      const loans: Loan[] = await getLoans()
-      const reminders: Reminder[] = await getReminders()
+      // Only show the skeleton on first load; background refreshes keep stale data.
+      if (!background) setDataLoading(true)
+      const [debts, loans, reminders]: [Debt[], Loan[], Reminder[]] = await Promise.all([
+        getDebts(),
+        getLoans(),
+        getReminders(),
+      ])
 
       // Calculate total amounts and collect details (only for non-returned items)
-      const debtDetailsList: Array<{name: string, amount: number}> = []
+      const debtDetailsList: Array<{id: string, name: string, amount: number}> = []
       const lent = debts.reduce((sum, debt) => {
         // Skip if already marked as returned
         if (debt.returned) return sum
@@ -83,6 +87,7 @@ export default function Dashboard() {
         
         if (remainingAmount > 0) {
           debtDetailsList.push({
+            id: debt.id,
             name: debt.personName || 'অজানা',
             amount: remainingAmount
           })
@@ -91,7 +96,7 @@ export default function Dashboard() {
         return sum + remainingAmount
       }, 0)
 
-      const loanDetailsList: Array<{name: string, amount: number}> = []
+      const loanDetailsList: Array<{id: string, name: string, amount: number}> = []
       const borrowed = loans.reduce((sum, loan) => {
         // Skip if already marked as returned
         if (loan.returned) return sum
@@ -113,6 +118,7 @@ export default function Dashboard() {
         
         if (remainingAmount > 0) {
           loanDetailsList.push({
+            id: loan.id,
             name: loan.personName || 'অজানা',
             amount: remainingAmount
           })
@@ -188,8 +194,8 @@ export default function Dashboard() {
           <div className="card bar-pos">
             <p className="text-sm font-semibold text-positive mb-3">যারা আপনাকে দেবে</p>
             <div className="space-y-2">
-              {debtDetails.map((d, i) => (
-                <div key={i} className="flex items-center justify-between py-1.5">
+              {debtDetails.map((d) => (
+                <div key={d.id} className="flex items-center justify-between py-1.5">
                   <span className="text-sm text-content">{d.name}</span>
                   <span className="text-sm font-semibold text-positive">৳{round2(d.amount).toLocaleString('bn-BD')}</span>
                 </div>
@@ -203,8 +209,8 @@ export default function Dashboard() {
           <div className="card bar-neg">
             <p className="text-sm font-semibold text-negative mb-3">যাদের আপনি দেবেন</p>
             <div className="space-y-2">
-              {loanDetails.map((l, i) => (
-                <div key={i} className="flex items-center justify-between py-1.5">
+              {loanDetails.map((l) => (
+                <div key={l.id} className="flex items-center justify-between py-1.5">
                   <span className="text-sm text-content">{l.name}</span>
                   <span className="text-sm font-semibold text-negative">৳{round2(l.amount).toLocaleString('bn-BD')}</span>
                 </div>

@@ -17,9 +17,14 @@ import {
   subscribeToReminders
 } from './firebase-db'
 import { auth } from './firebase'
+import { round2 } from './format'
 
 // Re-export realtime listeners so pages can subscribe for cross-device sync
 export { subscribeToDebts, subscribeToLoans, subscribeToReminders } from './firebase-db'
+
+// Sum the `amount` field across a list of payments/increases (null-safe).
+const sumAmounts = (items?: { amount: number }[]): number =>
+  (items || []).reduce((sum, i) => sum + i.amount, 0)
 
 // Helper to check if we're in browser
 const isBrowser = typeof window !== 'undefined'
@@ -301,11 +306,12 @@ export const addDebtPayment = async (debtId: string, payment: Payment): Promise<
     
     // Add payment to existing payments array
     const updatedPayments = [...(debt.payments || []), paymentWithNumberAmount]
-    
-    // Auto-mark as returned if fully paid
-    const totalPaid = updatedPayments.reduce((sum, p) => sum + p.amount, 0)
-    const shouldBeReturned = totalPaid >= debt.amount
-    
+
+    // Auto-mark as returned if fully paid (total = initial amount + all increases)
+    const total = debt.amount + sumAmounts(debt.increases)
+    const totalPaid = sumAmounts(updatedPayments)
+    const shouldBeReturned = round2(totalPaid) >= round2(total)
+
     // Update the debt with new payment
     await updateDebt(debtId, {
       payments: updatedPayments,
@@ -334,11 +340,12 @@ export const deleteDebtPayment = async (debtId: string, paymentId: string): Prom
     
     // Remove payment from payments array
     const updatedPayments = (debt.payments || []).filter(p => p.id !== paymentId)
-    
-    // Update returned status based on remaining payments
-    const totalPaid = updatedPayments.reduce((sum, p) => sum + p.amount, 0)
-    const shouldBeReturned = totalPaid >= debt.amount
-    
+
+    // Update returned status based on remaining payments (total = initial amount + all increases)
+    const total = debt.amount + sumAmounts(debt.increases)
+    const totalPaid = sumAmounts(updatedPayments)
+    const shouldBeReturned = round2(totalPaid) >= round2(total)
+
     // Update the debt with removed payment
     await updateDebt(debtId, {
       payments: updatedPayments,
@@ -374,11 +381,12 @@ export const addLoanPayment = async (loanId: string, payment: Payment): Promise<
     
     // Add payment to existing payments array
     const updatedPayments = [...(loan.payments || []), paymentWithNumberAmount]
-    
-    // Auto-mark as returned if fully paid
-    const totalPaid = updatedPayments.reduce((sum, p) => sum + p.amount, 0)
-    const shouldBeReturned = totalPaid >= loan.amount
-    
+
+    // Auto-mark as returned if fully paid (total = initial amount + all increases)
+    const total = loan.amount + sumAmounts(loan.increases)
+    const totalPaid = sumAmounts(updatedPayments)
+    const shouldBeReturned = round2(totalPaid) >= round2(total)
+
     // Update the loan with new payment
     await updateLoan(loanId, {
       payments: updatedPayments,
@@ -392,50 +400,110 @@ export const addLoanPayment = async (loanId: string, payment: Payment): Promise<
 
 export const deleteLoanPayment = async (loanId: string, paymentId: string): Promise<void> => {
   if (!isBrowser) return
-  const loans = await getLoans()
-  const index = loans.findIndex(l => l.id === loanId)
-  if (index !== -1 && loans[index].payments) {
-    loans[index].payments = loans[index].payments!.filter(p => p.id !== paymentId)
-    
-    // Update returned status based on remaining payments
-    const totalPaid = loans[index].payments!.reduce((sum, p) => sum + p.amount, 0)
-    loans[index].returned = totalPaid >= loans[index].amount
-    
+  const userId = await resolveUserId()
+
+  if (!userId) {
+    throw new Error('User must be logged in to delete payment')
+  }
+
+  try {
+    const loans = await getLoans()
+    const loan = loans.find(l => l.id === loanId)
+    if (!loan) {
+      throw new Error('Loan not found')
+    }
+
+    // Remove payment from payments array
+    const updatedPayments = (loan.payments || []).filter(p => p.id !== paymentId)
+
+    // Update returned status based on remaining payments (total = initial amount + all increases)
+    const total = loan.amount + sumAmounts(loan.increases)
+    const totalPaid = sumAmounts(updatedPayments)
+    const shouldBeReturned = round2(totalPaid) >= round2(total)
+
     // Update the loan with removed payment
-    await updateLoan(loanId, loans[index])
+    await updateLoan(loanId, {
+      payments: updatedPayments,
+      returned: shouldBeReturned
+    })
+  } catch (error) {
+    console.error('Error deleting payment:', error)
+    throw error
   }
 }
 
 // Amount increase management for Loans
 export const addLoanIncrease = async (loanId: string, increase: AmountIncrease): Promise<void> => {
   if (!isBrowser) return
-  const loans = await getLoans()
-  const index = loans.findIndex(l => l.id === loanId)
-  if (index !== -1) {
-    if (!loans[index].increases) {
-      loans[index].increases = []
+  const userId = await resolveUserId()
+
+  if (!userId) {
+    throw new Error('User must be logged in to add increase')
+  }
+
+  try {
+    const loans = await getLoans()
+    const loan = loans.find(l => l.id === loanId)
+    if (!loan) {
+      throw new Error('Loan not found')
     }
+
     // Ensure increase amount is a number
     const increaseWithNumberAmount = {
       ...increase,
       amount: typeof increase.amount === 'string' ? parseFloat(increase.amount) : increase.amount
     }
-    loans[index].increases!.push(increaseWithNumberAmount)
-    
+
+    // Add increase to existing increases array
+    const updatedIncreases = [...(loan.increases || []), increaseWithNumberAmount]
+
+    // Recompute returned status (total = initial amount + all increases)
+    const total = loan.amount + sumAmounts(updatedIncreases)
+    const totalPaid = sumAmounts(loan.payments)
+    const shouldBeReturned = round2(totalPaid) >= round2(total)
+
     // Update the loan with new increase
-    await updateLoan(loanId, loans[index])
+    await updateLoan(loanId, {
+      increases: updatedIncreases,
+      returned: shouldBeReturned
+    })
+  } catch (error) {
+    console.error('Error adding increase:', error)
+    throw error
   }
 }
 
 export const deleteLoanIncrease = async (loanId: string, increaseId: string): Promise<void> => {
   if (!isBrowser) return
-  const loans = await getLoans()
-  const index = loans.findIndex(l => l.id === loanId)
-  if (index !== -1 && loans[index].increases) {
-    loans[index].increases = loans[index].increases!.filter(i => i.id !== increaseId)
-    
+  const userId = await resolveUserId()
+
+  if (!userId) {
+    throw new Error('User must be logged in to delete increase')
+  }
+
+  try {
+    const loans = await getLoans()
+    const loan = loans.find(l => l.id === loanId)
+    if (!loan) {
+      throw new Error('Loan not found')
+    }
+
+    // Remove increase from increases array
+    const updatedIncreases = (loan.increases || []).filter(i => i.id !== increaseId)
+
+    // Recompute returned status (total = initial amount + all increases)
+    const total = loan.amount + sumAmounts(updatedIncreases)
+    const totalPaid = sumAmounts(loan.payments)
+    const shouldBeReturned = round2(totalPaid) >= round2(total)
+
     // Update the loan with removed increase
-    await updateLoan(loanId, loans[index])
+    await updateLoan(loanId, {
+      increases: updatedIncreases,
+      returned: shouldBeReturned
+    })
+  } catch (error) {
+    console.error('Error deleting increase:', error)
+    throw error
   }
 }
 
@@ -463,10 +531,16 @@ export const addDebtIncrease = async (debtId: string, increase: AmountIncrease):
     
     // Add increase to existing increases array
     const updatedIncreases = [...(debt.increases || []), increaseWithNumberAmount]
-    
+
+    // Recompute returned status (total = initial amount + all increases)
+    const total = debt.amount + sumAmounts(updatedIncreases)
+    const totalPaid = sumAmounts(debt.payments)
+    const shouldBeReturned = round2(totalPaid) >= round2(total)
+
     // Update the debt with new increase
     await updateDebt(debtId, {
-      increases: updatedIncreases
+      increases: updatedIncreases,
+      returned: shouldBeReturned
     })
   } catch (error) {
     console.error('Error adding increase:', error)
@@ -491,10 +565,16 @@ export const deleteDebtIncrease = async (debtId: string, increaseId: string): Pr
     
     // Remove increase from increases array
     const updatedIncreases = (debt.increases || []).filter(i => i.id !== increaseId)
-    
+
+    // Recompute returned status (total = initial amount + all increases)
+    const total = debt.amount + sumAmounts(updatedIncreases)
+    const totalPaid = sumAmounts(debt.payments)
+    const shouldBeReturned = round2(totalPaid) >= round2(total)
+
     // Update the debt with removed increase
     await updateDebt(debtId, {
-      increases: updatedIncreases
+      increases: updatedIncreases,
+      returned: shouldBeReturned
     })
   } catch (error) {
     console.error('Error deleting increase:', error)

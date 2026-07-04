@@ -39,21 +39,17 @@ function ToastItem({ toast }: { toast: Toast }) {
     }, 300)
   }
 
-  const getToastStyles = () => {
-    const baseStyles = "p-4 rounded-lg shadow-lg border-l-4 transition-all duration-300 ease-in-out transform"
-    
-    switch (toast.type) {
-      case 'success':
-        return `${baseStyles} bg-green-50 border-green-500 text-green-800`
-      case 'error':
-        return `${baseStyles} bg-red-50 border-red-500 text-red-800`
-      case 'warning':
-        return `${baseStyles} bg-yellow-50 border-yellow-500 text-yellow-800`
-      case 'info':
-      default:
-        return `${baseStyles} bg-blue-50 border-blue-500 text-blue-800`
-    }
-  }
+  // Token-based, light/dark aware styling (matches cards + semantic tints).
+  const typeConfig = {
+    success: { tint: 'tint-pos', text: 'text-positive', accent: 'var(--positive)' },
+    error: { tint: 'tint-neg', text: 'text-negative', accent: 'var(--negative)' },
+    warning: { tint: 'tint-warn', text: 'text-caution', accent: 'var(--caution)' },
+    info: { tint: 'tint-accent', text: 'text-accent', accent: 'var(--accent)' },
+  } as const
+  const cfg = typeConfig[toast.type as keyof typeof typeConfig] ?? typeConfig.info
+
+  const getToastStyles = () =>
+    `p-4 rounded-xl shadow-pop transition-all duration-300 ease-in-out transform ${cfg.tint} ${cfg.text}`
 
   const getIcon = () => {
     switch (toast.type) {
@@ -77,6 +73,8 @@ function ToastItem({ toast }: { toast: Toast }) {
         ${isLeaving ? 'translate-x-full opacity-0' : ''}
       `}
       style={{
+        borderLeftWidth: '4px',
+        borderLeftColor: cfg.accent,
         animation: isVisible && !isLeaving ? 'slideInRight 0.3s ease-out' : undefined
       }}
     >
@@ -89,8 +87,8 @@ function ToastItem({ toast }: { toast: Toast }) {
         </div>
         <button
           onClick={handleRemove}
-          className="ml-4 flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
-          aria-label="Close notification"
+          className="ml-4 flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+          aria-label="বন্ধ করুন"
         >
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

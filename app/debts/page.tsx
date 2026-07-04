@@ -17,6 +17,10 @@ import { ArrowUpRightIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon,
 
 const bn = (n: number) => n.toLocaleString('bn-BD')
 const bnDate = (v: string) => toBnDigits(format(new Date(v), 'MMMM d, yyyy', { locale: bnLocale }))
+// datetime-local expects a LOCAL wall-clock string; toISOString() is UTC and
+// would shift the prefilled value by the timezone offset.
+const localDatetimeValue = (d = new Date()) =>
+  new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 
 export default function DebtsPage() {
   const [debts, setDebts] = useState<Debt[]>([])
@@ -55,9 +59,9 @@ export default function DebtsPage() {
   useEffect(() => {
     setMounted(true)
     // Set default date after mount
-    setDate(new Date().toISOString().slice(0, 16))
-    setPaymentDate(new Date().toISOString().slice(0, 16))
-    setIncreaseDate(new Date().toISOString().slice(0, 16))
+    setDate(localDatetimeValue())
+    setPaymentDate(localDatetimeValue())
+    setIncreaseDate(localDatetimeValue())
   }, [])
 
   // Realtime sync across all devices
@@ -95,10 +99,16 @@ export default function DebtsPage() {
       return
     }
 
+    const parsedAmount = parseFloat(amount)
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+      toast.error('সঠিক পরিমাণ দিন')
+      return
+    }
+
     const debt: Debt = {
       id: '', // Will be set by Firebase
       personName,
-      amount: parseFloat(amount),
+      amount: parsedAmount,
       reason,
       date,
       returned: false,
@@ -111,7 +121,7 @@ export default function DebtsPage() {
       setPersonName('')
       setAmount('')
       setReason('')
-      setDate(new Date().toISOString().slice(0, 16))
+      setDate(localDatetimeValue())
       setShowForm(false)
       loadDebts().catch(console.error)
       toast.success('ধার সফলভাবে যোগ করা হয়েছে')
@@ -142,7 +152,7 @@ export default function DebtsPage() {
             const remainingPayment: Payment = {
               id: crypto.randomUUID(),
               amount: remainingAmount,
-              date: new Date().toISOString().slice(0, 16),
+              date: localDatetimeValue(),
               note: 'সম্পূর্ণ পরিশোধ',
               createdAt: new Date().toISOString(),
             }
@@ -185,12 +195,13 @@ export default function DebtsPage() {
   }
 
   const handleAddPayment = (debtId: string) => {
-    if (!paymentAmount || parseFloat(paymentAmount) <= 0) {
+    const parsedAmount = parseFloat(paymentAmount)
+    if (!paymentAmount || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       toast.error('সঠিক পরিমাণ দিন')
       return
     }
 
-    const amount = Number(parseFloat(paymentAmount).toFixed(2))
+    const amount = Number(parsedAmount.toFixed(2))
     const debt = debts.find(d => d.id === debtId)
     if (!debt) return
 
@@ -211,7 +222,7 @@ export default function DebtsPage() {
 
     addDebtPayment(debtId, payment).then(() => {
       setPaymentAmount('')
-      setPaymentDate(new Date().toISOString().slice(0, 16))
+      setPaymentDate(localDatetimeValue())
       setPaymentNote('')
       setShowPaymentForm(null)
       setShowPaymentModal(null)
@@ -228,14 +239,14 @@ export default function DebtsPage() {
     setShowPaymentModal(debtId)
     // Default to the full remaining amount → one tap = full return; edit down for partial
     setPaymentAmount(debt ? String(calculateRemaining(debt)) : '')
-    setPaymentDate(new Date().toISOString().slice(0, 16))
+    setPaymentDate(localDatetimeValue())
     setPaymentNote('')
   }
 
   const handleClosePaymentModal = () => {
     setShowPaymentModal(null)
     setPaymentAmount('')
-    setPaymentDate(new Date().toISOString().slice(0, 16))
+    setPaymentDate(localDatetimeValue())
     setPaymentNote('')
   }
 
@@ -306,14 +317,14 @@ export default function DebtsPage() {
   const handleOpenIncreaseModal = (debtId: string) => {
     setShowIncreaseModal(debtId)
     setIncreaseAmount('')
-    setIncreaseDate(new Date().toISOString().slice(0, 16))
+    setIncreaseDate(localDatetimeValue())
     setIncreaseReason('')
   }
 
   const handleCloseIncreaseModal = () => {
     setShowIncreaseModal(null)
     setIncreaseAmount('')
-    setIncreaseDate(new Date().toISOString().slice(0, 16))
+    setIncreaseDate(localDatetimeValue())
     setIncreaseReason('')
   }
 
@@ -366,18 +377,11 @@ export default function DebtsPage() {
     return debt.amount
   }
 
-  // Helper function to get initial reason (only the first part, before any increments)
+  // Return the reason unmodified. (Legacy versions split on ' + ' to strip
+  // appended increase reasons, but that truncated reasons legitimately
+  // containing ' + '. Reasons are no longer concatenated, so return as-is.)
   const getInitialReason = (debt: Debt): string => {
-    if (!debt.reason) return ''
-    
-    // If there are no increases, return the full reason
-    if (!debt.increases || debt.increases.length === 0) {
-      return debt.reason
-    }
-    
-    // Split by ' + ' and take only the first part (initial reason)
-    const parts = debt.reason.split(' + ')
-    return parts[0] || ''
+    return debt.reason || ''
   }
 
 
@@ -414,9 +418,10 @@ export default function DebtsPage() {
       'ধার আপডেট করুন',
       `${editPersonName} এর ধারের তথ্য আপডেট করবেন?`,
       () => {
-        // Check if new amount is greater than total paid, then set returned to false
-        const shouldBeReturned = newAmount <= totalPaid
-        
+        // Returned only when total paid covers the full total (base + increases)
+        const increasesTotal = editingDebt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0
+        const shouldBeReturned = round2(totalPaid) >= round2(newAmount + increasesTotal)
+
         updateDebt(editingDebt.id, {
           personName: editPersonName,
           amount: newAmount,
@@ -479,9 +484,11 @@ export default function DebtsPage() {
     if (!debt) return
 
     // Calculate remaining amount excluding the current payment being edited
+    // (total base = initial amount + all increases, mirroring calculateRemaining)
     const otherPayments = debt.payments?.filter(p => p.id !== editingPayment.payment.id) || []
     const otherPaymentsTotal = otherPayments.reduce((sum, p) => sum + p.amount, 0)
-    const remaining = round2(debt.amount - otherPaymentsTotal)
+    const increasesTotal = debt.increases?.reduce((sum, i) => sum + i.amount, 0) || 0
+    const remaining = round2(debt.amount + increasesTotal - otherPaymentsTotal)
     
     if (amount > remaining) {
       toast.error(`বাকি পরিমাণ: ৳${remaining}. তার চেয়ে বেশি পরিশোধ করা যাবে না।`)

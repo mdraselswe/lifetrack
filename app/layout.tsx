@@ -30,8 +30,7 @@ export const metadata: Metadata = {
   
   // PWA metadata
   manifest: '/manifest.json',
-  themeColor: '#0ea5e9',
-  
+
   // Apple specific metadata
   appleWebApp: {
     capable: true,
@@ -81,9 +80,10 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
-  themeColor: '#0ea5e9',
+  // Allow pinch-zoom for accessibility (WCAG 1.4.4)
+  maximumScale: 5,
+  // theme-color is set per light/dark scheme via <meta> tags in <head>,
+  // kept in sync with the --bg surface tokens in globals.css.
 }
 
 // Next.js 16 optimized layout with Suspense

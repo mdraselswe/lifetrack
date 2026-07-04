@@ -3,13 +3,59 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Each user can only read/write their own data under users/{uid}/...
-    // Requires a VERIFIED email, so fake addresses can never store data.
-    // This never expires (unlike test-mode rules) and blocks cross-user access.
+    // Ownership + verified-email gate reused by every rule below.
+    // Requires a VERIFIED email, so fake addresses can never store data,
+    // and blocks cross-user access. This never expires (unlike test-mode).
+    function isOwner(userId) {
+      return request.auth != null
+             && request.auth.uid == userId
+             && request.auth.token.email_verified == true;
+    }
+
+    // Reject clearly-invalid money docs while staying permissive for normal
+    // app writes. Only validates the top-level `amount` (must be a non-negative
+    // number) and caps overall doc size + a couple of free-text string fields.
+    // Payments/increases are nested arrays on the doc — intentionally NOT
+    // constrained here so legitimate app writes are never rejected.
+    function isValidMoneyDoc() {
+      let data = request.resource.data;
+      return data.amount is number
+             && data.amount >= 0
+             // ~1MB is the Firestore hard limit; keep well under it.
+             && data.size() < 50
+             && (!('name' in data) || (data.name is string && data.name.size() < 500))
+             && (!('reason' in data) || (data.reason is string && data.reason.size() < 500))
+             && (!('description' in data) || (data.description is string && data.description.size() < 500));
+    }
+
+    // Debts (money lent): owner-gated reads/deletes; writes must pass money validation.
+    match /users/{userId}/debts/{debtId} {
+      allow read, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidMoneyDoc();
+    }
+
+    // Loans (money borrowed): same shape as debts.
+    match /users/{userId}/loans/{loanId} {
+      allow read, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidMoneyDoc();
+    }
+
+    // Reminders: no money amount; just owner-gate and cap doc/string size.
+    match /users/{userId}/reminders/{reminderId} {
+      allow read, delete: if isOwner(userId);
+      allow create, update: if isOwner(userId)
+                            && request.resource.data.size() < 50
+                            && (!('title' in request.resource.data)
+                                || (request.resource.data.title is string
+                                    && request.resource.data.title.size() < 500))
+                            && (!('description' in request.resource.data)
+                                || (request.resource.data.description is string
+                                    && request.resource.data.description.size() < 500));
+    }
+
+    // Any other doc under the user (future collections) stays owner-gated.
     match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null
-                         && request.auth.uid == userId
-                         && request.auth.token.email_verified == true;
+      allow read, write: if isOwner(userId);
     }
 
     // Everything else is denied by default.
