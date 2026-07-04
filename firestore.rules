@@ -4,11 +4,12 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // Each user can only read/write their own data under users/{uid}/...
-    // This never expires (unlike test-mode rules) and blocks all
-    // cross-user access.
+    // Requires a VERIFIED email, so fake addresses can never store data.
+    // This never expires (unlike test-mode rules) and blocks cross-user access.
     match /users/{userId}/{document=**} {
       allow read, write: if request.auth != null
-                         && request.auth.uid == userId;
+                         && request.auth.uid == userId
+                         && request.auth.token.email_verified == true;
     }
 
     // Everything else is denied by default.

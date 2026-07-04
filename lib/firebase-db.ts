@@ -234,38 +234,47 @@ export const deleteReminder = async (userId: string, reminderId: string): Promis
 export const subscribeToDebts = (userId: string, callback: (debts: Debt[]) => void) => {
   const debtsRef = getUserCollection(userId, 'debts')
   const q = query(debtsRef, orderBy('createdAt', 'desc'))
-  
+
   return onSnapshot(q, (querySnapshot) => {
     const debts = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as Debt[]
     callback(debts)
+  }, (error) => {
+    console.error('Debts subscription error:', error)
+    callback([])
   })
 }
 
 export const subscribeToLoans = (userId: string, callback: (loans: Loan[]) => void) => {
   const loansRef = getUserCollection(userId, 'loans')
   const q = query(loansRef, orderBy('createdAt', 'desc'))
-  
+
   return onSnapshot(q, (querySnapshot) => {
     const loans = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as Loan[]
     callback(loans)
+  }, (error) => {
+    console.error('Loans subscription error:', error)
+    callback([])
   })
 }
 
 export const subscribeToReminders = (userId: string, callback: (reminders: Reminder[]) => void) => {
   const remindersRef = getUserCollection(userId, 'reminders')
   const q = query(remindersRef, orderBy('createdAt', 'desc'))
-  
+
   return onSnapshot(q, (querySnapshot) => {
     const reminders = querySnapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data()
     })) as Reminder[]
     callback(reminders)
+  }, (error) => {
+    console.error('Reminders subscription error:', error)
+    callback([])
   })
 }
