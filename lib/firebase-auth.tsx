@@ -171,6 +171,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         case 'auth/operation-not-allowed':
           errorMessage = 'গুগল লগইন এখনো চালু করা হয়নি'
           break
+        case 'auth/unauthorized-domain':
+          errorMessage = 'এই ডোমেইনটি Firebase-এ অনুমোদিত নয়। Authorized domains-এ যোগ করুন'
+          break
         default:
           errorMessage = 'গুগল দিয়ে লগইন করতে সমস্যা হয়েছে'
       }
