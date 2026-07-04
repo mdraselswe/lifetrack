@@ -24,6 +24,12 @@ export default function Modal({ isOpen, onClose, title, children, className = ''
   const modalId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
   const previouslyFocused = useRef<HTMLElement | null>(null)
+  // Keep the latest onClose in a ref so the focus-trap effect doesn't depend on
+  // it — parents pass an inline onClose (new identity each render), and having it
+  // in the deps re-ran the effect on every keystroke, refocusing the first field
+  // and dismissing the mobile keyboard.
+  const onCloseRef = useRef(onClose)
+  onCloseRef.current = onClose
 
   useEffect(() => {
     if (isOpen) {
@@ -65,7 +71,7 @@ export default function Modal({ isOpen, onClose, title, children, className = ''
 
       if (e.key === 'Escape') {
         e.preventDefault()
-        onClose()
+        onCloseRef.current()
         return
       }
 
@@ -104,7 +110,7 @@ export default function Modal({ isOpen, onClose, title, children, className = ''
       // Restore focus to the element that opened the modal.
       previouslyFocused.current?.focus?.()
     }
-  }, [isOpen, onClose, modalId])
+  }, [isOpen, modalId])
 
   if (!isOpen) return null
 
