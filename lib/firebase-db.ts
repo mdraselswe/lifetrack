@@ -13,6 +13,7 @@ import {
   serverTimestamp 
 } from 'firebase/firestore'
 import { db } from './firebase'
+import { scheduleBackup } from './backup-trigger'
 import type { Debt, Loan, Reminder } from './types'
 
 // Helper function to get user-specific collection path
@@ -89,6 +90,7 @@ export const saveDebt = async (userId: string, debt: Omit<Debt, 'id'>): Promise<
       createdAt: serverTimestamp()
     })
     const docRef = await addDoc(debtsRef, filteredDebt)
+    scheduleBackup()
     return docRef.id
   } catch (error) {
     console.error('Error saving debt:', error)
@@ -104,6 +106,7 @@ export const updateDebt = async (userId: string, debtId: string, updates: Partia
       updatedAt: serverTimestamp()
     })
     await updateDoc(debtRef, filteredUpdates)
+    scheduleBackup()
   } catch (error) {
     console.error('Error updating debt:', error)
     throw error
@@ -114,6 +117,7 @@ export const deleteDebt = async (userId: string, debtId: string): Promise<void> 
   try {
     const debtRef = getUserDoc(userId, 'debts', debtId)
     await deleteDoc(debtRef)
+    scheduleBackup()
   } catch (error) {
     console.error('Error deleting debt:', error)
     throw error
@@ -147,6 +151,7 @@ export const saveLoan = async (userId: string, loan: Omit<Loan, 'id'>): Promise<
       createdAt: serverTimestamp()
     })
     const docRef = await addDoc(loansRef, filteredLoan)
+    scheduleBackup()
     return docRef.id
   } catch (error) {
     console.error('Error saving loan:', error)
@@ -162,6 +167,7 @@ export const updateLoan = async (userId: string, loanId: string, updates: Partia
       updatedAt: serverTimestamp()
     })
     await updateDoc(loanRef, filteredUpdates)
+    scheduleBackup()
   } catch (error) {
     console.error('Error updating loan:', error)
     throw error
@@ -172,6 +178,7 @@ export const deleteLoan = async (userId: string, loanId: string): Promise<void> 
   try {
     const loanRef = getUserDoc(userId, 'loans', loanId)
     await deleteDoc(loanRef)
+    scheduleBackup()
   } catch (error) {
     console.error('Error deleting loan:', error)
     throw error
@@ -205,6 +212,7 @@ export const saveReminder = async (userId: string, reminder: Omit<Reminder, 'id'
       createdAt: serverTimestamp()
     })
     const docRef = await addDoc(remindersRef, filteredReminder)
+    scheduleBackup()
     return docRef.id
   } catch (error) {
     console.error('Error saving reminder:', error)
@@ -220,6 +228,7 @@ export const updateReminder = async (userId: string, reminderId: string, updates
       updatedAt: serverTimestamp()
     })
     await updateDoc(reminderRef, filteredUpdates)
+    scheduleBackup()
   } catch (error) {
     console.error('Error updating reminder:', error)
     throw error
@@ -230,6 +239,7 @@ export const deleteReminder = async (userId: string, reminderId: string): Promis
   try {
     const reminderRef = getUserDoc(userId, 'reminders', reminderId)
     await deleteDoc(reminderRef)
+    scheduleBackup()
   } catch (error) {
     console.error('Error deleting reminder:', error)
     throw error

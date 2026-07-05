@@ -24,6 +24,26 @@ const cell = (v: unknown): string | number | boolean => {
   return String(v)
 }
 
+// Verify a Firebase ID token via Google's REST endpoint (no firebase-admin/auth,
+// which breaks on Vercel serverless). Confirms the caller is a logged-in user.
+async function isValidFirebaseUser(idToken: string): Promise<boolean> {
+  const key = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+  if (!key) return false
+  try {
+    const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    })
+    if (!res.ok) return false
+    const data = (await res.json()) as { users?: unknown[] }
+    return Array.isArray(data.users) && data.users.length > 0
+  } catch {
+    return false
+  }
+}
+
+// Cron path: Vercel sends `Authorization: Bearer <CRON_SECRET>`.
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const secret = process.env.CRON_SECRET
@@ -42,6 +62,20 @@ export async function GET(request: Request) {
     })
   }
 
+  return runBackup()
+}
+
+// Realtime path: the app posts the signed-in user's Firebase ID token after a
+// data change, so the Sheet mirror updates within seconds.
+export async function POST(request: Request) {
+  const token = request.headers.get('x-firebase-token')
+  if (!token || !(await isValidFirebaseUser(token))) {
+    return NextResponse.json({ ok: false, error: 'Unauthorized' }, { status: 401 })
+  }
+  return runBackup()
+}
+
+async function runBackup() {
   // Track progress so a stall reports WHERE it stalled (prod strips console.*).
   let step = 'start'
   const run = async () => {
