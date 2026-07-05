@@ -36,6 +36,14 @@ function getAdminApp() {
   return cachedApp
 }
 
+let cachedDb: Firestore | null = null
+
 export function getAdminDb(): Firestore {
-  return getFirestore(getAdminApp())
+  if (cachedDb) return cachedDb
+  const db = getFirestore(getAdminApp())
+  // Force REST transport. The default gRPC transport hangs on Vercel/serverless
+  // (HTTP/2 keep-alive never settles), causing the function to time out.
+  db.settings({ preferRest: true })
+  cachedDb = db
+  return cachedDb
 }
