@@ -1,6 +1,8 @@
 import { getApps, initializeApp, cert, type ServiceAccount } from 'firebase-admin/app'
 import { getFirestore, type Firestore } from 'firebase-admin/firestore'
-import { getAuth, type Auth } from 'firebase-admin/auth'
+// NOTE: we deliberately do NOT import 'firebase-admin/auth'. On Vercel's
+// serverless runtime its jwks-rsa→jose dependency hits ERR_REQUIRE_ESM
+// (require() of an ES module). Firestore-only backup avoids that chain.
 
 // Lazy Admin SDK init. Nothing runs at import time — the service account is only
 // read/parsed on first call, so the app builds & prerenders fine without the env
@@ -36,8 +38,4 @@ function getAdminApp() {
 
 export function getAdminDb(): Firestore {
   return getFirestore(getAdminApp())
-}
-
-export function getAdminAuth(): Auth {
-  return getAuth(getAdminApp())
 }

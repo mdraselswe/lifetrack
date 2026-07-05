@@ -10,6 +10,9 @@ const nextConfig = {
   
   // Next.js 16 features
   cacheComponents: true,
+
+  // Keep heavy Node-only SDKs out of the bundle; load from node_modules at runtime.
+  serverExternalPackages: ['firebase-admin', 'googleapis'],
   
   // Turbopack configuration
   turbopack: {

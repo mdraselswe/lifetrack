@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { google } from 'googleapis'
-import { getAdminDb, getAdminAuth, getServiceAccountCredentials } from '@/lib/firebase-admin'
+import { getAdminDb, getServiceAccountCredentials } from '@/lib/firebase-admin'
 import type { DocumentReference } from 'firebase-admin/firestore'
 import type { Debt, Loan, Reminder, Payment, AmountIncrease } from '@/lib/types'
 
@@ -9,21 +9,6 @@ export const maxDuration = 60
 
 const sumAmounts = (items?: { amount: number }[]) =>
   (items || []).reduce((s, p) => s + (typeof p.amount === 'number' ? p.amount : 0), 0)
-
-async function resolveEmails(uids: string[]): Promise<Map<string, string>> {
-  const map = new Map<string, string>()
-  const auth = getAdminAuth()
-  for (let i = 0; i < uids.length; i += 100) {
-    const batch = uids.slice(i, i + 100).map((uid) => ({ uid }))
-    try {
-      const res = await auth.getUsers(batch)
-      res.users.forEach((u) => map.set(u.uid, u.email || ''))
-    } catch (e) {
-      console.error('getUsers batch failed', e)
-    }
-  }
-  return map
-}
 
 export async function GET(request: Request) {
   // Vercel Cron sends `Authorization: Bearer <CRON_SECRET>` when CRON_SECRET is set.
@@ -55,7 +40,9 @@ export async function GET(request: Request) {
     const uids = Array.from(
       new Set([...debtDocs, ...loanDocs, ...reminderDocs].map((x) => x.uid).filter(Boolean))
     )
-    const emails = await resolveEmails(uids)
+    // Email left blank: resolving it needs firebase-admin/auth, which fails on
+    // Vercel serverless (ERR_REQUIRE_ESM). uid uniquely identifies each user.
+    const emails = new Map<string, string>()
 
     // Build rows.
     const moneyRow = (uid: string, m: Debt | Loan) => {
