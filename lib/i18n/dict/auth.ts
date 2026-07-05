@@ -27,8 +27,8 @@ export const auth: Dict = {
   },
   'auth.sendResetLink': { bn: 'রিসেট লিংক পাঠান', en: 'Send reset link' },
   'auth.resetSent': {
-    bn: 'পাসওয়ার্ড রিসেট লিংক আপনার ইমেইলে পাঠানো হয়েছে',
-    en: 'A password reset link has been sent to your email',
+    bn: 'পাসওয়ার্ড রিসেট লিংক আপনার ইমেইলে পাঠানো হয়েছে। না পেলে Spam/Junk ফোল্ডার দেখুন',
+    en: 'A password reset link has been sent to your email. If you do not see it, check your Spam/Junk folder',
   },
   'auth.error.reset': { bn: 'পাসওয়ার্ড রিসেট করতে সমস্যা হয়েছে', en: 'Failed to reset password' },
 
@@ -46,8 +46,8 @@ export const auth: Dict = {
   'auth.register.haveAccount': { bn: 'ইতিমধ্যে অ্যাকাউন্ট আছে?', en: 'Already have an account?' },
   'auth.register.loginLink': { bn: 'লগইন করুন', en: 'Log in' },
   'auth.register.success': {
-    bn: 'রেজিস্ট্রেশন সফল! আপনার ইমেইলে পাঠানো ভেরিফিকেশন লিংকে ক্লিক করে অ্যাকাউন্ট যাচাই করুন, তারপর লগইন করুন।',
-    en: 'Registration successful! Click the verification link sent to your email to verify your account, then log in.',
+    bn: 'রেজিস্ট্রেশন সফল! আপনার ইমেইলে পাঠানো ভেরিফিকেশন লিংকে ক্লিক করে অ্যাকাউন্ট যাচাই করুন, তারপর লগইন করুন। ইমেইল না পেলে Spam/Junk ফোল্ডার দেখুন।',
+    en: 'Registration successful! Click the verification link sent to your email to verify your account, then log in. If you do not see it, check your Spam/Junk folder.',
   },
   'auth.register.fallbackError': {
     bn: 'এই ইমেইল দিয়ে ইতিমধ্যে রেজিস্ট্রেশন হয়েছে',
@@ -70,8 +70,8 @@ export const auth: Dict = {
     en: 'Network problem. Check your internet connection',
   },
   'auth.error.emailNotVerified': {
-    bn: 'আপনার ইমেইল এখনো যাচাই করা হয়নি। ইনবক্সে পাঠানো ভেরিফিকেশন লিংকে ক্লিক করে তারপর লগইন করুন।',
-    en: 'Your email has not been verified yet. Click the verification link sent to your inbox, then log in.',
+    bn: 'আপনার ইমেইল এখনো যাচাই করা হয়নি। ইনবক্সে পাঠানো ভেরিফিকেশন লিংকে ক্লিক করে তারপর লগইন করুন। না পেলে Spam/Junk ফোল্ডার দেখুন।',
+    en: 'Your email has not been verified yet. Click the verification link sent to your inbox, then log in. If it is missing, check your Spam/Junk folder.',
   },
   'auth.error.register': { bn: 'রেজিস্ট্রেশন করতে সমস্যা হয়েছে', en: 'Failed to register' },
   'auth.error.emailInUse': { bn: 'এই ইমেইল ইতিমধ্যে ব্যবহার করা হয়েছে', en: 'This email is already in use' },
