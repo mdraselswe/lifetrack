@@ -144,6 +144,24 @@
     border-color: var(--accent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
   }
+
+  /* iOS Safari: date/time inputs have an intrinsic min-content width that
+     ignores the container and overflows the screen (horizontal scroll).
+     Kill the native appearance and force them to respect the box. */
+  input[type='date'],
+  input[type='time'],
+  input[type='datetime-local'] {
+    -webkit-appearance: none;
+    appearance: none;
+    min-width: 0;
+    max-width: 100%;
+    /* appearance:none collapses the height on iOS — keep the tap target */
+    min-height: 3rem;
+  }
+  /* iOS centers the picked value by default — align with other inputs */
+  input::-webkit-date-and-time-value {
+    text-align: left;
+  }
   .input-sm { @apply px-3 py-2 text-sm; }
   .input-error { border-color: var(--negative); }
   .input-success { border-color: var(--positive); }
