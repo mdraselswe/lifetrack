@@ -794,7 +794,7 @@ export default function DebtsPage() {
     <div className="min-h-full">
       <AppBar title={t('debts.title')} subtitle={t('debts.subtitle')} />
 
-      <div className={`max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in ${selectedCount > 0 && viewMode === 'list' ? 'pb-28' : ''}`}>
+      <div className={`max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in ${selectedCount > 0 && viewMode === 'list' ? 'pb-44' : ''}`}>
         {/* Summary */}
         <div className="grid grid-cols-2 gap-3">
           <div className="stat-tile tint-pos">

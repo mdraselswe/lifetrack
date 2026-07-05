@@ -786,7 +786,7 @@ export default function LoansPage() {
     <div className="min-h-full">
       <AppBar title={t('loans.title')} subtitle={t('loans.subtitle')} />
 
-      <div className={`max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in ${selectionActive ? 'pb-28' : ''}`}>
+      <div className={`max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in ${selectionActive ? 'pb-44' : ''}`}>
         {/* Summary */}
         <div className="grid grid-cols-2 gap-3">
           <div className="stat-tile tint-neg">

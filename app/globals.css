@@ -323,7 +323,9 @@
   }
 
   /* Clears the fixed bottom nav (h-16 = 4rem) plus the home-indicator safe area. */
-  .pb-nav { padding-bottom: calc(4rem + env(safe-area-inset-bottom) + 0.5rem); }
+  /* Clears the fixed bottom nav (4rem) AND the floating FAB that sits above it,
+     so the last item is never hidden behind either. */
+  .pb-nav { padding-bottom: calc(8rem + env(safe-area-inset-bottom)); }
 
   .full-vh { min-height: 100vh; min-height: 100dvh; }
   .app-container { min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
