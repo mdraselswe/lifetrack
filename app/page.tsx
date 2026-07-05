@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState, useRef, type ComponentType } from 'react'
-import { subscribeToDebts, subscribeToLoans, subscribeToReminders } from '@/lib/storage'
-import type { Debt, Loan, Reminder } from '@/lib/types'
+import { subscribeToDebts, subscribeToLoans, subscribeToReminders, saveDebt, saveLoan, saveReminder, addDebtPayment, addLoanPayment } from '@/lib/storage'
+import type { Debt, Loan, Reminder, Payment } from '@/lib/types'
 import Link from 'next/link'
 import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
@@ -10,10 +10,16 @@ import { DashboardSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
 import { round2, toMillis } from '@/lib/format'
 import { t, useLang, fmtNum, fmtInt, fmtRelative } from '@/lib/i18n'
+import Modal, { ActionButton } from '@/components/Modal'
+import { toast } from '@/lib/toast'
 import {
   ClockIcon, ArrowUpRightIcon, ArrowDownLeftIcon, WalletIcon,
-  RotateIcon, PlusCircleIcon, ChartIcon,
+  RotateIcon, PlusCircleIcon, ChartIcon, PlusIcon, CloseIcon, CheckIcon,
 } from '@/components/Icons'
+
+// datetime-local expects a LOCAL wall-clock string; toISOString() is UTC.
+const localDatetimeValue = (d = new Date()) =>
+  new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 
 const bn = (n: number) => fmtNum(round2(n))
 const bnInt = (n: number) => fmtNum(Math.round(n))
@@ -99,6 +105,22 @@ export default function Dashboard() {
   const [pull, setPull] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const startY = useRef<number | null>(null)
+  // Home tabs + quick-add (FAB) + quick-payment state
+  const [homeTab, setHomeTab] = useState<'debts' | 'loans'>('debts')
+  const [fabOpen, setFabOpen] = useState(false)
+  const [addType, setAddType] = useState<'debt' | 'loan' | 'reminder' | null>(null)
+  const [fName, setFName] = useState('')
+  const [fAmount, setFAmount] = useState('')
+  const [fReason, setFReason] = useState('')
+  const [fDate, setFDate] = useState('')
+  const [fDueDate, setFDueDate] = useState('')
+  const [rTitle, setRTitle] = useState('')
+  const [rDesc, setRDesc] = useState('')
+  const [rTime, setRTime] = useState('')
+  const [payFor, setPayFor] = useState<{ kind: 'debt' | 'loan'; id: string } | null>(null)
+  const [payAmount, setPayAmount] = useState('')
+  const [payDate, setPayDate] = useState('')
+  const [payNote, setPayNote] = useState('')
   const { user, loading } = useAuth()
   const router = useRouter()
   useLang() // re-render on language switch
@@ -146,6 +168,105 @@ export default function Dashboard() {
       setRefreshing(false)
     }
     setPull(0)
+  }
+
+  // ---- Quick add / quick payment (home) ----
+  const numChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const v = e.target.value
+    if (/^\d*\.?\d*$/.test(v)) setter(v)
+  }
+
+  const openAdd = (type: 'debt' | 'loan' | 'reminder') => {
+    setFabOpen(false)
+    setFName(''); setFAmount(''); setFReason(''); setFDueDate('')
+    setFDate(localDatetimeValue())
+    setRTitle(''); setRDesc(''); setRTime(localDatetimeValue())
+    setAddType(type)
+  }
+
+  const handleQuickAdd = () => {
+    if (addType === 'reminder') {
+      if (!rTitle || !rTime) { toast.error(t('reminders.titleTimeRequired')); return }
+      const reminder: Reminder = {
+        id: crypto.randomUUID(),
+        title: rTitle,
+        description: rDesc,
+        scheduledTime: rTime,
+        dismissed: false,
+        createdAt: new Date().toISOString(),
+        completionCount: 0,
+        occurrences: [],
+      }
+      saveReminder(reminder).then(() => {
+        setAddType(null)
+        toast.success(t('reminders.created'))
+      }).catch((e) => { console.error(e); toast.error(t('reminders.saveError')) })
+      return
+    }
+    const isDebt = addType === 'debt'
+    const k = isDebt ? 'debts' : 'loans'
+    if (!fName || !fAmount) { toast.error(t(`${k}.errNameAmount`)); return }
+    const parsedAmount = parseFloat(fAmount)
+    if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) { toast.error(t(`${k}.errValidAmount`)); return }
+    const item = {
+      id: '',
+      personName: fName,
+      amount: parsedAmount,
+      reason: fReason,
+      date: fDate,
+      ...(fDueDate && { dueDate: fDueDate }),
+      returned: false,
+      createdAt: new Date().toISOString(),
+      payments: [],
+      increases: [],
+    }
+    const save = isDebt ? saveDebt(item as Debt) : saveLoan(item as Loan)
+    save.then(() => {
+      if (fDueDate) {
+        // Same pattern as the debts/loans pages: a due date spawns a reminder.
+        saveReminder({
+          id: crypto.randomUUID(),
+          title: t(`${k}.dueReminderTitle`, { name: fName }),
+          description: t(`${k}.dueReminderDesc`, { name: fName, amount: bn(parsedAmount) }),
+          scheduledTime: fDueDate,
+          dismissed: false,
+          createdAt: new Date().toISOString(),
+        }).then(() => toast.info(t(`${k}.dueReminderCreated`))).catch(console.error)
+      }
+      setAddType(null)
+      toast.success(t(`${k}.addSuccess`))
+    }).catch((e) => { console.error(e); toast.error(t(`${k}.addError`)) })
+  }
+
+  const openPay = (kind: 'debt' | 'loan', id: string, remaining: number) => {
+    setPayFor({ kind, id })
+    setPayAmount(String(remaining))
+    setPayDate(localDatetimeValue())
+    setPayNote('')
+  }
+
+  const handleQuickPay = () => {
+    if (!payFor) return
+    const k = payFor.kind === 'debt' ? 'debts' : 'loans'
+    const source = payFor.kind === 'debt' ? debts : loans
+    const item = source.find((x) => x.id === payFor.id)
+    if (!item) return
+    const amount = Number(parseFloat(payAmount).toFixed(2))
+    if (!Number.isFinite(amount) || amount <= 0) { toast.error(t(`${k}.errValidAmount`)); return }
+    const remaining = remainingOf(item)
+    if (amount > remaining) { toast.error(t(`${k}.errOverpay`, { remaining: bn(remaining) })); return }
+    const payment: Payment = {
+      id: crypto.randomUUID(),
+      amount,
+      date: payDate,
+      note: payNote || undefined,
+      createdAt: new Date().toISOString(),
+    }
+    const add = payFor.kind === 'debt' ? addDebtPayment(payFor.id, payment) : addLoanPayment(payFor.id, payment)
+    add.then(() => {
+      setPayFor(null)
+      toast.success(t(`${k}.paymentAddSuccess`))
+    }).catch((e) => { console.error(e); toast.error(t(`${k}.paymentAddError`)) })
   }
 
   // ---- Derived values ----
@@ -424,44 +545,50 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Receivables list */}
-          {topDebts.length > 0 && (
-            <div className="card bar-pos">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold text-positive">{t('dashboard.receivables')}</p>
-                {topDebts.length > LIST_CAP && (
-                  <Link href="/debts" className="text-xs font-medium text-accent">{t('common.viewAll')}</Link>
-                )}
+          {/* দিয়েছি / নিয়েছি tabs — view balances and take returns right here */}
+          {!isEmpty && (
+            <div className={`card ${homeTab === 'debts' ? 'bar-pos' : 'bar-neg'}`}>
+              <div className="flex items-center gap-1 rounded-xl bg-surface-2 p-1 mb-3">
+                <button
+                  className={`flex-1 px-3 py-1.5 text-sm rounded-lg transition-colors ${homeTab === 'debts' ? 'bg-surface text-content font-medium shadow-sm' : 'text-muted'}`}
+                  onClick={() => setHomeTab('debts')}
+                >
+                  {t('nav.given')} · {fmtInt(topDebts.length)}
+                </button>
+                <button
+                  className={`flex-1 px-3 py-1.5 text-sm rounded-lg transition-colors ${homeTab === 'loans' ? 'bg-surface text-content font-medium shadow-sm' : 'text-muted'}`}
+                  onClick={() => setHomeTab('loans')}
+                >
+                  {t('nav.taken')} · {fmtInt(topLoans.length)}
+                </button>
               </div>
-              <div className="divide-y divide-line">
-                {topDebts.slice(0, LIST_CAP).map((d) => (
-                  <div key={d.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                    <Avatar name={d.name} />
-                    <span className="text-sm text-content flex-1 truncate">{d.name}</span>
-                    <span className="text-sm font-semibold text-positive">৳{bn(d.amount)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
 
-          {/* Payables list */}
-          {topLoans.length > 0 && (
-            <div className="card bar-neg">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold text-negative">{t('dashboard.payables')}</p>
-                {topLoans.length > LIST_CAP && (
-                  <Link href="/loans" className="text-xs font-medium text-accent">{t('common.viewAll')}</Link>
-                )}
-              </div>
-              <div className="divide-y divide-line">
-                {topLoans.slice(0, LIST_CAP).map((l) => (
-                  <div key={l.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                    <Avatar name={l.name} />
-                    <span className="text-sm text-content flex-1 truncate">{l.name}</span>
-                    <span className="text-sm font-semibold text-negative">৳{bn(l.amount)}</span>
-                  </div>
-                ))}
+              {(homeTab === 'debts' ? topDebts : topLoans).length === 0 ? (
+                <p className="text-center text-sm text-muted py-6">{t('dashboard.noRecords')}</p>
+              ) : (
+                <div className="divide-y divide-line">
+                  {(homeTab === 'debts' ? topDebts : topLoans).map((x) => (
+                    <div key={x.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                      <Avatar name={x.name} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-content truncate">{x.name}</p>
+                        <p className={`text-sm font-semibold ${homeTab === 'debts' ? 'text-positive' : 'text-negative'}`}>৳{bn(x.amount)}</p>
+                      </div>
+                      <button
+                        className="btn btn-secondary px-3 py-1.5 text-xs flex-shrink-0"
+                        onClick={() => openPay(homeTab === 'debts' ? 'debt' : 'loan', x.id, x.amount)}
+                      >
+                        <CheckIcon className="w-3.5 h-3.5" /> {homeTab === 'debts' ? t('debts.receivedBack') : t('loans.paidBackBtn')}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="pt-3 mt-1 border-t border-line text-center">
+                <Link href={homeTab === 'debts' ? '/debts' : '/loans'} className="text-xs font-medium text-accent">
+                  {t('common.viewAll')}
+                </Link>
               </div>
             </div>
           )}
@@ -507,6 +634,133 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* FAB speed-dial — add debt / loan / reminder without leaving home */}
+      {fabOpen && <div className="fixed inset-0 z-40" onClick={() => setFabOpen(false)} />}
+      <div className="fixed z-50 flex flex-col items-end gap-2" style={{ right: '1.25rem', bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
+        {fabOpen && (
+          <>
+            <button className="btn btn-secondary shadow-pop" onClick={() => openAdd('reminder')}>
+              <ClockIcon className="w-4 h-4 text-accent" /> {t('nav.reminders')}
+            </button>
+            <button className="btn btn-secondary shadow-pop" onClick={() => openAdd('loan')}>
+              <ArrowDownLeftIcon className="w-4 h-4 text-negative" /> {t('dashboard.borrowedBtn')}
+            </button>
+            <button className="btn btn-secondary shadow-pop" onClick={() => openAdd('debt')}>
+              <ArrowUpRightIcon className="w-4 h-4 text-positive" /> {t('dashboard.lentBtn')}
+            </button>
+          </>
+        )}
+        <button
+          className="w-14 h-14 rounded-full bg-accent text-accent-fg flex items-center justify-center shadow-pop transition-transform active:scale-95"
+          onClick={() => setFabOpen((v) => !v)}
+          aria-label={t('common.add')}
+          aria-expanded={fabOpen}
+        >
+          {fabOpen ? <CloseIcon className="w-6 h-6" /> : <PlusIcon className="w-6 h-6" />}
+        </button>
+      </div>
+
+      {/* Quick add: debt / loan */}
+      <Modal
+        isOpen={addType === 'debt' || addType === 'loan'}
+        onClose={() => setAddType(null)}
+        title={addType === 'loan' ? t('loans.addNew') : t('debts.addNew')}
+        footerActions={<>
+          <ActionButton onClick={() => setAddType(null)} variant="secondary">{t('common.cancel')}</ActionButton>
+          <ActionButton onClick={handleQuickAdd} variant="primary">{t('common.save')}</ActionButton>
+        </>}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="label label-required">{addType === 'loan' ? t('loans.personName') : t('debts.personName')}</label>
+            <input type="text" value={fName} onChange={(e) => setFName(e.target.value)} className="input" placeholder={addType === 'loan' ? t('loans.personPlaceholder') : t('debts.personNamePlaceholder')} />
+          </div>
+          <div>
+            <label className="label label-required">{addType === 'loan' ? t('loans.amountLabel') : t('debts.amountLabel')}</label>
+            <input type="text" inputMode="decimal" value={fAmount} onChange={numChange(setFAmount)} className="input" placeholder={t('debts.zeroPlaceholder')} />
+          </div>
+          <div>
+            <label className="label">{addType === 'loan' ? t('loans.initialReasonOptional') : t('debts.initialReasonOptional')}</label>
+            <textarea value={fReason} onChange={(e) => setFReason(e.target.value)} className="input min-h-[80px] resize-none" rows={3} placeholder={addType === 'loan' ? t('loans.reasonPlaceholder') : t('debts.reasonPlaceholder')} />
+          </div>
+          <div>
+            <label className="label label-required">{t('common.date')}</label>
+            <input type="datetime-local" value={fDate} onChange={(e) => setFDate(e.target.value)} className="input" />
+          </div>
+          <div>
+            <label className="label">{addType === 'loan' ? t('loans.dueDateOptional') : t('debts.dueDateOptional')}</label>
+            <input type="datetime-local" value={fDueDate} onChange={(e) => setFDueDate(e.target.value)} className="input" />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Quick add: reminder */}
+      <Modal
+        isOpen={addType === 'reminder'}
+        onClose={() => setAddType(null)}
+        title={t('reminders.addNew')}
+        footerActions={<>
+          <ActionButton onClick={() => setAddType(null)} variant="secondary">{t('common.cancel')}</ActionButton>
+          <ActionButton onClick={handleQuickAdd} variant="primary">{t('common.save')}</ActionButton>
+        </>}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="label label-required">{t('reminders.fieldTitle')}</label>
+            <input type="text" value={rTitle} onChange={(e) => setRTitle(e.target.value)} className="input" placeholder={t('reminders.titlePlaceholder')} />
+          </div>
+          <div>
+            <label className="label">{t('reminders.fieldDescription')}</label>
+            <textarea value={rDesc} onChange={(e) => setRDesc(e.target.value)} className="input min-h-[80px] resize-none" rows={3} placeholder={t('reminders.descriptionPlaceholder')} />
+          </div>
+          <div>
+            <label className="label label-required">{t('reminders.fieldTime')}</label>
+            <input type="datetime-local" value={rTime} onChange={(e) => setRTime(e.target.value)} className="input" />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Quick payment (ফেরত) from the home tabs */}
+      {payFor && (() => {
+        const src = payFor.kind === 'debt' ? debts : loans
+        const item = src.find((x) => x.id === payFor.id)
+        const rem = item ? remainingOf(item) : 0
+        const k = payFor.kind === 'debt' ? 'debts' : 'loans'
+        return (
+          <Modal
+            isOpen={!!payFor}
+            onClose={() => setPayFor(null)}
+            title={payFor.kind === 'debt' ? t('debts.receivedBack') : t('loans.paidBackBtn')}
+            footerActions={<>
+              <ActionButton onClick={() => setPayFor(null)} variant="secondary">{t('common.cancel')}</ActionButton>
+              <ActionButton onClick={handleQuickPay} variant="primary">{t('common.save')}</ActionButton>
+            </>}
+          >
+            <div className="space-y-4">
+              <div className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2.5">
+                <span className="text-sm text-muted">{t(`${k}.remaining`)}</span>
+                <span className={`text-base font-semibold ${payFor.kind === 'debt' ? 'text-positive' : 'text-negative'}`}>৳{bn(rem)}</span>
+              </div>
+              <div>
+                <label className="label label-required">{payFor.kind === 'debt' ? t('debts.howMuchReceived') : t('loans.howMuchReturned')}</label>
+                <input type="text" inputMode="decimal" value={payAmount} onChange={numChange(setPayAmount)} className="input" placeholder={t('debts.zeroPlaceholder')} />
+                <button type="button" className="chip chip-accent mt-2" onClick={() => setPayAmount(String(rem))}>
+                  {t(`${k}.fullReturnChip`, { amount: bn(rem) })}
+                </button>
+              </div>
+              <div>
+                <label className="label label-required">{t('common.date')}</label>
+                <input type="datetime-local" value={payDate} onChange={(e) => setPayDate(e.target.value)} className="input" />
+              </div>
+              <div>
+                <label className="label">{t(`${k}.noteOptional`)}</label>
+                <input type="text" value={payNote} onChange={(e) => setPayNote(e.target.value)} className="input" />
+              </div>
+            </div>
+          </Modal>
+        )
+      })()}
     </div>
   )
 }

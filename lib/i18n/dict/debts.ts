@@ -114,4 +114,5 @@ export const debts: Dict = {
   'debts.increaseUpdateMsg': { bn: '{amount} টাকার পরিমাণ বৃদ্ধি আপডেট করবেন?', en: 'Update the amount increase of {amount} taka?' },
   'debts.increaseUpdateSuccess': { bn: 'পরিমাণ বৃদ্ধি সফলভাবে আপডেট করা হয়েছে', en: 'Amount increase updated successfully' },
   'debts.increaseUpdateError': { bn: 'পরিমাণ বৃদ্ধি আপডেট করতে সমস্যা হয়েছে', en: 'Failed to update amount increase' },
+  'debts.errOverpay': { bn: 'বাকির চেয়ে বেশি দেওয়া যাবে না (বাকি ৳{remaining})', en: 'Cannot exceed the remaining amount (৳{remaining} due)' },
 }
