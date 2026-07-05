@@ -173,29 +173,36 @@ export default function DebtsPage() {
       t('debts.statusTitle'),
       t(newStatus ? 'debts.statusConfirmReceived' : 'debts.statusConfirmNotReceived', { name: debt.personName, amount: totalAmount }),
       () => {
+        const done = () => {
+          loadDebts().catch(console.error)
+          toast.success(t(newStatus ? 'debts.statusMarkedReceived' : 'debts.statusMarkedNotReceived'))
+        }
+        const fail = (error: unknown) => {
+          console.error('Error updating debt status:', error)
+          toast.error(t('debts.statusError'))
+        }
         if (newStatus) {
-          // When marking as returned, ensure payment amount equals total amount
+          // Mark paid: add a payment covering the balance (auto-flagged).
           const totalPaid = getTotalPaid(debt)
           if (totalPaid < totalAmount) {
-            // Add remaining payment to make it fully paid
-            const remainingAmount = round2(totalAmount - totalPaid)
             const remainingPayment: Payment = {
               id: crypto.randomUUID(),
-              amount: remainingAmount,
+              amount: round2(totalAmount - totalPaid),
               date: localDatetimeValue(),
               note: t('debts.fullPaymentNote'),
               createdAt: new Date().toISOString(),
+              auto: true,
             }
-            addDebtPayment(debt.id, remainingPayment)
+            addDebtPayment(debt.id, remainingPayment).then(done).catch(fail)
+          } else {
+            updateDebt(debt.id, { returned: true }).then(done).catch(fail)
           }
+        } else {
+          // Revert to unpaid: drop the auto "full payment" so the balance is due
+          // again (keep any real partial payments the user entered).
+          const kept = (debt.payments || []).filter((p) => !(p.auto === true || p.note === t('debts.fullPaymentNote')))
+          updateDebt(debt.id, { payments: kept, returned: false }).then(done).catch(fail)
         }
-        updateDebt(debt.id, { returned: newStatus }).then(() => {
-          loadDebts().catch(console.error)
-          toast.success(t(newStatus ? 'debts.statusMarkedReceived' : 'debts.statusMarkedNotReceived'))
-        }).catch((error) => {
-          console.error('Error updating debt status:', error)
-          toast.error(t('debts.statusError'))
-        })
       },
       {
         confirmText: confirmText,
@@ -632,6 +639,7 @@ export default function DebtsPage() {
               date: localDatetimeValue(),
               note: t('debts.fullPaymentNote'),
               createdAt: new Date().toISOString(),
+              auto: true,
             })
           }
           return updateDebt(id, { returned: true })

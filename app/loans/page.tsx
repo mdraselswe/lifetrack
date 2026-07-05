@@ -177,29 +177,35 @@ export default function LoansPage() {
       t('loans.toggleTitle'),
       t('loans.toggleMessage', { name: loan.personName, amount: fmtNum(totalAmount), action: actionText }),
       () => {
+        const done = () => {
+          loadLoans().catch(console.error)
+          toast.success(t('loans.toggleSuccess', { action: actionText }))
+        }
+        const fail = (error: unknown) => {
+          console.error('Error updating loan status:', error)
+          toast.error(t('loans.toggleError'))
+        }
         if (newStatus) {
-          // When marking as returned, ensure payment amount equals total amount
           const totalPaid = getTotalPaid(loan)
           if (totalPaid < totalAmount) {
-            // Add remaining payment to make it fully paid
-            const remainingAmount = round2(totalAmount - totalPaid)
             const remainingPayment: Payment = {
               id: crypto.randomUUID(),
-              amount: remainingAmount,
+              amount: round2(totalAmount - totalPaid),
               date: localDatetimeValue(),
               note: t('loans.fullPaymentNote'),
               createdAt: new Date().toISOString(),
+              auto: true,
             }
-            addLoanPayment(loan.id, remainingPayment)
+            addLoanPayment(loan.id, remainingPayment).then(done).catch(fail)
+          } else {
+            updateLoan(loan.id, { returned: true }).then(done).catch(fail)
           }
+        } else {
+          // Revert to unpaid: drop the auto "full payment" so the balance is due
+          // again (keep any real partial payments).
+          const kept = (loan.payments || []).filter((p) => !(p.auto === true || p.note === t('loans.fullPaymentNote')))
+          updateLoan(loan.id, { payments: kept, returned: false }).then(done).catch(fail)
         }
-        updateLoan(loan.id, { returned: newStatus }).then(() => {
-          loadLoans().catch(console.error)
-          toast.success(t('loans.toggleSuccess', { action: actionText }))
-        }).catch((error) => {
-          console.error('Error updating loan status:', error)
-          toast.error(t('loans.toggleError'))
-        })
       },
       {
         confirmText: confirmText,
@@ -662,6 +668,7 @@ export default function LoansPage() {
               date: localDatetimeValue(),
               note: t('loans.fullPaymentNote'),
               createdAt: new Date().toISOString(),
+              auto: true,
             })
           }
           return updateLoan(id, { returned: true })

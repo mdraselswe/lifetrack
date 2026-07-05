@@ -27,6 +27,9 @@ export interface Payment {
   date: string
   note?: string
   createdAt: string
+  // Set when the payment was auto-added by "mark paid" to cover the balance.
+  // Reverting to unpaid removes these so the full amount becomes due again.
+  auto?: boolean
 }
 
 export interface AmountIncrease {
