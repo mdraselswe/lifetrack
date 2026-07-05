@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/firebase-auth'
-import { LogoutIcon, DownloadIcon, SettingsIcon } from './Icons'
+import { LogoutIcon, DownloadIcon, SettingsIcon, ScaleIcon } from './Icons'
+import { ADMIN_EMAIL } from '@/lib/admin'
 import { exportMyData } from '@/lib/export'
 import { toast } from '@/lib/toast'
 import { t, useLang } from '@/lib/i18n'
@@ -76,6 +77,15 @@ export default function ProfileMenu() {
               <p className="text-sm font-semibold text-content truncate">{user.displayName || t('profile.user')}</p>
               <p className="text-xs text-muted truncate">{user.email}</p>
             </div>
+            {user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() && (
+              <button
+                role="menuitem"
+                onClick={() => { setOpen(false); router.push('/admin') }}
+                className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm font-medium text-content hover:bg-surface-2 transition-colors"
+              >
+                <ScaleIcon className="w-5 h-5" /> {t('admin.title')}
+              </button>
+            )}
             <button
               ref={logoutRef}
               role="menuitem"
