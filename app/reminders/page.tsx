@@ -22,6 +22,25 @@ const toLocalDateTimeValue = (date: Date = new Date()) => {
   return local.toISOString().slice(0, 16)
 }
 
+// Advance a repetitive reminder to its next future occurrence (local wall clock).
+const nextOccurrenceLocal = (
+  scheduledTime: string,
+  interval: number,
+  type: 'days' | 'weeks' | 'months'
+): string => {
+  const step = Math.max(1, interval || 1)
+  const d = new Date(scheduledTime)
+  if (isNaN(d.getTime())) return toLocalDateTimeValue()
+  let guard = 0
+  while (d.getTime() <= Date.now() && guard < 500) {
+    if (type === 'days') d.setDate(d.getDate() + step)
+    else if (type === 'weeks') d.setDate(d.getDate() + step * 7)
+    else d.setMonth(d.getMonth() + step)
+    guard++
+  }
+  return toLocalDateTimeValue(d)
+}
+
 export default function RemindersPage() {
   useLang() // re-render on language switch
   const [reminders, setReminders] = useState<Reminder[]>([])
@@ -318,10 +337,20 @@ export default function RemindersPage() {
     const updatedOccurrences = [...(reminderToComplete.occurrences || []), occurrence]
     const updatedCount = (reminderToComplete.completionCount || 0) + 1
 
-    // Update reminder with new occurrence
+    // Update reminder with new occurrence AND move it to the next occurrence,
+    // so the card leaves the overdue state instead of staying due forever.
+    const advanced =
+      reminderToComplete.isRepetitive && reminderToComplete.repeatType
+        ? nextOccurrenceLocal(
+            reminderToComplete.scheduledTime,
+            reminderToComplete.repeatInterval || 1,
+            reminderToComplete.repeatType
+          )
+        : undefined
     await updateReminder(reminderToComplete.id, {
       completionCount: updatedCount,
       occurrences: updatedOccurrences,
+      ...(advanced ? { scheduledTime: advanced } : {}),
     })
 
     loadReminders().catch(console.error)
@@ -339,6 +368,25 @@ export default function RemindersPage() {
         setSelectedReminderForHistory(refreshed)
       }
     }
+  }
+
+  // Permanently finish a repetitive reminder: stops repeating, keeps history,
+  // moves the card to the completed section.
+  const handleFinishRepetitive = (reminder: Reminder) => {
+    confirm.custom(
+      t('reminders.finishTitle'),
+      t('reminders.finishMessage', { title: reminder.title }),
+      () => {
+        updateReminder(reminder.id, { dismissed: true }).then(() => {
+          loadReminders().catch(console.error)
+          toast.success(t('reminders.finished'))
+        }).catch((error) => {
+          console.error('Error finishing reminder:', error)
+          toast.error(t('reminders.finishError'))
+        })
+      },
+      { confirmText: t('reminders.finishConfirm'), cancelText: t('common.cancel'), type: 'warning' }
+    )
   }
 
   const handleEditOccurrence = (reminder: Reminder, occurrence: ReminderOccurrence) => {
@@ -499,6 +547,11 @@ export default function RemindersPage() {
         >
           <CheckIcon className="w-4 h-4" /> {t('reminders.markDone')}
         </button>
+        {r.isRepetitive && (
+          <button className="btn btn-secondary" onClick={() => handleFinishRepetitive(r)}>
+            {t('reminders.finish')}
+          </button>
+        )}
         {r.occurrences && r.occurrences.length > 0 && (
           <button className="btn btn-secondary" onClick={() => setSelectedReminderForHistory(r)}>
             <HistoryIcon className="w-4 h-4" /> {t('reminders.history')}

@@ -96,4 +96,10 @@ export const reminders: Dict = {
   'reminders.groupToday': { bn: 'আজ', en: 'Today' },
   'reminders.groupTomorrow': { bn: 'আগামীকাল', en: 'Tomorrow' },
   'reminders.groupUpcoming': { bn: 'পরে', en: 'Upcoming' },
+  'reminders.finish': { bn: 'শেষ করুন', en: 'Finish' },
+  'reminders.finishTitle': { bn: 'রিমাইন্ডার শেষ করবেন?', en: 'Finish this reminder?' },
+  'reminders.finishMessage': { bn: '"{title}" আর রিপিট হবে না। ইতিহাস সংরক্ষিত থাকবে।', en: '"{title}" will stop repeating. Its history will be kept.' },
+  'reminders.finishConfirm': { bn: 'শেষ করুন', en: 'Finish' },
+  'reminders.finished': { bn: 'রিমাইন্ডার শেষ করা হয়েছে', en: 'Reminder finished' },
+  'reminders.finishError': { bn: 'শেষ করতে সমস্যা হয়েছে', en: 'Could not finish reminder' },
 }
