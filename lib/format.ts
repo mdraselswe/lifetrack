@@ -5,6 +5,24 @@ export const round2 = (n: number): number => {
   return Math.round((n + Number.EPSILON) * 100) / 100
 }
 
+// Milliseconds from a value that may be an ISO string, a Firestore Timestamp
+// object ({seconds,nanoseconds} or one with .toDate()), or already a number.
+// createdAt is written with serverTimestamp(), so on read it is a Timestamp —
+// `new Date(timestamp)` yields Invalid Date, which silently breaks date sorts.
+export const toMillis = (v: unknown): number => {
+  if (v == null) return 0
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0
+  if (typeof v === 'object') {
+    const o = v as { toDate?: () => Date; seconds?: number; _seconds?: number }
+    if (typeof o.toDate === 'function') return o.toDate().getTime()
+    const secs = o.seconds ?? o._seconds
+    if (typeof secs === 'number') return secs * 1000
+    return 0
+  }
+  const t = new Date(v as string).getTime()
+  return Number.isFinite(t) ? t : 0
+}
+
 // Convert Latin digits (0-9) in a string to Bengali numerals (০-৯).
 const BN_DIGITS = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯']
 export const toBnDigits = (s: string): string => s.replace(/[0-9]/g, (d) => BN_DIGITS[+d])

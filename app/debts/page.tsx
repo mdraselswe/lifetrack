@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getDebts, saveDebt, updateDebt, deleteDebt, addDebtPayment, deleteDebtPayment, addDebtIncrease, deleteDebtIncrease, subscribeToDebts, saveReminder } from '@/lib/storage'
 import type { Debt, Payment, AmountIncrease, Reminder } from '@/lib/types'
-import { round2 } from '@/lib/format'
+import { round2, toMillis } from '@/lib/format'
 import { t, useLang, fmtNum, fmtDate, fmtInt } from '@/lib/i18n'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
@@ -711,7 +711,7 @@ export default function DebtsPage() {
 
   const sortDebts = (arr: Debt[]): Debt[] => {
     const sorted = [...arr]
-    const ts = (d: Debt) => new Date(d.createdAt || d.date).getTime()
+    const ts = (d: Debt) => toMillis(d.createdAt) || toMillis(d.date)
     switch (sortBy) {
       case 'recent':
         sorted.sort((a, b) => ts(b) - ts(a))

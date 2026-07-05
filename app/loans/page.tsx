@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getLoans, saveLoan, updateLoan, deleteLoan, addLoanPayment, deleteLoanPayment, addLoanIncrease, deleteLoanIncrease, subscribeToLoans, saveReminder } from '@/lib/storage'
 import type { Loan, Payment, AmountIncrease, Reminder } from '@/lib/types'
-import { round2 } from '@/lib/format'
+import { round2, toMillis } from '@/lib/format'
 import { t, useLang, fmtNum, fmtDate, fmtInt } from '@/lib/i18n'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
@@ -718,7 +718,7 @@ export default function LoansPage() {
     const arr = [...list]
     switch (sortBy) {
       case 'oldest':
-        return arr.sort((a, b) => new Date(a.createdAt || a.date).getTime() - new Date(b.createdAt || b.date).getTime())
+        return arr.sort((a, b) => (toMillis(a.createdAt) || toMillis(a.date)) - (toMillis(b.createdAt) || toMillis(b.date)))
       case 'amountHigh':
         return arr.sort((a, b) => calculateRemaining(b) - calculateRemaining(a))
       case 'amountLow':
@@ -727,7 +727,7 @@ export default function LoansPage() {
         return arr.sort((a, b) => a.personName.localeCompare(b.personName))
       case 'recent':
       default:
-        return arr.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime())
+        return arr.sort((a, b) => (toMillis(b.createdAt) || toMillis(b.date)) - (toMillis(a.createdAt) || toMillis(a.date)))
     }
   }
 

@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
 import { DashboardSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
-import { round2 } from '@/lib/format'
+import { round2, toMillis } from '@/lib/format'
 import { t, useLang, fmtNum, fmtInt, fmtRelative } from '@/lib/i18n'
 import {
   ClockIcon, ArrowUpRightIcon, ArrowDownLeftIcon, WalletIcon,
@@ -26,11 +26,9 @@ const greeting = () => {
   return t('greeting.evening')
 }
 
-const ts = (s?: string) => {
-  if (!s) return 0
-  const t = new Date(s).getTime()
-  return Number.isFinite(t) ? t : 0
-}
+// Handles ISO strings AND Firestore Timestamp objects (doc createdAt is written
+// with serverTimestamp(), so it is a Timestamp on read, not a string).
+const ts = (v?: unknown) => toMillis(v)
 
 const sumPayments = (items?: { amount: number }[]) =>
   (items || []).reduce((s, p) => s + (typeof p.amount === 'number' ? p.amount : 0), 0)
