@@ -7,6 +7,7 @@ import { toast } from '@/lib/toast'
 import Link from 'next/link'
 import { validateLoginForm, isValidEmail } from '@/lib/validation'
 import { GoogleIcon, WalletIcon } from '@/components/Icons'
+import Modal, { ActionButton } from '@/components/Modal'
 import ThemeToggle from '@/components/ThemeToggle'
 import LanguageToggle from '@/components/LanguageToggle'
 import { t, useLang } from '@/lib/i18n'
@@ -17,8 +18,35 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
-  const { login, loginWithGoogle } = useAuth()
+  const { login, loginWithGoogle, resetPassword } = useAuth()
   const router = useRouter()
+
+  // Password reset modal
+  const [resetOpen, setResetOpen] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
+
+  const openReset = () => {
+    setResetEmail(email) // prefill with any already-typed email
+    setResetOpen(true)
+  }
+
+  const handleReset = async () => {
+    if (!isValidEmail(resetEmail)) {
+      toast.error(t('auth.invalidEmailInput'))
+      return
+    }
+    setResetLoading(true)
+    try {
+      await resetPassword(resetEmail)
+      toast.success(t('auth.resetSent'))
+      setResetOpen(false)
+    } catch (error: any) {
+      toast.error(error.message || t('auth.error.reset'))
+    } finally {
+      setResetLoading(false)
+    }
+  }
 
   const validateEmail = (value: string) => {
     setErrors(prev => ({ ...prev, email: isValidEmail(value) ? '' : t('auth.invalidEmailInput') }))
@@ -99,6 +127,15 @@ export default function LoginPage() {
                 placeholder={t('auth.passwordPlaceholder')}
                 required
               />
+              <div className="mt-1.5 text-right">
+                <button
+                  type="button"
+                  onClick={openReset}
+                  className="text-sm text-accent font-medium"
+                >
+                  {t('auth.forgotPassword')}
+                </button>
+              </div>
             </div>
 
             <button type="submit" disabled={loading} className="btn btn-primary w-full">
@@ -123,6 +160,37 @@ export default function LoginPage() {
           <Link href="/register" className="text-accent font-medium">{t('auth.login.registerLink')}</Link>
         </p>
       </div>
+
+      <Modal
+        isOpen={resetOpen}
+        onClose={() => setResetOpen(false)}
+        title={t('auth.resetTitle')}
+        footerActions={
+          <>
+            <ActionButton variant="secondary" onClick={() => setResetOpen(false)}>
+              {t('common.cancel')}
+            </ActionButton>
+            <ActionButton onClick={handleReset} loading={resetLoading}>
+              {t('auth.sendResetLink')}
+            </ActionButton>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-sm text-muted">{t('auth.resetSubtitle')}</p>
+          <div>
+            <label htmlFor="reset-email" className="label">{t('auth.email')}</label>
+            <input
+              type="email"
+              id="reset-email"
+              value={resetEmail}
+              onChange={(e) => setResetEmail(e.target.value)}
+              className="input"
+              placeholder={t('auth.emailPlaceholder')}
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

@@ -12,7 +12,8 @@ import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
 import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
-import { ArrowUpRightIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon } from '@/components/Icons'
+import { ArrowUpRightIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, SearchIcon, SortIcon, ShareIcon } from '@/components/Icons'
+import { shareOrCopy } from '@/lib/share'
 
 const bn = (n: number) => fmtNum(n)
 const bnDate = (v: string) => fmtDate(v)
@@ -57,6 +58,10 @@ export default function DebtsPage() {
   const [editIncreaseDate, setEditIncreaseDate] = useState('')
   const [editIncreaseReason, setEditIncreaseReason] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'amountHigh' | 'amountLow' | 'nameAz'>('recent')
+  const [filterBy, setFilterBy] = useState<'all' | 'active' | 'settled' | 'overdue'>('all')
+  const [viewMode, setViewMode] = useState<'list' | 'byPerson'>('list')
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -606,6 +611,73 @@ export default function DebtsPage() {
     setEditIncreaseReason('')
   }
 
+  const handleBulkMarkPaid = () => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+    confirm.custom(
+      t('select.markPaid'),
+      t('select.bulkPaidConfirm', { count: fmtInt(ids.length) }),
+      () => {
+        Promise.all(ids.map((id) => updateDebt(id, { returned: true })))
+          .then(() => {
+            setSelectedIds(new Set())
+            loadDebts().catch(console.error)
+            toast.success(t('select.bulkPaidDone'))
+          })
+          .catch((error) => {
+            console.error('Error bulk marking paid:', error)
+            toast.error(t('debts.statusError'))
+          })
+      },
+      { confirmText: t('select.markPaid'), cancelText: t('common.cancel'), type: 'info' }
+    )
+  }
+
+  const handleBulkDelete = () => {
+    const ids = Array.from(selectedIds)
+    if (ids.length === 0) return
+    confirm.delete(
+      t('select.delete'),
+      t('select.bulkDeleteConfirm', { count: fmtInt(ids.length) }),
+      () => {
+        Promise.all(ids.map((id) => deleteDebt(id)))
+          .then(() => {
+            setSelectedIds(new Set())
+            loadDebts().catch(console.error)
+            toast.success(t('select.bulkDeleteDone'))
+          })
+          .catch((error) => {
+            console.error('Error bulk deleting:', error)
+            toast.error(t('debts.deleteError'))
+          })
+      }
+    )
+  }
+
+  const notifyShareResult = (result: 'shared' | 'copied' | 'failed') => {
+    if (result === 'shared') toast.success(t('share.shared'))
+    else if (result === 'copied') toast.success(t('share.copied'))
+    else toast.error(t('share.failed'))
+  }
+
+  const handleShareDebt = async (debt: Debt) => {
+    const total = round2(debt.amount + (debt.increases?.reduce((s, i) => s + i.amount, 0) || 0))
+    const text =
+      `${debt.personName} — ${t('debts.remaining')}: ৳${bn(calculateRemaining(debt))}\n` +
+      `${t('debts.total')}: ৳${bn(total)} · ${t('debts.paid')}: ৳${bn(getTotalPaid(debt))}\n` +
+      `${bnDate(debt.date)}`
+    notifyShareResult(await shareOrCopy(debt.personName, text))
+  }
+
+  const handleSharePerson = async (name: string, entries: Debt[]) => {
+    const totalDue = round2(entries.reduce((s, d) => s + calculateRemaining(d), 0))
+    const lines = entries
+      .map((d) => `${bnDate(d.date)} — ৳${bn(calculateRemaining(d))}`)
+      .join('\n')
+    const text = `${name}\n${lines}\n${t('person.totalDue')}: ৳${bn(totalDue)}`
+    notifyShareResult(await shareOrCopy(name, text))
+  }
+
   if (!mounted) {
     return null
   }
@@ -631,6 +703,62 @@ export default function DebtsPage() {
   const selectedTotal = round2(selectedDebts.reduce((sum, d) => sum + calculateRemaining(d), 0))
   const selectedCount = selectedDebts.length
 
+  // Search + filter + sort applied to the rendered lists.
+  const now = Date.now()
+  const q = search.trim().toLowerCase()
+  const matchesSearch = (d: Debt) => !q || d.personName.toLowerCase().includes(q)
+  const isOverdue = (d: Debt) => !d.returned && !!d.dueDate && new Date(d.dueDate).getTime() < now
+
+  const sortDebts = (arr: Debt[]): Debt[] => {
+    const sorted = [...arr]
+    const ts = (d: Debt) => new Date(d.createdAt || d.date).getTime()
+    switch (sortBy) {
+      case 'recent':
+        sorted.sort((a, b) => ts(b) - ts(a))
+        break
+      case 'oldest':
+        sorted.sort((a, b) => ts(a) - ts(b))
+        break
+      case 'amountHigh':
+        sorted.sort((a, b) => calculateRemaining(b) - calculateRemaining(a))
+        break
+      case 'amountLow':
+        sorted.sort((a, b) => calculateRemaining(a) - calculateRemaining(b))
+        break
+      case 'nameAz':
+        sorted.sort((a, b) => a.personName.localeCompare(b.personName))
+        break
+    }
+    return sorted
+  }
+
+  const showActiveSection = filterBy === 'all' || filterBy === 'active' || filterBy === 'overdue'
+  const showSettledSection = filterBy === 'all' || filterBy === 'settled'
+  const filteredActive = sortDebts(
+    activeDebts.filter((d) => matchesSearch(d) && (filterBy === 'overdue' ? isOverdue(d) : true))
+  )
+  const filteredReturned = sortDebts(returnedDebts.filter(matchesSearch))
+  const visibleCount =
+    (showActiveSection ? filteredActive.length : 0) + (showSettledSection ? filteredReturned.length : 0)
+
+  // By-person grouping (active debts only), sorted by total due desc.
+  const personGroups = (() => {
+    const map = new Map<string, Debt[]>()
+    for (const d of filteredActive) {
+      const key = d.personName.trim()
+      const arr = map.get(key)
+      if (arr) arr.push(d)
+      else map.set(key, [d])
+    }
+    return Array.from(map.entries())
+      .map(([name, entries]) => ({
+        name,
+        entries,
+        totalDue: round2(entries.reduce((s, d) => s + calculateRemaining(d), 0)),
+      }))
+      .sort((a, b) => b.totalDue - a.totalDue)
+  })()
+
 
   const numChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value
@@ -641,7 +769,7 @@ export default function DebtsPage() {
     <div className="min-h-full">
       <AppBar title={t('debts.title')} subtitle={t('debts.subtitle')} />
 
-      <div className={`max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in ${selectedCount > 0 ? 'pb-28' : ''}`}>
+      <div className={`max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in ${selectedCount > 0 && viewMode === 'list' ? 'pb-28' : ''}`}>
         {/* Summary */}
         <div className="grid grid-cols-2 gap-3">
           <div className="stat-tile tint-pos">
@@ -660,6 +788,66 @@ export default function DebtsPage() {
           </div>
         </div>
 
+        {/* Search + filter + sort + view controls */}
+        {!dataLoading && debts.length > 0 && (
+          <div className="space-y-3">
+            <div className="relative">
+              <SearchIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="input pl-10"
+                placeholder={t('search.placeholder')}
+              />
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              {(['all', 'active', 'settled', 'overdue'] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  onClick={() => setFilterBy(f)}
+                  className={`chip ${filterBy === f ? 'chip-accent' : ''}`}
+                >
+                  {t(`filter.${f}`)}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative flex-1 min-w-[9rem]">
+                <SortIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                  className="input input-sm pl-9"
+                  aria-label={t('sort.label')}
+                >
+                  <option value="recent">{t('sort.recent')}</option>
+                  <option value="oldest">{t('sort.oldest')}</option>
+                  <option value="amountHigh">{t('sort.amountHigh')}</option>
+                  <option value="amountLow">{t('sort.amountLow')}</option>
+                  <option value="nameAz">{t('sort.nameAz')}</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1 rounded-xl bg-surface-2 p-1 flex-shrink-0">
+                {(['list', 'byPerson'] as const).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => setViewMode(v)}
+                    className={`px-3 py-1.5 text-sm rounded-lg transition-colors ${viewMode === v ? 'bg-surface text-content font-medium shadow-sm' : 'text-muted'}`}
+                  >
+                    {t(`view.${v}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
         {dataLoading ? (
           <ListSkeleton count={3} />
         ) : debts.length === 0 ? (
@@ -673,12 +861,40 @@ export default function DebtsPage() {
               <PlusIcon className="w-5 h-5" /> {t('debts.addFirst')}
             </button>
           </div>
+        ) : viewMode === 'byPerson' ? (
+          personGroups.length === 0 ? (
+            <div className="text-center py-16 text-muted text-sm">{t('search.noResults')}</div>
+          ) : (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted px-1">{t('debts.sectionActive')}</h2>
+              {personGroups.map((group) => (
+                <div key={group.name} className="card bar-pos flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-full bg-accent-soft text-accent flex items-center justify-center font-semibold flex-shrink-0">
+                      {group.name.trim().charAt(0) || '?'}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-content truncate">{group.name}</h3>
+                      <p className="text-xs text-muted">
+                        {t('person.entries', { count: fmtInt(group.entries.length) })} · {t('person.totalDue')} ৳{bn(group.totalDue)}
+                      </p>
+                    </div>
+                  </div>
+                  <button className="icon-btn flex-shrink-0" onClick={() => handleSharePerson(group.name, group.entries)} title={t('share.action')}>
+                    <ShareIcon className="w-5 h-5" />
+                  </button>
+                </div>
+              ))}
+            </section>
+          )
+        ) : visibleCount === 0 ? (
+          <div className="text-center py-16 text-muted text-sm">{t('search.noResults')}</div>
         ) : (
           <>
-            {activeDebts.length > 0 && (
+            {showActiveSection && filteredActive.length > 0 && (
               <section className="space-y-3">
                 <h2 className="text-sm font-semibold text-muted px-1">{t('debts.sectionActive')}</h2>
-                {activeDebts.map((debt) => {
+                {filteredActive.map((debt) => {
                   const remaining = calculateRemaining(debt)
                   const totalPaid = getTotalPaid(debt)
                   const total = round2(debt.amount + (debt.increases?.reduce((s, i) => s + i.amount, 0) || 0))
@@ -702,6 +918,7 @@ export default function DebtsPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
+                          <button className="icon-btn" onClick={() => handleShareDebt(debt)} title={t('share.action')}><ShareIcon className="w-5 h-5" /></button>
                           <button className="icon-btn" onClick={() => handleEdit(debt)} title={t('common.edit')}><EditIcon className="w-5 h-5" /></button>
                           <button className="icon-btn" onClick={() => handleDelete(debt.id)} title={t('common.delete')}><TrashIcon className="w-5 h-5" /></button>
                         </div>
@@ -784,10 +1001,10 @@ export default function DebtsPage() {
               </section>
             )}
 
-            {returnedDebts.length > 0 && (
+            {showSettledSection && filteredReturned.length > 0 && (
               <section className="space-y-3">
                 <h2 className="text-sm font-semibold text-muted px-1">{t('debts.receivedBack')}</h2>
-                {returnedDebts.map((debt) => {
+                {filteredReturned.map((debt) => {
                   const totalPaid = getTotalPaid(debt)
                   const total = round2(debt.amount + (debt.increases?.reduce((s, i) => s + i.amount, 0) || 0))
                   return (
@@ -801,6 +1018,7 @@ export default function DebtsPage() {
                           <p className="text-xs text-muted mt-1">{t('debts.settledSummary', { total: bn(total), paid: bn(totalPaid) })}</p>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
+                          <button className="icon-btn" onClick={() => handleShareDebt(debt)} title={t('share.action')}><ShareIcon className="w-5 h-5" /></button>
                           <button className="icon-btn" onClick={() => handleToggleReturned(debt)} title={t('debts.confirmNotReceived')}><RotateIcon className="w-5 h-5" /></button>
                           <button className="icon-btn" onClick={() => handleDelete(debt.id)} title={t('common.delete')}><TrashIcon className="w-5 h-5" /></button>
                         </div>
@@ -826,7 +1044,7 @@ export default function DebtsPage() {
       </div>
 
       {/* Selected-total bar — floats above the bottom nav while cards are selected */}
-      {selectedCount > 0 && (
+      {selectedCount > 0 && viewMode === 'list' && (
         <div
           className="fixed left-0 right-0 z-40 px-4"
           style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
@@ -836,15 +1054,23 @@ export default function DebtsPage() {
               <p className="text-xs text-muted">{t('select.count', { count: fmtInt(selectedCount) })} · {t('select.totalDue')}</p>
               <p className="text-xl font-bold text-positive">৳{bn(selectedTotal)}</p>
             </div>
-            <button className="btn btn-secondary flex-shrink-0" onClick={() => setSelectedIds(new Set())}>
-              {t('select.clear')}
-            </button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button className="btn btn-primary" onClick={handleBulkMarkPaid}>
+                <CheckIcon className="w-4 h-4" /> {t('select.markPaid')}
+              </button>
+              <button className="btn btn-danger" onClick={handleBulkDelete}>
+                <TrashIcon className="w-4 h-4" /> {t('select.delete')}
+              </button>
+              <button className="btn btn-secondary" onClick={() => setSelectedIds(new Set())}>
+                {t('select.clear')}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* FAB */}
-      {selectedCount === 0 && (
+      {(selectedCount === 0 || viewMode === 'byPerson') && (
         <button className="fab" onClick={() => setShowForm(true)} aria-label={t('debts.addNew')}>
           <PlusIcon className="w-6 h-6" />
         </button>

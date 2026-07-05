@@ -31,4 +31,23 @@ export const dashboard: Dict = {
   'dashboard.todayReminders': { bn: 'আজ {count}টি রিমাইন্ডার আছে', en: '{count} reminders today' },
   'dashboard.view': { bn: 'দেখুন →', en: 'View →' },
   'dashboard.activeCount': { bn: '{count} সক্রিয়', en: '{count} active' },
+
+  // Last 6 months trend chart
+  'dashboard.trendTitle': { bn: 'শেষ ৬ মাস', en: 'Last 6 months' },
+  'dashboard.received': { bn: 'পেয়েছি', en: 'Received' },
+  'dashboard.paid': { bn: 'দিয়েছি', en: 'Paid' },
+
+  // Short month names (index 0 = January), used by the trend chart labels
+  'dashboard.mon.0': { bn: 'জানু', en: 'Jan' },
+  'dashboard.mon.1': { bn: 'ফেব', en: 'Feb' },
+  'dashboard.mon.2': { bn: 'মার্চ', en: 'Mar' },
+  'dashboard.mon.3': { bn: 'এপ্রিল', en: 'Apr' },
+  'dashboard.mon.4': { bn: 'মে', en: 'May' },
+  'dashboard.mon.5': { bn: 'জুন', en: 'Jun' },
+  'dashboard.mon.6': { bn: 'জুলাই', en: 'Jul' },
+  'dashboard.mon.7': { bn: 'আগ', en: 'Aug' },
+  'dashboard.mon.8': { bn: 'সেপ্ট', en: 'Sep' },
+  'dashboard.mon.9': { bn: 'অক্টো', en: 'Oct' },
+  'dashboard.mon.10': { bn: 'নভে', en: 'Nov' },
+  'dashboard.mon.11': { bn: 'ডিসে', en: 'Dec' },
 }

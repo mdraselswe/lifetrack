@@ -18,6 +18,20 @@ export const auth: Dict = {
   'auth.invalidEmailInput': { bn: 'সঠিক ইমেইল ঠিকানা দিন', en: 'Enter a valid email address' },
   'auth.formInvalid': { bn: 'ফর্ম ভুলভাবে পূরণ হয়েছে', en: 'The form was filled out incorrectly' },
 
+  // ---- Password reset ----
+  'auth.forgotPassword': { bn: 'পাসওয়ার্ড ভুলে গেছেন?', en: 'Forgot password?' },
+  'auth.resetTitle': { bn: 'পাসওয়ার্ড রিসেট করুন', en: 'Reset password' },
+  'auth.resetSubtitle': {
+    bn: 'আপনার ইমেইল দিন, আমরা পাসওয়ার্ড রিসেট করার লিংক পাঠাব।',
+    en: "Enter your email and we'll send you a password reset link.",
+  },
+  'auth.sendResetLink': { bn: 'রিসেট লিংক পাঠান', en: 'Send reset link' },
+  'auth.resetSent': {
+    bn: 'পাসওয়ার্ড রিসেট লিংক আপনার ইমেইলে পাঠানো হয়েছে',
+    en: 'A password reset link has been sent to your email',
+  },
+  'auth.error.reset': { bn: 'পাসওয়ার্ড রিসেট করতে সমস্যা হয়েছে', en: 'Failed to reset password' },
+
   // ---- Register page ----
   'auth.register.title': { bn: 'রেজিস্ট্রেশন করুন', en: 'Register' },
   'auth.register.subtitle': { bn: 'নতুন অ্যাকাউন্ট তৈরি করুন', en: 'Create a new account' },
@@ -83,6 +97,38 @@ export const auth: Dict = {
     en: 'This domain is not authorized in Firebase. Add it to Authorized domains',
   },
   'auth.error.logout': { bn: 'লগআউট করতে সমস্যা হয়েছে', en: 'Failed to log out' },
+
+  // ---- Settings / account management (app/settings/page.tsx) ----
+  'settings.title': { bn: 'সেটিংস', en: 'Settings' },
+  'settings.profile': { bn: 'প্রোফাইল', en: 'Profile' },
+  'settings.displayName': { bn: 'নাম', en: 'Display name' },
+  'settings.saveName': { bn: 'নাম সংরক্ষণ করুন', en: 'Save name' },
+  'settings.nameSaved': { bn: 'নাম সফলভাবে সংরক্ষণ হয়েছে', en: 'Name saved successfully' },
+  'settings.changePassword': { bn: 'পাসওয়ার্ড পরিবর্তন করুন', en: 'Change password' },
+  'settings.currentPassword': { bn: 'বর্তমান পাসওয়ার্ড', en: 'Current password' },
+  'settings.currentPasswordRequired': { bn: 'বর্তমান পাসওয়ার্ড দিন', en: 'Enter your current password' },
+  'settings.newPassword': { bn: 'নতুন পাসওয়ার্ড', en: 'New password' },
+  'settings.passwordChanged': { bn: 'পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে', en: 'Password changed successfully' },
+  'settings.googleNoPassword': {
+    bn: 'আপনি গুগল দিয়ে সাইন ইন করেছেন, তাই এখানে পাসওয়ার্ড পরিবর্তন করার প্রয়োজন নেই।',
+    en: 'You signed in with Google, so there is no password to change here.',
+  },
+  'settings.deleteAccount': { bn: 'অ্যাকাউন্ট মুছে ফেলুন', en: 'Delete account' },
+  'settings.deleteNote': {
+    bn: 'এটি শুধুমাত্র আপনার লগইন অ্যাকাউন্ট মুছে ফেলবে। আপনার সংরক্ষিত ডেটা (দেনা, পাওনা, রিমাইন্ডার) আলাদাভাবে মুছতে হবে — মুছে ফেলার আগে ডেটা এক্সপোর্ট করে রাখুন।',
+    en: 'This only deletes your login account. Your saved data (debts, loans, reminders) must be removed separately — export your data before deleting.',
+  },
+  'settings.deleteConfirmTitle': { bn: 'অ্যাকাউন্ট মুছবেন?', en: 'Delete account?' },
+  'settings.deleteConfirmMsg': {
+    bn: 'এই কাজটি ফিরিয়ে আনা যাবে না। আপনি কি নিশ্চিত যে অ্যাকাউন্ট মুছে ফেলতে চান?',
+    en: 'This action cannot be undone. Are you sure you want to delete your account?',
+  },
+  'settings.deleteReauthMsg': {
+    bn: 'নিরাপত্তার জন্য অ্যাকাউন্ট মুছতে আপনার বর্তমান পাসওয়ার্ড নিশ্চিত করুন।',
+    en: 'For your security, confirm your current password to delete the account.',
+  },
+  'settings.accountDeleted': { bn: 'অ্যাকাউন্ট মুছে ফেলা হয়েছে', en: 'Account deleted' },
+  'settings.error.generic': { bn: 'কিছু একটা সমস্যা হয়েছে, আবার চেষ্টা করুন', en: 'Something went wrong, please try again' },
 
   // ---- Confirm dialog action labels (lib/confirm.ts) ----
   // Defaults (হ্যাঁ/না) reuse common.yes / common.no; মুছুন/বাতিল reuse

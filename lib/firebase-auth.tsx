@@ -7,6 +7,7 @@ import {
   signOut,
   onAuthStateChanged,
   sendEmailVerification,
+  sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithPopup,
   User
@@ -20,6 +21,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<void>
   loginWithGoogle: () => Promise<void>
   register: (name: string, email: string, password: string) => Promise<void>
+  resetPassword: (email: string) => Promise<void>
   logout: () => Promise<void>
 }
 
@@ -142,6 +144,35 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  const resetPassword = async (email: string) => {
+    try {
+      await sendPasswordResetEmail(auth, email)
+    } catch (error: any) {
+      let errorMessage = t('auth.error.reset')
+
+      switch (error.code) {
+        case 'auth/user-not-found':
+          errorMessage = t('auth.error.userNotFound')
+          break
+        case 'auth/invalid-email':
+          errorMessage = t('auth.error.invalidEmail')
+          break
+        case 'auth/too-many-requests':
+          errorMessage = t('auth.error.tooManyRequests')
+          break
+        case 'auth/network-request-failed':
+          errorMessage = t('auth.error.network')
+          break
+        default:
+          errorMessage = t('auth.error.reset')
+      }
+
+      const userError = new Error(errorMessage)
+      userError.name = 'UserError'
+      throw userError
+    }
+  }
+
   const loginWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider()
@@ -197,6 +228,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     login,
     loginWithGoogle,
     register,
+    resetPassword,
     logout
   }
 

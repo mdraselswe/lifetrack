@@ -12,7 +12,12 @@ import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
 import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
-import { ArrowDownLeftIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon } from '@/components/Icons'
+import { ArrowDownLeftIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, SearchIcon, SortIcon, ShareIcon } from '@/components/Icons'
+import { shareOrCopy } from '@/lib/share'
+
+type LoanSortKey = 'recent' | 'oldest' | 'amountHigh' | 'amountLow' | 'nameAz'
+type LoanFilterKey = 'all' | 'active' | 'settled' | 'overdue'
+type LoanViewMode = 'list' | 'byPerson'
 
 const bn = (n: number) => fmtNum(n)
 const bnDate = (v: string) => fmtDate(v)
@@ -57,6 +62,10 @@ export default function LoansPage() {
   const [increaseDate, setIncreaseDate] = useState('')
   const [increaseReason, setIncreaseReason] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [search, setSearch] = useState('')
+  const [sortBy, setSortBy] = useState<LoanSortKey>('recent')
+  const [filterBy, setFilterBy] = useState<LoanFilterKey>('all')
+  const [viewMode, setViewMode] = useState<LoanViewMode>('list')
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -612,6 +621,68 @@ export default function LoansPage() {
     setEditIncreaseReason('')
   }
 
+  const buildStatement = (loan: Loan): string => {
+    const total = round2(loan.amount + (loan.increases?.reduce((s, i) => s + i.amount, 0) || 0))
+    return `${loan.personName} — ${t('loans.remaining')}: ৳${bn(calculateRemaining(loan))}\n${t('loans.total')}: ৳${bn(total)} · ${t('loans.paid')}: ৳${bn(getTotalPaid(loan))}\n${bnDate(loan.date)}`
+  }
+
+  const toastShareResult = (result: 'shared' | 'copied' | 'failed') => {
+    if (result === 'shared') toast.success(t('share.shared'))
+    else if (result === 'copied') toast.success(t('share.copied'))
+    else toast.error(t('share.failed'))
+  }
+
+  const handleShareLoan = async (loan: Loan) => {
+    toastShareResult(await shareOrCopy(loan.personName, buildStatement(loan)))
+  }
+
+  const handleSharePerson = async (name: string, personLoans: Loan[], total: number) => {
+    const body = personLoans.map(buildStatement).join('\n\n')
+    const text = `${name}\n${t('person.totalDue')}: ৳${bn(total)}\n\n${body}`
+    toastShareResult(await shareOrCopy(name, text))
+  }
+
+  const handleBulkPaid = () => {
+    const ids = selectedLoans.map((l) => l.id)
+    confirm.custom(
+      t('select.markPaid'),
+      t('select.bulkPaidConfirm', { count: fmtInt(ids.length) }),
+      () => {
+        Promise.all(ids.map((id) => updateLoan(id, { returned: true })))
+          .then(() => {
+            setSelectedIds(new Set())
+            loadLoans().catch(console.error)
+            toast.success(t('select.bulkPaidDone'))
+          })
+          .catch((error) => {
+            console.error('Error bulk marking loans paid:', error)
+            toast.error(t('loans.toggleError'))
+          })
+      },
+      { confirmText: t('select.markPaid'), cancelText: t('common.cancel'), type: 'info' }
+    )
+  }
+
+  const handleBulkDelete = () => {
+    const ids = selectedLoans.map((l) => l.id)
+    confirm.delete(
+      t('select.delete'),
+      t('select.bulkDeleteConfirm', { count: fmtInt(ids.length) }),
+      () => {
+        Promise.all(ids.map((id) => deleteLoan(id)))
+          .then(() => {
+            setSelectedIds(new Set())
+            loadLoans().catch(console.error)
+            toast.success(t('select.bulkDeleteDone'))
+          })
+          .catch((error) => {
+            console.error('Error bulk deleting loans:', error)
+            toast.error(t('loans.deleteError'))
+          })
+      }
+    )
+  }
+
   if (!mounted) {
     return null
   }
@@ -637,6 +708,50 @@ export default function LoansPage() {
   const selectedTotal = round2(selectedLoans.reduce((sum, l) => sum + calculateRemaining(l), 0))
   const selectedCount = selectedLoans.length
 
+  // Search + filter + sort + view
+  const now = Date.now()
+  const isOverdue = (l: Loan) => !l.returned && !!l.dueDate && new Date(l.dueDate).getTime() < now
+  const query = search.trim().toLowerCase()
+  const matchesSearch = (l: Loan) => l.personName.toLowerCase().includes(query)
+
+  const sortLoans = (list: Loan[]): Loan[] => {
+    const arr = [...list]
+    switch (sortBy) {
+      case 'oldest':
+        return arr.sort((a, b) => new Date(a.createdAt || a.date).getTime() - new Date(b.createdAt || b.date).getTime())
+      case 'amountHigh':
+        return arr.sort((a, b) => calculateRemaining(b) - calculateRemaining(a))
+      case 'amountLow':
+        return arr.sort((a, b) => calculateRemaining(a) - calculateRemaining(b))
+      case 'nameAz':
+        return arr.sort((a, b) => a.personName.localeCompare(b.personName))
+      case 'recent':
+      default:
+        return arr.sort((a, b) => new Date(b.createdAt || b.date).getTime() - new Date(a.createdAt || a.date).getTime())
+    }
+  }
+
+  const showActiveSection = filterBy === 'all' || filterBy === 'active' || filterBy === 'overdue'
+  const showReturnedSection = filterBy === 'all' || filterBy === 'settled'
+
+  let filteredActive = activeLoans.filter(matchesSearch)
+  if (filterBy === 'overdue') filteredActive = filteredActive.filter(isOverdue)
+  const displayActive = showActiveSection ? sortLoans(filteredActive) : []
+  const displayReturned = showReturnedSection ? sortLoans(returnedLoans.filter(matchesSearch)) : []
+
+  // By-person grouping (active loans only), sorted by total due desc
+  const personGroups = Object.values(
+    displayActive.reduce((acc, l) => {
+      if (!acc[l.personName]) acc[l.personName] = { name: l.personName, loans: [], total: 0 }
+      acc[l.personName].loans.push(l)
+      acc[l.personName].total = round2(acc[l.personName].total + calculateRemaining(l))
+      return acc
+    }, {} as Record<string, { name: string; loans: Loan[]; total: number }>)
+  ).sort((a, b) => b.total - a.total)
+
+  const nothingToShow = displayActive.length === 0 && displayReturned.length === 0
+  const selectionActive = viewMode === 'list' && selectedCount > 0
+
 
   const numChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value
@@ -647,7 +762,7 @@ export default function LoansPage() {
     <div className="min-h-full">
       <AppBar title={t('loans.title')} subtitle={t('loans.subtitle')} />
 
-      <div className={`max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in ${selectedCount > 0 ? 'pb-28' : ''}`}>
+      <div className={`max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in ${selectionActive ? 'pb-28' : ''}`}>
         {/* Summary */}
         <div className="grid grid-cols-2 gap-3">
           <div className="stat-tile tint-neg">
@@ -666,6 +781,62 @@ export default function LoansPage() {
           </div>
         </div>
 
+        {/* Search + filter + sort + view controls */}
+        {!dataLoading && loans.length > 0 && (
+          <div className="space-y-3">
+            <div className="relative">
+              <SearchIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="input pl-10"
+                placeholder={t('search.placeholder')}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              {(['all', 'active', 'settled', 'overdue'] as const).map((f) => (
+                <button
+                  key={f}
+                  className={`chip ${filterBy === f ? 'chip-accent' : ''}`}
+                  onClick={() => setFilterBy(f)}
+                >
+                  {t(`filter.${f}`)}
+                </button>
+              ))}
+              <div className="flex items-center gap-1 ml-auto">
+                <SortIcon className="w-4 h-4 text-muted" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as LoanSortKey)}
+                  className="input input-sm w-auto"
+                  aria-label={t('sort.label')}
+                >
+                  <option value="recent">{t('sort.recent')}</option>
+                  <option value="oldest">{t('sort.oldest')}</option>
+                  <option value="amountHigh">{t('sort.amountHigh')}</option>
+                  <option value="amountLow">{t('sort.amountLow')}</option>
+                  <option value="nameAz">{t('sort.nameAz')}</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-1">
+              <button
+                className={`chip ${viewMode === 'list' ? 'chip-accent' : ''}`}
+                onClick={() => setViewMode('list')}
+              >
+                {t('view.list')}
+              </button>
+              <button
+                className={`chip ${viewMode === 'byPerson' ? 'chip-accent' : ''}`}
+                onClick={() => setViewMode('byPerson')}
+              >
+                {t('view.byPerson')}
+              </button>
+            </div>
+          </div>
+        )}
+
         {dataLoading ? (
           <ListSkeleton count={3} />
         ) : loans.length === 0 ? (
@@ -679,12 +850,43 @@ export default function LoansPage() {
               <PlusIcon className="w-5 h-5" /> {t('loans.addFirst')}
             </button>
           </div>
+        ) : viewMode === 'byPerson' ? (
+          personGroups.length > 0 ? (
+            <section className="space-y-3">
+              <h2 className="text-sm font-semibold text-muted px-1">{t('loans.sectionActive')}</h2>
+              {personGroups.map((g) => {
+                const initial = g.name.trim().charAt(0).toUpperCase()
+                return (
+                  <div key={g.name} className="card bar-neg space-y-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-surface-2 flex items-center justify-center flex-shrink-0 font-semibold text-content">{initial}</div>
+                        <div className="min-w-0">
+                          <h3 className="font-semibold text-content truncate">{g.name}</h3>
+                          <p className="text-xs text-muted">{t('person.entries', { count: fmtInt(g.loans.length) })}</p>
+                        </div>
+                      </div>
+                      <button className="icon-btn flex-shrink-0" onClick={() => handleSharePerson(g.name, g.loans, g.total)} title={t('share.action')} aria-label={t('share.action')}><ShareIcon className="w-5 h-5" /></button>
+                    </div>
+                    <div className="flex items-center justify-between rounded-xl tint-neg px-3 py-2">
+                      <span className="text-sm text-muted">{t('person.totalDue')}</span>
+                      <span className="text-base font-semibold text-negative">৳{bn(g.total)}</span>
+                    </div>
+                  </div>
+                )
+              })}
+            </section>
+          ) : (
+            <div className="text-center py-16 text-muted text-sm">{t('search.noResults')}</div>
+          )
+        ) : nothingToShow ? (
+          <div className="text-center py-16 text-muted text-sm">{t('search.noResults')}</div>
         ) : (
           <>
-            {activeLoans.length > 0 && (
+            {showActiveSection && displayActive.length > 0 && (
               <section className="space-y-3">
                 <h2 className="text-sm font-semibold text-muted px-1">{t('loans.sectionActive')}</h2>
-                {activeLoans.map((loan) => {
+                {displayActive.map((loan) => {
                   const remaining = calculateRemaining(loan)
                   const totalPaid = getTotalPaid(loan)
                   const total = round2(loan.amount + (loan.increases?.reduce((s, i) => s + i.amount, 0) || 0))
@@ -708,6 +910,7 @@ export default function LoansPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
+                          <button className="icon-btn" onClick={() => handleShareLoan(loan)} title={t('share.action')} aria-label={t('share.action')}><ShareIcon className="w-5 h-5" /></button>
                           <button className="icon-btn" onClick={() => handleEdit(loan)} title={t('common.edit')}><EditIcon className="w-5 h-5" /></button>
                           <button className="icon-btn" onClick={() => handleDelete(loan.id)} title={t('common.delete')}><TrashIcon className="w-5 h-5" /></button>
                         </div>
@@ -790,10 +993,10 @@ export default function LoansPage() {
               </section>
             )}
 
-            {returnedLoans.length > 0 && (
+            {showReturnedSection && displayReturned.length > 0 && (
               <section className="space-y-3">
                 <h2 className="text-sm font-semibold text-muted px-1">{t('loans.sectionReturned')}</h2>
-                {returnedLoans.map((loan) => {
+                {displayReturned.map((loan) => {
                   const totalPaid = getTotalPaid(loan)
                   const total = round2(loan.amount + (loan.increases?.reduce((s, i) => s + i.amount, 0) || 0))
                   return (
@@ -807,6 +1010,7 @@ export default function LoansPage() {
                           <p className="text-xs text-muted mt-1">{t('loans.total')} ৳{bn(total)} · {t('loans.paidLabel')} ৳{bn(totalPaid)}</p>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
+                          <button className="icon-btn" onClick={() => handleShareLoan(loan)} title={t('share.action')} aria-label={t('share.action')}><ShareIcon className="w-5 h-5" /></button>
                           <button className="icon-btn" onClick={() => handleToggleReturned(loan)} title={t('loans.confirmNotReturned')}><RotateIcon className="w-5 h-5" /></button>
                           <button className="icon-btn" onClick={() => handleDelete(loan.id)} title={t('common.delete')}><TrashIcon className="w-5 h-5" /></button>
                         </div>
@@ -832,7 +1036,7 @@ export default function LoansPage() {
       </div>
 
       {/* Selected-total bar — floats above the bottom nav while cards are selected */}
-      {selectedCount > 0 && (
+      {selectionActive && (
         <div
           className="fixed left-0 right-0 z-40 px-4"
           style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
@@ -842,15 +1046,23 @@ export default function LoansPage() {
               <p className="text-xs text-muted">{t('select.count', { count: fmtInt(selectedCount) })} · {t('select.totalDue')}</p>
               <p className="text-xl font-bold text-negative">৳{bn(selectedTotal)}</p>
             </div>
-            <button className="btn btn-secondary flex-shrink-0" onClick={() => setSelectedIds(new Set())}>
-              {t('select.clear')}
-            </button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button className="btn btn-primary" onClick={handleBulkPaid}>
+                <CheckIcon className="w-4 h-4" /> {t('select.markPaid')}
+              </button>
+              <button className="btn btn-danger" onClick={handleBulkDelete}>
+                <TrashIcon className="w-4 h-4" /> {t('select.delete')}
+              </button>
+              <button className="btn btn-secondary" onClick={() => setSelectedIds(new Set())}>
+                {t('select.clear')}
+              </button>
+            </div>
           </div>
         </div>
       )}
 
       {/* FAB */}
-      {selectedCount === 0 && (
+      {!selectionActive && (
         <button className="fab" onClick={() => setShowForm(true)} aria-label={t('loans.addNew')}>
           <PlusIcon className="w-6 h-6" />
         </button>

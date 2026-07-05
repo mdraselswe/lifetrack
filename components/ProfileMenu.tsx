@@ -1,14 +1,16 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/firebase-auth'
-import { LogoutIcon, DownloadIcon } from './Icons'
+import { LogoutIcon, DownloadIcon, SettingsIcon } from './Icons'
 import { exportMyData } from '@/lib/export'
 import { toast } from '@/lib/toast'
 import { t, useLang } from '@/lib/i18n'
 
 export default function ProfileMenu() {
   const { user, logout } = useAuth()
+  const router = useRouter()
   useLang() // re-render on language switch
   const [open, setOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -77,9 +79,16 @@ export default function ProfileMenu() {
             <button
               ref={logoutRef}
               role="menuitem"
+              onClick={() => { setOpen(false); router.push('/settings') }}
+              className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm font-medium text-content hover:bg-surface-2 transition-colors"
+            >
+              <SettingsIcon className="w-5 h-5" /> {t('settings.title')}
+            </button>
+            <button
+              role="menuitem"
               onClick={handleExport}
               disabled={exporting}
-              className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm font-medium text-content hover:bg-surface-2 transition-colors disabled:opacity-60"
+              className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm font-medium text-content hover:bg-surface-2 transition-colors disabled:opacity-60 border-t border-line"
             >
               <DownloadIcon className="w-5 h-5" /> {exporting ? t('profile.exporting') : t('profile.export')}
             </button>

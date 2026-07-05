@@ -11,6 +11,7 @@ const notoSansBengali = Noto_Sans_Bengali({
   display: 'swap',
 })
 import PWARegistration from '@/components/PWARegistration'
+import OfflineIndicator from '@/components/OfflineIndicator'
 import ToastContainer from '@/components/Toast'
 import ConfirmToastContainer from '@/components/ConfirmToast'
 import { AuthProvider } from '@/lib/firebase-auth'
@@ -120,6 +121,7 @@ export default function RootLayout({
       <body suppressHydrationWarning={true}>
         <AuthProvider>
           <PWARegistration />
+          <OfflineIndicator />
           <ToastContainer />
           <ConfirmToastContainer />
           <ConditionalLayout>

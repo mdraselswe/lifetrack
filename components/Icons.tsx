@@ -95,6 +95,34 @@ export const InfoIcon = (p: IconProps) => (
   <svg {...base(p)}><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><path d="M12 7.5v.5" /></svg>
 )
 
+export const SearchIcon = (p: IconProps) => (
+  <svg {...base(p)}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
+)
+
+export const SortIcon = (p: IconProps) => (
+  <svg {...base(p)}><path d="M7 4v16" /><path d="M4 8l3-4 3 4" /><path d="M17 20V4" /><path d="M14 16l3 4 3-4" /></svg>
+)
+
+export const ShareIcon = (p: IconProps) => (
+  <svg {...base(p)}><circle cx="6" cy="12" r="2.5" /><circle cx="18" cy="6" r="2.5" /><circle cx="18" cy="18" r="2.5" /><path d="m8.2 10.8 7.6-4.6" /><path d="m8.2 13.2 7.6 4.6" /></svg>
+)
+
+export const KeyIcon = (p: IconProps) => (
+  <svg {...base(p)}><circle cx="8" cy="8" r="4" /><path d="m11 11 8 8" /><path d="m16 16 2-2" /><path d="m19 19 2-2" /></svg>
+)
+
+export const WifiOffIcon = (p: IconProps) => (
+  <svg {...base(p)}><path d="M3 3l18 18" /><path d="M9 17h.01" /><path d="M6.5 13.5a7 7 0 0 1 4-2.3" /><path d="M3.5 10a12 12 0 0 1 4-2.6" /><path d="M20.5 10a12 12 0 0 0-6-3.3" /></svg>
+)
+
+export const ChartIcon = (p: IconProps) => (
+  <svg {...base(p)}><path d="M4 4v16h16" /><rect x="7" y="11" width="3" height="6" /><rect x="12" y="7" width="3" height="10" /><rect x="17" y="13" width="3" height="4" /></svg>
+)
+
+export const SettingsIcon = (p: IconProps) => (
+  <svg {...base(p)}><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9 17 7M7 17l-2.1 2.1" /></svg>
+)
+
 export const RotateIcon = (p: IconProps) => (
   <svg {...base(p)}><path d="M4 4v6h6" /><path d="M4 10a8 8 0 1 1-1.5 4.7" /></svg>
 )

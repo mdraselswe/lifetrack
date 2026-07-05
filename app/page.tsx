@@ -12,7 +12,7 @@ import { round2 } from '@/lib/format'
 import { t, useLang, fmtNum, fmtInt, fmtRelative } from '@/lib/i18n'
 import {
   ClockIcon, ArrowUpRightIcon, ArrowDownLeftIcon, WalletIcon,
-  RotateIcon, PlusCircleIcon,
+  RotateIcon, PlusCircleIcon, ChartIcon,
 } from '@/components/Icons'
 
 const bn = (n: number) => fmtNum(round2(n))
@@ -210,6 +210,31 @@ export default function Dashboard() {
     loans.reduce((s, l) => s + sumPayments((l.payments || []).filter((p) => isThisMonth(p.date || p.createdAt))), 0)
   )
 
+  // Last 6 months trend — received (debt payments) vs paid (loan payments) per month.
+  // Buckets built from `new Date()` here (client-only, past the mount guard).
+  const monthBuckets = (() => {
+    const base = new Date()
+    const arr = Array.from({ length: 6 }, (_, k) => {
+      const d = new Date(base.getFullYear(), base.getMonth() - (5 - k), 1)
+      return { year: d.getFullYear(), month: d.getMonth(), received: 0, paid: 0 }
+    })
+    const idxOf = (y: number, m: number) => arr.findIndex((b) => b.year === y && b.month === m)
+    const add = (items: { amount?: number; date?: string; createdAt?: string }[] | undefined, key: 'received' | 'paid') => {
+      ;(items || []).forEach((p) => {
+        const time = ts(p.date || p.createdAt)
+        if (!time) return
+        const d = new Date(time)
+        const i = idxOf(d.getFullYear(), d.getMonth())
+        if (i >= 0) arr[i][key] += typeof p.amount === 'number' ? p.amount : 0
+      })
+    }
+    debts.forEach((d) => add(d.payments, 'received'))
+    loans.forEach((l) => add(l.payments, 'paid'))
+    return arr
+  })()
+  const trendMax = Math.max(0, ...monthBuckets.map((b) => Math.max(b.received, b.paid)))
+  const hasTrend = trendMax > 0
+
   // Recent activity feed
   const activity: Activity[] = []
   debts.forEach((d) => {
@@ -335,6 +360,51 @@ export default function Dashboard() {
                   <p className="text-xs text-muted mb-1">{t('dashboard.paidBack')}</p>
                   <p className="text-lg font-bold text-negative">৳{bn(paidThisMonth)}</p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Last 6 months trend chart */}
+          {hasTrend && (
+            <div className="card">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-semibold text-content flex items-center gap-2">
+                  <ChartIcon className="w-4 h-4 text-accent" />
+                  {t('dashboard.trendTitle')}
+                </p>
+                <div className="flex items-center gap-3 text-[11px] text-muted">
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-positive inline-block" /> {t('dashboard.received')}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-negative inline-block" /> {t('dashboard.paid')}
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-end justify-between gap-2 h-24 border-b border-line">
+                {monthBuckets.map((b) => (
+                  <div
+                    key={`${b.year}-${b.month}`}
+                    className="flex-1 flex items-end justify-center gap-1 h-full"
+                    title={`${t(`dashboard.mon.${b.month}`)} — ${t('dashboard.received')}: ৳${bn(b.received)}, ${t('dashboard.paid')}: ৳${bn(b.paid)}`}
+                  >
+                    <div
+                      className="w-1/2 max-w-[12px] bg-positive rounded-t-sm transition-all"
+                      style={{ height: `${(b.received / trendMax) * 100}%` }}
+                    />
+                    <div
+                      className="w-1/2 max-w-[12px] bg-negative rounded-t-sm transition-all"
+                      style={{ height: `${(b.paid / trendMax) * 100}%` }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex items-center justify-between gap-2 mt-2">
+                {monthBuckets.map((b) => (
+                  <span key={`${b.year}-${b.month}`} className="flex-1 text-center text-[10px] text-muted">
+                    {t(`dashboard.mon.${b.month}`)}
+                  </span>
+                ))}
               </div>
             </div>
           )}
