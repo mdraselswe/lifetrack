@@ -44,3 +44,5 @@ public/workbox-*.js.map
 public/worker-*.js.map
 
 .env*
+# template with variable names only (no values) — safe and useful to commit
+!.env.example
