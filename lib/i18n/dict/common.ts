@@ -36,6 +36,11 @@ export const common: Dict = {
   'theme.light': { bn: 'লাইট মোড', en: 'Light mode' },
   'theme.dark': { bn: 'ডার্ক মোড', en: 'Dark mode' },
 
+  'select.count': { bn: '{count}টি নির্বাচিত', en: '{count} selected' },
+  'select.totalDue': { bn: 'নির্বাচিত মোট বাকি', en: 'Selected total due' },
+  'select.clear': { bn: 'বাতিল', en: 'Clear' },
+  'select.selectItem': { bn: 'নির্বাচন করুন', en: 'Select' },
+
   'validation.passwordMin': { bn: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে', en: 'Password must be at least 6 characters' },
   'validation.passwordMax': { bn: 'পাসওয়ার্ড ১২৮ অক্ষরের বেশি হতে পারবে না', en: 'Password cannot exceed 128 characters' },
   'validation.nameMin': { bn: 'নাম কমপক্ষে ২ অক্ষর হতে হবে', en: 'Name must be at least 2 characters' },

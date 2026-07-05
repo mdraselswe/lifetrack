@@ -4,7 +4,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { getLoans, saveLoan, updateLoan, deleteLoan, addLoanPayment, deleteLoanPayment, addLoanIncrease, deleteLoanIncrease, subscribeToLoans, saveReminder } from '@/lib/storage'
 import type { Loan, Payment, AmountIncrease, Reminder } from '@/lib/types'
 import { round2 } from '@/lib/format'
-import { t, useLang, fmtNum, fmtDate } from '@/lib/i18n'
+import { t, useLang, fmtNum, fmtDate, fmtInt } from '@/lib/i18n'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
 import Modal, { ActionButton } from '@/components/Modal'
@@ -56,6 +56,16 @@ export default function LoansPage() {
   const [increaseAmount, setIncreaseAmount] = useState('')
   const [increaseDate, setIncreaseDate] = useState('')
   const [increaseReason, setIncreaseReason] = useState('')
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -622,6 +632,11 @@ export default function LoansPage() {
     return sum + totalPaid
   }, 0))
 
+  // Selection: only active cards are selectable; total is their remaining sum.
+  const selectedLoans = activeLoans.filter((l) => selectedIds.has(l.id))
+  const selectedTotal = round2(selectedLoans.reduce((sum, l) => sum + calculateRemaining(l), 0))
+  const selectedCount = selectedLoans.length
+
 
   const numChange = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value
@@ -632,7 +647,7 @@ export default function LoansPage() {
     <div className="min-h-full">
       <AppBar title={t('loans.title')} subtitle={t('loans.subtitle')} />
 
-      <div className="max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in">
+      <div className={`max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in ${selectedCount > 0 ? 'pb-28' : ''}`}>
         {/* Summary */}
         <div className="grid grid-cols-2 gap-3">
           <div className="stat-tile tint-neg">
@@ -674,12 +689,23 @@ export default function LoansPage() {
                   const totalPaid = getTotalPaid(loan)
                   const total = round2(loan.amount + (loan.increases?.reduce((s, i) => s + i.amount, 0) || 0))
                   const pct = total > 0 ? Math.min(100, Math.round((totalPaid / total) * 100)) : 0
+                  const isSelected = selectedIds.has(loan.id)
                   return (
-                    <div key={loan.id} className="card bar-neg space-y-4">
+                    <div key={loan.id} className={`card bar-neg space-y-4 transition-shadow ${isSelected ? 'ring-2 ring-accent' : ''}`}>
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <h3 className="font-semibold text-content truncate">{loan.personName}</h3>
-                          <p className="text-xs text-muted">{bnDate(loan.date)}</p>
+                        <div className="flex items-start gap-3 min-w-0">
+                          <button
+                            onClick={() => toggleSelect(loan.id)}
+                            className={`mt-0.5 w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 border transition-colors ${isSelected ? 'bg-accent border-accent text-accent-fg' : 'border-line text-transparent'}`}
+                            aria-label={t('select.selectItem')}
+                            aria-pressed={isSelected}
+                          >
+                            <CheckIcon className="w-4 h-4" />
+                          </button>
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-content truncate">{loan.personName}</h3>
+                            <p className="text-xs text-muted">{bnDate(loan.date)}</p>
+                          </div>
                         </div>
                         <div className="flex items-center gap-1">
                           <button className="icon-btn" onClick={() => handleEdit(loan)} title={t('common.edit')}><EditIcon className="w-5 h-5" /></button>
@@ -805,10 +831,30 @@ export default function LoansPage() {
         )}
       </div>
 
+      {/* Selected-total bar — floats above the bottom nav while cards are selected */}
+      {selectedCount > 0 && (
+        <div
+          className="fixed left-0 right-0 z-40 px-4"
+          style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
+        >
+          <div className="max-w-2xl mx-auto card bar-neg shadow-pop flex items-center justify-between gap-3 py-3">
+            <div className="min-w-0">
+              <p className="text-xs text-muted">{t('select.count', { count: fmtInt(selectedCount) })} · {t('select.totalDue')}</p>
+              <p className="text-xl font-bold text-negative">৳{bn(selectedTotal)}</p>
+            </div>
+            <button className="btn btn-secondary flex-shrink-0" onClick={() => setSelectedIds(new Set())}>
+              {t('select.clear')}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* FAB */}
-      <button className="fab" onClick={() => setShowForm(true)} aria-label={t('loans.addNew')}>
-        <PlusIcon className="w-6 h-6" />
-      </button>
+      {selectedCount === 0 && (
+        <button className="fab" onClick={() => setShowForm(true)} aria-label={t('loans.addNew')}>
+          <PlusIcon className="w-6 h-6" />
+        </button>
+      )}
 
       {/* Add loan */}
       <Modal
