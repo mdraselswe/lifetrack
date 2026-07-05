@@ -2,13 +2,29 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/lib/firebase-auth'
-import { LogoutIcon } from './Icons'
+import { LogoutIcon, DownloadIcon } from './Icons'
+import { exportMyData } from '@/lib/export'
+import { toast } from '@/lib/toast'
 
 export default function ProfileMenu() {
   const { user, logout } = useAuth()
   const [open, setOpen] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const logoutRef = useRef<HTMLButtonElement>(null)
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      await exportMyData(user?.email)
+      toast.success('ডেটা এক্সপোর্ট হয়েছে')
+      setOpen(false)
+    } catch {
+      toast.error('এক্সপোর্ট করতে সমস্যা হয়েছে')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   useEffect(() => {
     if (!open) return
@@ -59,8 +75,16 @@ export default function ProfileMenu() {
             <button
               ref={logoutRef}
               role="menuitem"
+              onClick={handleExport}
+              disabled={exporting}
+              className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm font-medium text-content hover:bg-surface-2 transition-colors disabled:opacity-60"
+            >
+              <DownloadIcon className="w-5 h-5" /> {exporting ? 'এক্সপোর্ট হচ্ছে...' : 'ডেটা এক্সপোর্ট (JSON)'}
+            </button>
+            <button
+              role="menuitem"
               onClick={() => { logout(); setOpen(false) }}
-              className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm font-medium text-negative hover:bg-surface-2 transition-colors"
+              className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm font-medium text-negative hover:bg-surface-2 transition-colors border-t border-line"
             >
               <LogoutIcon className="w-5 h-5" /> লগআউট
             </button>

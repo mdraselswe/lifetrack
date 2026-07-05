@@ -55,6 +55,10 @@ export const LogoutIcon = (p: IconProps) => (
   <svg {...base(p)}><path d="M15 4h4v16h-4" /><path d="M10 8l-4 4 4 4" /><path d="M6 12h9" /></svg>
 )
 
+export const DownloadIcon = (p: IconProps) => (
+  <svg {...base(p)}><path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" /></svg>
+)
+
 export const WalletIcon = (p: IconProps) => (
   <svg {...base(p)}><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H18a1 1 0 0 1 1 1v2" /><path d="M3 7.5V18a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1H5.5A2.5 2.5 0 0 1 3 7.5Z" /><circle cx="16" cy="13.5" r="1.2" /></svg>
 )

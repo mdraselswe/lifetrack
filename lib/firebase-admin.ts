@@ -1,0 +1,43 @@
+import { getApps, initializeApp, cert, type ServiceAccount } from 'firebase-admin/app'
+import { getFirestore, type Firestore } from 'firebase-admin/firestore'
+import { getAuth, type Auth } from 'firebase-admin/auth'
+
+// Lazy Admin SDK init. Nothing runs at import time — the service account is only
+// read/parsed on first call, so the app builds & prerenders fine without the env
+// var present. Only the /api/backup route (request time) needs it.
+
+let cachedApp: ReturnType<typeof initializeApp> | null = null
+
+function parseServiceAccount(): ServiceAccount {
+  const raw = process.env.FIREBASE_SERVICE_ACCOUNT
+  if (!raw) {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT env var is not set')
+  }
+  try {
+    return JSON.parse(raw) as ServiceAccount
+  } catch {
+    throw new Error('FIREBASE_SERVICE_ACCOUNT is not valid JSON')
+  }
+}
+
+// The same service account JSON is reused for the Google Sheets API auth.
+export function getServiceAccountCredentials(): { client_email: string; private_key: string } {
+  const sa = parseServiceAccount() as unknown as { client_email: string; private_key: string }
+  return { client_email: sa.client_email, private_key: sa.private_key }
+}
+
+function getAdminApp() {
+  if (cachedApp) return cachedApp
+  cachedApp = getApps().length
+    ? getApps()[0]
+    : initializeApp({ credential: cert(parseServiceAccount()) })
+  return cachedApp
+}
+
+export function getAdminDb(): Firestore {
+  return getFirestore(getAdminApp())
+}
+
+export function getAdminAuth(): Auth {
+  return getAuth(getAdminApp())
+}
