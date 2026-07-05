@@ -648,7 +648,24 @@ export default function LoansPage() {
       t('select.markPaid'),
       t('select.bulkPaidConfirm', { count: fmtInt(ids.length) }),
       () => {
-        Promise.all(ids.map((id) => updateLoan(id, { returned: true })))
+        Promise.all(ids.map((id) => {
+          const l = loans.find((x) => x.id === id)
+          if (!l) return updateLoan(id, { returned: true })
+          const remaining = calculateRemaining(l)
+          // Record a payment for the outstanding balance so পরিশোধ matches মোট
+          // (addLoanPayment auto-sets returned when fully paid), mirroring the
+          // single-card flow. No balance left → just flag returned.
+          if (remaining > 0) {
+            return addLoanPayment(id, {
+              id: crypto.randomUUID(),
+              amount: remaining,
+              date: localDatetimeValue(),
+              note: t('loans.fullPaymentNote'),
+              createdAt: new Date().toISOString(),
+            })
+          }
+          return updateLoan(id, { returned: true })
+        }))
           .then(() => {
             setSelectedIds(new Set())
             loadLoans().catch(console.error)

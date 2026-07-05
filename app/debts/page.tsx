@@ -618,7 +618,24 @@ export default function DebtsPage() {
       t('select.markPaid'),
       t('select.bulkPaidConfirm', { count: fmtInt(ids.length) }),
       () => {
-        Promise.all(ids.map((id) => updateDebt(id, { returned: true })))
+        Promise.all(ids.map((id) => {
+          const d = debts.find((x) => x.id === id)
+          if (!d) return updateDebt(id, { returned: true })
+          const remaining = calculateRemaining(d)
+          // Record a payment for the outstanding balance so পরিশোধ matches মোট
+          // (addDebtPayment auto-sets returned when fully paid), mirroring the
+          // single-card "mark paid" flow. No balance left → just flag returned.
+          if (remaining > 0) {
+            return addDebtPayment(id, {
+              id: crypto.randomUUID(),
+              amount: remaining,
+              date: localDatetimeValue(),
+              note: t('debts.fullPaymentNote'),
+              createdAt: new Date().toISOString(),
+            })
+          }
+          return updateDebt(id, { returned: true })
+        }))
           .then(() => {
             setSelectedIds(new Set())
             loadDebts().catch(console.error)
