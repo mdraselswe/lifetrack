@@ -43,6 +43,7 @@ export interface Debt {
   amount: number
   reason?: string
   date: string
+  dueDate?: string
   returned: boolean
   createdAt: string
   payments?: Payment[]
@@ -55,6 +56,7 @@ export interface Loan {
   amount: number
   reason?: string
   date: string
+  dueDate?: string
   returned: boolean
   createdAt: string
   payments?: Payment[]

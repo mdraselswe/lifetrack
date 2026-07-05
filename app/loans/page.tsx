@@ -1,8 +1,8 @@
 'use client'
 
 import { useEffect, useState, type FormEvent } from 'react'
-import { getLoans, saveLoan, updateLoan, deleteLoan, addLoanPayment, deleteLoanPayment, addLoanIncrease, deleteLoanIncrease, subscribeToLoans } from '@/lib/storage'
-import type { Loan, Payment, AmountIncrease } from '@/lib/types'
+import { getLoans, saveLoan, updateLoan, deleteLoan, addLoanPayment, deleteLoanPayment, addLoanIncrease, deleteLoanIncrease, subscribeToLoans, saveReminder } from '@/lib/storage'
+import type { Loan, Payment, AmountIncrease, Reminder } from '@/lib/types'
 import { round2 } from '@/lib/format'
 import { t, useLang, fmtNum, fmtDate } from '@/lib/i18n'
 import { toast } from '@/lib/toast'
@@ -30,6 +30,7 @@ export default function LoansPage() {
   const [amount, setAmount] = useState('')
   const [reason, setReason] = useState('')
   const [date, setDate] = useState('')
+  const [dueDate, setDueDate] = useState('')
   const [mounted, setMounted] = useState(false)
   const { user, loading } = useAuth()
   const router = useRouter()
@@ -111,6 +112,7 @@ export default function LoansPage() {
       amount: parsedAmount,
       reason,
       date,
+      ...(dueDate && { dueDate }),
       returned: false,
       createdAt: new Date().toISOString(),
       payments: [],
@@ -118,10 +120,24 @@ export default function LoansPage() {
     }
 
     saveLoan(loan).then(() => {
+      if (dueDate) {
+        const reminder: Reminder = {
+          id: crypto.randomUUID(),
+          title: t('loans.dueReminderTitle', { name: personName }),
+          description: t('loans.dueReminderDesc', { name: personName, amount: bn(parsedAmount) }),
+          scheduledTime: dueDate,
+          dismissed: false,
+          createdAt: new Date().toISOString(),
+        }
+        saveReminder(reminder).then(() => {
+          toast.info(t('loans.dueReminderCreated'))
+        }).catch(console.error)
+      }
       setPersonName('')
       setAmount('')
       setReason('')
       setDate(localDatetimeValue())
+      setDueDate('')
       setShowForm(false)
       toast.success(t('loans.addSuccess'))
     }).catch((error) => {
@@ -820,6 +836,10 @@ export default function LoansPage() {
           <div>
             <label className="label label-required">{t('common.date')}</label>
             <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} className="input" required />
+          </div>
+          <div>
+            <label className="label">{t('loans.dueDateOptional')}</label>
+            <input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="input" />
           </div>
         </form>
       </Modal>

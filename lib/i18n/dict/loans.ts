@@ -56,6 +56,12 @@ export const loans: Dict = {
   'loans.howMuchReturned': { bn: 'কত টাকা ফেরত দিলেন?', en: 'How much did you pay back?' },
   'loans.fullReturnChip': { bn: 'সম্পূর্ণ ৳{amount} ফেরত', en: 'Return full ৳{amount}' },
 
+  // Return due date & auto reminder
+  'loans.dueDateOptional': { bn: 'ফেরতের তারিখ (ঐচ্ছিক)', en: 'Return due date (optional)' },
+  'loans.dueReminderTitle': { bn: 'ধার পরিশোধ: {name}', en: 'Repayment due: {name}' },
+  'loans.dueReminderDesc': { bn: '{name}-কে ৳{amount} ফেরত দেওয়ার কথা', en: 'Repay ৳{amount} to {name}' },
+  'loans.dueReminderCreated': { bn: 'ফেরতের রিমাইন্ডার তৈরি হয়েছে', en: 'Return reminder created' },
+
   // Validation errors
   'loans.errNameAmount': { bn: 'নাম এবং পরিমাণ দিন', en: 'Enter a name and amount' },
   'loans.errValidAmount': { bn: 'সঠিক পরিমাণ দিন', en: 'Enter a valid amount' },

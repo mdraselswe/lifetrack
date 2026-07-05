@@ -47,6 +47,12 @@ export const debts: Dict = {
   'debts.fullReturnChip': { bn: 'সম্পূর্ণ ৳{amount} ফেরত', en: 'Full return of ৳{amount}' },
   'debts.fullPaymentNote': { bn: 'সম্পূর্ণ পরিশোধ', en: 'Full payment' },
 
+  // Return due date & auto reminder
+  'debts.dueDateOptional': { bn: 'ফেরতের তারিখ (ঐচ্ছিক)', en: 'Return due date (optional)' },
+  'debts.dueReminderTitle': { bn: 'ধার ফেরত: {name}', en: 'Debt due: {name}' },
+  'debts.dueReminderDesc': { bn: '{name}-এর কাছ থেকে ৳{amount} ফেরত নেওয়ার কথা', en: 'Collect ৳{amount} from {name}' },
+  'debts.dueReminderCreated': { bn: 'ফেরতের রিমাইন্ডার তৈরি হয়েছে', en: 'Return reminder created' },
+
   // Modal titles
   'debts.editTitle': { bn: 'ধার সম্পাদনা করুন', en: 'Edit debt' },
   'debts.editPaymentTitle': { bn: 'পেমেন্ট সম্পাদনা করুন', en: 'Edit payment' },

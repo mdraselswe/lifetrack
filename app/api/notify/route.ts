@@ -3,22 +3,13 @@ import webpush from 'web-push'
 import { getAdminDb } from '@/lib/firebase-admin'
 import type { DocumentReference } from 'firebase-admin/firestore'
 import type { Reminder } from '@/lib/types'
+import { actionToken, nextOccurrence, parseScheduled } from '@/lib/reminder-shared'
 
 // Hit by an external cron (cron-job.org) every minute with the CRON_SECRET.
 // Finds due reminders across all users and delivers Web Push notifications,
 // so reminders fire even when no tab is open.
 
 export const maxDuration = 60
-
-// scheduledTime is stored in mixed formats: bare "YYYY-MM-DDTHH:mm" strings
-// come from datetime-local inputs (local Bangladesh wall-clock time), while
-// reschedules store full ISO with Z. Bare strings are interpreted as +06:00.
-const parseScheduled = (s?: string): number => {
-  if (!s) return NaN
-  const hasZone = /Z$|[+-]\d{2}:?\d{2}$/.test(s)
-  const d = new Date(hasZone ? s : `${s}+06:00`)
-  return d.getTime()
-}
 
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET
@@ -83,7 +74,13 @@ export async function GET(request: Request) {
         body: item.r.description || 'রিমাইন্ডার',
         // Same tag as the in-page scheduler so an open tab replaces (not doubles)
         tag: String(item.r.id || item.ref.id),
-        data: { url: '/reminders', reminderId: item.ref.id },
+        data: {
+          url: '/reminders',
+          reminderId: item.ref.id,
+          docPath: item.ref.path,
+          // Lets the notification's done/snooze buttons authenticate.
+          token: actionToken(item.ref.path, item.r.scheduledTime),
+        },
       })
       await Promise.all(
         subs.map(async (sub) => {
@@ -107,7 +104,13 @@ export async function GET(request: Request) {
       )
       // Mark as notified for this scheduledTime regardless of per-device outcomes,
       // so a broken subscription doesn't cause repeat sends every minute.
-      await item.ref.update({ notifiedFor: item.r.scheduledTime }).catch(() => {})
+      // Repetitive reminders auto-advance to their next occurrence so they
+      // keep firing without the user manually completing each one.
+      const updates: Record<string, string> = { notifiedFor: item.r.scheduledTime }
+      if (item.r.isRepetitive && item.r.repeatType) {
+        updates.scheduledTime = nextOccurrence(item.r.scheduledTime, item.r.repeatInterval || 1, item.r.repeatType)
+      }
+      await item.ref.update(updates).catch(() => {})
     }
 
     return NextResponse.json({ ok: true, due: due.length, sent, expired })

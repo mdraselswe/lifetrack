@@ -429,6 +429,84 @@ export default function RemindersPage() {
   const activeReminders = reminders.filter(r => !r.dismissed)
   const dismissedReminders = reminders.filter(r => r.dismissed)
 
+  // Group active reminders into time sections: Overdue / Today / Tomorrow / Upcoming.
+  // scheduledTime is either 'YYYY-MM-DDTHH:mm' (local) or full ISO — new Date() handles both.
+  const now = new Date()
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const todayStart = startOfDay(now)
+  const tomorrowStart = startOfDay(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1))
+  const overdueReminders: Reminder[] = []
+  const todayReminders: Reminder[] = []
+  const tomorrowReminders: Reminder[] = []
+  const upcomingReminders: Reminder[] = []
+  const invalidTimeReminders: Reminder[] = []
+  for (const r of activeReminders) {
+    const time = new Date(r.scheduledTime).getTime()
+    if (isNaN(time)) {
+      invalidTimeReminders.push(r) // unparseable → end of Upcoming
+    } else if (time < now.getTime()) {
+      overdueReminders.push(r)
+    } else if (startOfDay(new Date(time)) === todayStart) {
+      todayReminders.push(r)
+    } else if (startOfDay(new Date(time)) === tomorrowStart) {
+      tomorrowReminders.push(r)
+    } else {
+      upcomingReminders.push(r)
+    }
+  }
+  const byTimeAsc = (a: Reminder, b: Reminder) =>
+    new Date(a.scheduledTime).getTime() - new Date(b.scheduledTime).getTime()
+  overdueReminders.sort((a, b) => byTimeAsc(b, a)) // most-recently-due first
+  todayReminders.sort(byTimeAsc)
+  tomorrowReminders.sort(byTimeAsc)
+  upcomingReminders.sort(byTimeAsc)
+  const reminderGroups = [
+    { key: 'reminders.groupOverdue', items: overdueReminders, headerClass: 'text-negative', overdue: true },
+    { key: 'reminders.groupToday', items: todayReminders },
+    { key: 'reminders.groupTomorrow', items: tomorrowReminders },
+    { key: 'reminders.groupUpcoming', items: [...upcomingReminders, ...invalidTimeReminders] },
+  ]
+
+
+  const renderActiveReminderCard = (r: Reminder, overdue = false) => (
+    <div key={r.id} className={overdue ? 'card bar-neg space-y-3' : 'card space-y-3'}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="font-semibold text-content truncate">{r.title}</h3>
+          <p className="text-xs text-muted flex items-center gap-1 mt-0.5">
+            <ClockIcon className="w-3.5 h-3.5" /> {fmtDate(r.scheduledTime, true)}
+          </p>
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button className="icon-btn" onClick={() => handleEdit(r)} title={t('common.edit')}><EditIcon className="w-5 h-5" /></button>
+          <button className="icon-btn" onClick={() => handleDelete(r.id)} title={t('common.delete')}><TrashIcon className="w-5 h-5" /></button>
+        </div>
+      </div>
+
+      {r.description && <p className="text-sm text-muted">{r.description}</p>}
+
+      {(r.isRepetitive || (r.completionCount ?? 0) > 0) && (
+        <div className="flex flex-wrap gap-2">
+          {r.isRepetitive && <span className="chip chip-accent">{t('reminders.repetitiveChip')}</span>}
+          {(r.completionCount ?? 0) > 0 && <span className="chip">{t('reminders.timesCompleted', { count: fmtInt(r.completionCount ?? 0) })}</span>}
+        </div>
+      )}
+
+      <div className="flex gap-2 pt-1">
+        <button
+          className="btn btn-primary flex-1"
+          onClick={() => (r.isRepetitive ? handleCompleteReminder(r) : handleToggleDismiss(r))}
+        >
+          <CheckIcon className="w-4 h-4" /> {t('reminders.markDone')}
+        </button>
+        {r.occurrences && r.occurrences.length > 0 && (
+          <button className="btn btn-secondary" onClick={() => setSelectedReminderForHistory(r)}>
+            <HistoryIcon className="w-4 h-4" /> {t('reminders.history')}
+          </button>
+        )}
+      </div>
+    </div>
+  )
 
   return (
     <div className="min-h-full">
@@ -489,49 +567,15 @@ export default function RemindersPage() {
           </div>
         ) : (
           <>
-            {activeReminders.length > 0 && (
-              <section className="space-y-3">
-                <h2 className="text-sm font-semibold text-muted px-1">{t('reminders.active')}</h2>
-                {activeReminders.map((r) => (
-                  <div key={r.id} className="card space-y-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <h3 className="font-semibold text-content truncate">{r.title}</h3>
-                        <p className="text-xs text-muted flex items-center gap-1 mt-0.5">
-                          <ClockIcon className="w-3.5 h-3.5" /> {fmtDate(r.scheduledTime, true)}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1 flex-shrink-0">
-                        <button className="icon-btn" onClick={() => handleEdit(r)} title={t('common.edit')}><EditIcon className="w-5 h-5" /></button>
-                        <button className="icon-btn" onClick={() => handleDelete(r.id)} title={t('common.delete')}><TrashIcon className="w-5 h-5" /></button>
-                      </div>
-                    </div>
-
-                    {r.description && <p className="text-sm text-muted">{r.description}</p>}
-
-                    {(r.isRepetitive || (r.completionCount ?? 0) > 0) && (
-                      <div className="flex flex-wrap gap-2">
-                        {r.isRepetitive && <span className="chip chip-accent">{t('reminders.repetitiveChip')}</span>}
-                        {(r.completionCount ?? 0) > 0 && <span className="chip">{t('reminders.timesCompleted', { count: fmtInt(r.completionCount ?? 0) })}</span>}
-                      </div>
-                    )}
-
-                    <div className="flex gap-2 pt-1">
-                      <button
-                        className="btn btn-primary flex-1"
-                        onClick={() => (r.isRepetitive ? handleCompleteReminder(r) : handleToggleDismiss(r))}
-                      >
-                        <CheckIcon className="w-4 h-4" /> {t('reminders.markDone')}
-                      </button>
-                      {r.occurrences && r.occurrences.length > 0 && (
-                        <button className="btn btn-secondary" onClick={() => setSelectedReminderForHistory(r)}>
-                          <HistoryIcon className="w-4 h-4" /> {t('reminders.history')}
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </section>
+            {reminderGroups.map((g) =>
+              g.items.length > 0 ? (
+                <section key={g.key} className="space-y-3">
+                  <h2 className={`text-sm font-semibold px-1 ${g.headerClass ?? 'text-muted'}`}>
+                    {t(g.key)} · {fmtInt(g.items.length)}
+                  </h2>
+                  {g.items.map((r) => renderActiveReminderCard(r, g.overdue))}
+                </section>
+              ) : null
             )}
 
             {dismissedReminders.length > 0 && (

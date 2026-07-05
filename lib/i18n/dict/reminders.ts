@@ -90,4 +90,10 @@ export const reminders: Dict = {
   'reminders.pushEnabled': { bn: 'নোটিফিকেশন চালু হয়েছে', en: 'Notifications enabled' },
   'reminders.pushBlocked': { bn: 'নোটিফিকেশন ব্লক করা আছে। ব্রাউজার সেটিংস থেকে অনুমতি দিন', en: 'Notifications are blocked. Allow them in browser settings' },
   'reminders.pushError': { bn: 'নোটিফিকেশন চালু করতে সমস্যা হয়েছে', en: 'Could not enable notifications' },
+
+  // Active list time-group headers
+  'reminders.groupOverdue': { bn: 'মেয়াদোত্তীর্ণ', en: 'Overdue' },
+  'reminders.groupToday': { bn: 'আজ', en: 'Today' },
+  'reminders.groupTomorrow': { bn: 'আগামীকাল', en: 'Tomorrow' },
+  'reminders.groupUpcoming': { bn: 'পরে', en: 'Upcoming' },
 }
