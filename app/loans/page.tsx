@@ -1065,20 +1065,22 @@ export default function LoansPage() {
           className="fixed left-0 right-0 z-40 px-4"
           style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom))' }}
         >
-          <div className="max-w-2xl mx-auto card bar-neg shadow-pop flex items-center justify-between gap-3 py-3">
-            <div className="min-w-0">
-              <p className="text-xs text-muted">{t('select.count', { count: fmtInt(selectedCount) })} · {t('select.totalDue')}</p>
-              <p className="text-xl font-bold text-negative">৳{bn(selectedTotal)}</p>
+          <div className="max-w-2xl mx-auto card bar-neg shadow-pop py-3 space-y-3">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs text-muted truncate">{t('select.count', { count: fmtInt(selectedCount) })} · {t('select.totalDue')}</p>
+                <p className="text-xl font-bold text-negative">৳{bn(selectedTotal)}</p>
+              </div>
+              <button className="btn btn-secondary text-xs px-3 py-2 flex-shrink-0" onClick={() => setSelectedIds(new Set())}>
+                {t('select.clear')}
+              </button>
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-              <button className="btn btn-primary" onClick={handleBulkPaid}>
+            <div className="flex gap-2">
+              <button className="btn btn-primary flex-1" onClick={handleBulkPaid}>
                 <CheckIcon className="w-4 h-4" /> {t('select.markPaid')}
               </button>
-              <button className="btn btn-danger" onClick={handleBulkDelete}>
+              <button className="btn btn-danger flex-1" onClick={handleBulkDelete}>
                 <TrashIcon className="w-4 h-4" /> {t('select.delete')}
-              </button>
-              <button className="btn btn-secondary" onClick={() => setSelectedIds(new Set())}>
-                {t('select.clear')}
               </button>
             </div>
           </div>
