@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, type ComponentType } from 'react'
-import { getDebts, getLoans, getReminders, validateData } from '@/lib/storage'
+import { subscribeToDebts, subscribeToLoans, subscribeToReminders } from '@/lib/storage'
 import type { Debt, Loan, Reminder } from '@/lib/types'
 import Link from 'next/link'
 import { useAuth } from '@/lib/firebase-auth'
@@ -106,39 +106,26 @@ export default function Dashboard() {
   useLang() // re-render on language switch
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (loading) return
+    if (!user) {
       router.push('/login')
       return
     }
     setMounted(true)
-    validateData()
-    loadData().catch(console.error)
-
-    const onVisible = () => { if (!document.hidden) loadData(true).catch(console.error) }
-    const onFocus = () => loadData(true).catch(console.error)
-    document.addEventListener('visibilitychange', onVisible)
-    window.addEventListener('focus', onFocus)
-    return () => {
-      document.removeEventListener('visibilitychange', onVisible)
-      window.removeEventListener('focus', onFocus)
+    // Realtime subscriptions render instantly from the Firestore persistent
+    // cache and stay live — no refetch-on-focus or manual reloads needed.
+    const seen = new Set<string>()
+    const arrived = (key: string) => {
+      seen.add(key)
+      if (seen.size === 3) setDataLoading(false)
     }
+    const unsubs = [
+      subscribeToDebts(user.uid, (d) => { setDebts(d); arrived('d') }),
+      subscribeToLoans(user.uid, (l) => { setLoans(l); arrived('l') }),
+      subscribeToReminders(user.uid, (r) => { setReminders(r); arrived('r') }),
+    ]
+    return () => unsubs.forEach((u) => u())
   }, [user, loading, router])
-
-  const loadData = async (background = false) => {
-    try {
-      if (!background) setDataLoading(true)
-      const [d, l, r]: [Debt[], Loan[], Reminder[]] = await Promise.all([
-        getDebts(), getLoans(), getReminders(),
-      ])
-      setDebts(d)
-      setLoans(l)
-      setReminders(r)
-    } catch (error) {
-      console.error('Error loading dashboard data:', error)
-    } finally {
-      setDataLoading(false)
-    }
-  }
 
   // Pull-to-refresh (mobile) — only engages when scrolled to the very top.
   const onTouchStart = (e: React.TouchEvent) => {
@@ -154,9 +141,10 @@ export default function Dashboard() {
     if (startY.current === null) return
     startY.current = null
     if (pull > 55) {
+      // Data is live via subscriptions — spin briefly as acknowledgement.
       setRefreshing(true)
       setPull(48)
-      await loadData(true).catch(() => {})
+      await new Promise((res) => setTimeout(res, 500))
       setRefreshing(false)
     }
     setPull(0)

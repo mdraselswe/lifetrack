@@ -66,24 +66,6 @@ const resolveUserId = async (): Promise<string | null> => {
   return currentUserId
 }
 
-// Helper to get user-specific storage key
-const getUserStorageKey = (baseKey: string): string => {
-  const userId = getCurrentUserId()
-  return userId ? `${baseKey}_${userId}` : baseKey
-}
-
-// Helper function to remove duplicates from array based on ID
-const removeDuplicates = <T extends { id: string }>(items: T[]): T[] => {
-  const seen = new Set<string>()
-  return items.filter(item => {
-    if (seen.has(item.id)) {
-      return false
-    }
-    seen.add(item.id)
-    return true
-  })
-}
-
 // Reminders
 export const getReminders = async (): Promise<Reminder[]> => {
   if (!isBrowser) return []
@@ -581,77 +563,3 @@ export const deleteDebtIncrease = async (debtId: string, increaseId: string): Pr
     throw error
   }
 }
-
-
-// Utility function to clean up localStorage data
-export const cleanupData = (): void => {
-  if (!isBrowser) return
-  
-  // Remove all localStorage data - Firebase only
-  const userId = getCurrentUserId()
-  if (userId) {
-    // Clear all user-specific localStorage data
-    const keys = ['reminders', 'debts', 'loans']
-    keys.forEach(key => {
-      const storageKey = `${key}_${userId}`
-      localStorage.removeItem(storageKey)
-    })
-    console.log('localStorage data cleared - using Firebase only')
-  }
-}
-
-// Utility function to validate and fix data integrity
-export const validateData = async (): Promise<void> => {
-  if (!isBrowser) return
-  
-  const userId = await resolveUserId()
-  if (!userId) {
-    console.warn('No user ID found - cannot validate data')
-    return
-  }
-  
-  try {
-    // Validate and fix reminders
-    const reminders = (await getReminders()).filter(r => 
-      r.id && r.title && r.scheduledTime && r.createdAt
-    )
-    console.log(`Validated ${reminders.length} reminders`)
-    
-    // Validate and fix debts
-    const debts = (await getDebts()).filter(d => 
-      d.id && d.personName && typeof d.amount === 'number' && d.date && d.createdAt
-    ).map(d => ({
-      ...d,
-      amount: Number(d.amount),
-      returned: Boolean(d.returned),
-      payments: d.payments?.filter(p => 
-        p.id && typeof p.amount === 'number' && p.date && p.createdAt
-      ).map(p => ({
-        ...p,
-        amount: Number(p.amount)
-      })) || []
-    }))
-    console.log(`Validated ${debts.length} debts`)
-    
-    // Validate and fix loans
-    const loans = (await getLoans()).filter(l => 
-      l.id && l.personName && typeof l.amount === 'number' && l.date && l.createdAt
-    ).map(l => ({
-      ...l,
-      amount: Number(l.amount),
-      returned: Boolean(l.returned),
-      payments: l.payments?.filter(p => 
-        p.id && typeof p.amount === 'number' && p.date && p.createdAt
-      ).map(p => ({
-        ...p,
-        amount: Number(p.amount)
-      })) || []
-    }))
-    console.log(`Validated ${loans.length} loans`)
-    
-    console.log('Data validation completed - Firebase only')
-  } catch (error) {
-    console.error('Error validating data:', error)
-  }
-}
-

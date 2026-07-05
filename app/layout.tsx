@@ -95,6 +95,10 @@ export default function RootLayout({
   return (
     <html lang="bn" className={notoSansBengali.variable} suppressHydrationWarning>
       <head>
+        {/* Open Firebase connections early — removes the TLS handshake from the first data fetch */}
+        <link rel="preconnect" href="https://firestore.googleapis.com" />
+        <link rel="preconnect" href="https://identitytoolkit.googleapis.com" />
+        <link rel="dns-prefetch" href="https://securetoken.googleapis.com" />
         <link rel="icon" href="/favicon.ico" sizes="any" />
         <link rel="apple-touch-icon" href="/icon-192x192.png" />
         <link rel="manifest" href="/manifest.json" />
