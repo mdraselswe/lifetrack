@@ -123,7 +123,7 @@ export async function GET(request: Request) {
   // Never hang the request: if a step stalls, report which one.
   let timer: ReturnType<typeof setTimeout> | undefined
   const guard = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new Error(`STALLED at step: ${step}`)), 25000)
+    timer = setTimeout(() => reject(new Error(`STALLED at step: ${step}`)), 50000)
   })
   try {
     const result = await Promise.race([run(), guard])
