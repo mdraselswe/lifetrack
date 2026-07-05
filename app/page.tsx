@@ -564,9 +564,9 @@ export default function Dashboard() {
               </div>
 
               {(homeTab === 'debts' ? topDebts : topLoans).length === 0 ? (
-                <p className="text-center text-sm text-muted py-6">{t('dashboard.noRecords')}</p>
+                <p key={homeTab} className="text-center text-sm text-muted py-6 fade-in">{t('dashboard.noRecords')}</p>
               ) : (
-                <div className="divide-y divide-line">
+                <div key={homeTab} className="divide-y divide-line fade-in">
                   {(homeTab === 'debts' ? topDebts : topLoans).map((x) => (
                     <div key={x.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
                       <Avatar name={x.name} />
@@ -640,13 +640,13 @@ export default function Dashboard() {
       <div className="fixed z-50 flex flex-col items-end gap-2" style={{ right: '1.25rem', bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
         {fabOpen && (
           <>
-            <button className="btn btn-secondary shadow-pop" onClick={() => openAdd('reminder')}>
+            <button className="btn btn-secondary shadow-pop dial-item" onClick={() => openAdd('reminder')}>
               <ClockIcon className="w-4 h-4 text-accent" /> {t('nav.reminders')}
             </button>
-            <button className="btn btn-secondary shadow-pop" onClick={() => openAdd('loan')}>
+            <button className="btn btn-secondary shadow-pop dial-item" onClick={() => openAdd('loan')}>
               <ArrowDownLeftIcon className="w-4 h-4 text-negative" /> {t('dashboard.borrowedBtn')}
             </button>
-            <button className="btn btn-secondary shadow-pop" onClick={() => openAdd('debt')}>
+            <button className="btn btn-secondary shadow-pop dial-item" onClick={() => openAdd('debt')}>
               <ArrowUpRightIcon className="w-4 h-4 text-positive" /> {t('dashboard.lentBtn')}
             </button>
           </>

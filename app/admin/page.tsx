@@ -94,7 +94,7 @@ export default function AdminPage() {
               <div className="text-center py-10 text-muted text-sm">{t('search.noResults')}</div>
             )}
 
-            <div className="space-y-3">
+            <div className="space-y-3 list-stagger" key={q}>
               {shown.map((u) => (
                 <div key={u.uid} className="card space-y-3">
                   <div className="flex items-start justify-between gap-3">

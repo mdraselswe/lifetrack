@@ -890,7 +890,7 @@ export default function DebtsPage() {
           personGroups.length === 0 ? (
             <div className="text-center py-16 text-muted text-sm">{t('search.noResults')}</div>
           ) : (
-            <section className="space-y-3">
+            <section className="space-y-3 list-stagger">
               <h2 className="text-sm font-semibold text-muted px-1">{t('debts.sectionActive')}</h2>
               {personGroups.map((group) => (
                 <div key={group.name} className="card bar-pos flex items-center justify-between gap-3">
@@ -917,7 +917,7 @@ export default function DebtsPage() {
         ) : (
           <>
             {showActiveSection && filteredActive.length > 0 && (
-              <section className="space-y-3">
+              <section className="space-y-3 list-stagger">
                 <h2 className="text-sm font-semibold text-muted px-1">{t('debts.sectionActive')}</h2>
                 {filteredActive.map((debt) => {
                   const remaining = calculateRemaining(debt)
@@ -1027,7 +1027,7 @@ export default function DebtsPage() {
             )}
 
             {showSettledSection && filteredReturned.length > 0 && (
-              <section className="space-y-3">
+              <section className="space-y-3 list-stagger">
                 <h2 className="text-sm font-semibold text-muted px-1">{t('debts.receivedBack')}</h2>
                 {filteredReturned.map((debt) => {
                   const totalPaid = getTotalPaid(debt)

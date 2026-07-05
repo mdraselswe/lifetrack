@@ -632,7 +632,7 @@ export default function RemindersPage() {
             )}
 
             {dismissedReminders.length > 0 && (
-              <section className="space-y-3">
+              <section className="space-y-3 list-stagger">
                 <h2 className="text-sm font-semibold text-muted px-1">{t('reminders.completed')}</h2>
                 {dismissedReminders.map((r) => (
                   <div key={r.id} className="card flex items-center justify-between gap-3 opacity-90">

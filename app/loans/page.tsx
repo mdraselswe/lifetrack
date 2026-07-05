@@ -876,7 +876,7 @@ export default function LoansPage() {
           </div>
         ) : viewMode === 'byPerson' ? (
           personGroups.length > 0 ? (
-            <section className="space-y-3">
+            <section className="space-y-3 list-stagger">
               <h2 className="text-sm font-semibold text-muted px-1">{t('loans.sectionActive')}</h2>
               {personGroups.map((g) => {
                 const initial = g.name.trim().charAt(0).toUpperCase()
@@ -908,7 +908,7 @@ export default function LoansPage() {
         ) : (
           <>
             {showActiveSection && displayActive.length > 0 && (
-              <section className="space-y-3">
+              <section className="space-y-3 list-stagger">
                 <h2 className="text-sm font-semibold text-muted px-1">{t('loans.sectionActive')}</h2>
                 {displayActive.map((loan) => {
                   const remaining = calculateRemaining(loan)
@@ -1018,7 +1018,7 @@ export default function LoansPage() {
             )}
 
             {showReturnedSection && displayReturned.length > 0 && (
-              <section className="space-y-3">
+              <section className="space-y-3 list-stagger">
                 <h2 className="text-sm font-semibold text-muted px-1">{t('loans.sectionReturned')}</h2>
                 {displayReturned.map((loan) => {
                   const totalPaid = getTotalPaid(loan)
