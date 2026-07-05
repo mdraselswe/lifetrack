@@ -16,7 +16,7 @@ import {
   subscribeToLoans,
   subscribeToReminders
 } from './firebase-db'
-import { auth } from './firebase'
+import { auth } from './firebase-app'
 import { round2 } from './format'
 
 // Re-export realtime listeners so pages can subscribe for cross-device sync

@@ -1,4 +1,4 @@
-import { auth } from './firebase'
+import { auth } from './firebase-app'
 
 // After a data change, debounce a call to the backup endpoint so the Google
 // Sheet mirror stays near-realtime. Best-effort: never throws, never blocks the

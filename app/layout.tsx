@@ -3,9 +3,10 @@ import type { ReactNode } from 'react'
 import { Noto_Sans_Bengali } from 'next/font/google'
 import './globals.css'
 
+// Variable font: one file covers every weight (400–700) — smaller total
+// payload than the four static weight files it replaces, zero visual change.
 const notoSansBengali = Noto_Sans_Bengali({
   subsets: ['bengali', 'latin'],
-  weight: ['400', '500', '600', '700'],
   variable: '--font-sans',
   display: 'swap',
 })
