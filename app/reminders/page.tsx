@@ -426,14 +426,14 @@ export default function RemindersPage() {
               <ClockIcon className="w-5 h-5" />
               <span className="text-xs font-medium text-muted">সক্রিয়</span>
             </div>
-            <p className="text-2xl font-bold text-content">{activeReminders.length.toLocaleString('bn-BD')}</p>
+            <p className="text-2xl font-bold text-content">{toBnDigits(String(activeReminders.length))}</p>
           </div>
           <div className="stat-tile">
             <div className="flex items-center gap-2 mb-2 text-positive">
               <CheckIcon className="w-5 h-5" />
               <span className="text-xs font-medium text-muted">সম্পন্ন</span>
             </div>
-            <p className="text-2xl font-bold text-content">{dismissedReminders.length.toLocaleString('bn-BD')}</p>
+            <p className="text-2xl font-bold text-content">{toBnDigits(String(dismissedReminders.length))}</p>
           </div>
         </div>
 
@@ -610,7 +610,7 @@ export default function RemindersPage() {
                 .map((occ, index) => (
                   <div key={occ.id} className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-content">#{(index + 1).toLocaleString('bn-BD')}</p>
+                      <p className="text-sm font-medium text-content">#{toBnDigits(String(index + 1))}</p>
                       <p className="text-xs text-muted truncate">{fmtDate(occ.completedTime)}</p>
                     </div>
                     <div className="flex items-center gap-1">

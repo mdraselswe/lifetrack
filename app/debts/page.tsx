@@ -3,7 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getDebts, saveDebt, updateDebt, deleteDebt, addDebtPayment, deleteDebtPayment, addDebtIncrease, deleteDebtIncrease, subscribeToDebts } from '@/lib/storage'
 import type { Debt, Payment, AmountIncrease } from '@/lib/types'
-import { round2, toBnDigits } from '@/lib/format'
+import { round2, toBnDigits, toBnNumber } from '@/lib/format'
 import { format } from 'date-fns'
 import { bn as bnLocale } from 'date-fns/locale'
 import { toast } from '@/lib/toast'
@@ -15,7 +15,7 @@ import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
 import { ArrowUpRightIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon } from '@/components/Icons'
 
-const bn = (n: number) => n.toLocaleString('bn-BD')
+const bn = (n: number) => toBnNumber(n)
 const bnDate = (v: string) => toBnDigits(format(new Date(v), 'MMMM d, yyyy', { locale: bnLocale }))
 // datetime-local expects a LOCAL wall-clock string; toISOString() is UTC and
 // would shift the prefilled value by the timezone offset.

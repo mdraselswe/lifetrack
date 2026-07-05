@@ -8,7 +8,7 @@ import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
 import { DashboardSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
-import { round2, toBnDigits } from '@/lib/format'
+import { round2, toBnDigits, toBnNumber } from '@/lib/format'
 import { formatDistanceToNow } from 'date-fns'
 import { bn as bnLocale } from 'date-fns/locale'
 import {
@@ -16,8 +16,8 @@ import {
   RotateIcon, PlusCircleIcon,
 } from '@/components/Icons'
 
-const bn = (n: number) => round2(n).toLocaleString('bn-BD')
-const bnInt = (n: number) => Math.round(n).toLocaleString('bn-BD')
+const bn = (n: number) => toBnNumber(round2(n))
+const bnInt = (n: number) => toBnNumber(Math.round(n))
 
 const greeting = () => {
   const h = new Date().getHours()
@@ -275,7 +275,7 @@ export default function Dashboard() {
                 <ClockIcon className="w-5 h-5" />
               </span>
               <span className="text-sm text-content flex-1">
-                {overdue.length.toLocaleString('bn-BD')}টি রিমাইন্ডার মেয়াদোত্তীর্ণ
+                {toBnDigits(String(overdue.length))}টি রিমাইন্ডার মেয়াদোত্তীর্ণ
               </span>
               <span className="text-xs text-accent font-medium">দেখুন →</span>
             </Link>
@@ -285,7 +285,7 @@ export default function Dashboard() {
                 <ClockIcon className="w-5 h-5" />
               </span>
               <span className="text-sm text-content flex-1">
-                আজ {todayRem.length.toLocaleString('bn-BD')}টি রিমাইন্ডার আছে
+                আজ {toBnDigits(String(todayRem.length))}টি রিমাইন্ডার আছে
               </span>
               <span className="text-xs text-accent font-medium">দেখুন →</span>
             </Link>
@@ -331,7 +331,7 @@ export default function Dashboard() {
                 <span className="text-xs font-medium text-positive">পাবেন</span>
               </div>
               <p className="text-2xl font-bold text-content">৳{bn(animLent)}</p>
-              <p className="text-[11px] text-muted mt-0.5">{debtDetails.length.toLocaleString('bn-BD')} জন</p>
+              <p className="text-[11px] text-muted mt-0.5">{toBnDigits(String(debtDetails.length))} জন</p>
             </div>
             <div className="stat-tile tint-neg">
               <div className="flex items-center gap-2 text-negative mb-2">
@@ -339,7 +339,7 @@ export default function Dashboard() {
                 <span className="text-xs font-medium text-negative">দিতে হবে</span>
               </div>
               <p className="text-2xl font-bold text-content">৳{bn(animBorrowed)}</p>
-              <p className="text-[11px] text-muted mt-0.5">{loanDetails.length.toLocaleString('bn-BD')} জন</p>
+              <p className="text-[11px] text-muted mt-0.5">{toBnDigits(String(loanDetails.length))} জন</p>
             </div>
           </div>
 
@@ -445,7 +445,7 @@ export default function Dashboard() {
             <Link href="/reminders" className="card card-interactive flex flex-col items-center gap-2 py-4 text-center">
               <span className="text-accent"><ClockIcon className="w-6 h-6" /></span>
               <span className="text-xs font-medium text-content">রিমাইন্ডার</span>
-              <span className="text-[11px] text-muted">{reminderCount.toLocaleString('bn-BD')} সক্রিয়</span>
+              <span className="text-[11px] text-muted">{toBnDigits(String(reminderCount))} সক্রিয়</span>
             </Link>
             <Link href="/debts" className="card card-interactive bar-pos flex flex-col items-center gap-2 py-4 text-center">
               <span className="text-positive"><ArrowUpRightIcon className="w-6 h-6" /></span>
