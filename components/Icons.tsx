@@ -79,6 +79,22 @@ export const CheckIcon = (p: IconProps) => (
   <svg {...base(p)}><path d="M5 12.5 10 17 19 7" /></svg>
 )
 
+export const CheckCircleIcon = (p: IconProps) => (
+  <svg {...base(p)}><circle cx="12" cy="12" r="9" /><path d="m8.5 12 2.5 2.5 4.5-5" /></svg>
+)
+
+export const AlertCircleIcon = (p: IconProps) => (
+  <svg {...base(p)}><circle cx="12" cy="12" r="9" /><path d="M12 8v5" /><path d="M12 16.5v.5" /></svg>
+)
+
+export const AlertTriangleIcon = (p: IconProps) => (
+  <svg {...base(p)}><path d="M10.3 4.3 2.8 17a2 2 0 0 0 1.7 3h15a2 2 0 0 0 1.7-3L13.7 4.3a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4" /><path d="M12 16.5v.5" /></svg>
+)
+
+export const InfoIcon = (p: IconProps) => (
+  <svg {...base(p)}><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><path d="M12 7.5v.5" /></svg>
+)
+
 export const RotateIcon = (p: IconProps) => (
   <svg {...base(p)}><path d="M4 4v6h6" /><path d="M4 10a8 8 0 1 1-1.5 4.7" /></svg>
 )

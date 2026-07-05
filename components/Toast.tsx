@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { toastManager, type Toast } from '@/lib/toast'
+import { CheckCircleIcon, AlertCircleIcon, AlertTriangleIcon, InfoIcon, CloseIcon } from './Icons'
 
 export default function ToastContainer() {
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -14,7 +15,12 @@ export default function ToastContainer() {
   if (toasts.length === 0) return null
 
   return (
-    <div className="fixed top-4 right-4 z-[120] space-y-2 max-w-sm w-full">
+    // Bottom-center on mobile (above the nav), top-right on desktop — native feel.
+    <div
+      className="fixed z-[120] inset-x-0 bottom-0 flex flex-col items-center gap-2 px-4 pointer-events-none
+                 sm:inset-x-auto sm:bottom-auto sm:top-4 sm:right-4 sm:items-end sm:px-0"
+      style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
+    >
       {toasts.map((toast) => (
         <ToastItem key={toast.id} toast={toast} />
       ))}
@@ -22,97 +28,52 @@ export default function ToastContainer() {
   )
 }
 
+const typeConfig = {
+  success: { tint: 'tint-pos', text: 'text-positive', Icon: CheckCircleIcon },
+  error: { tint: 'tint-neg', text: 'text-negative', Icon: AlertCircleIcon },
+  warning: { tint: 'tint-warn', text: 'text-caution', Icon: AlertTriangleIcon },
+  info: { tint: 'tint-accent', text: 'text-accent', Icon: InfoIcon },
+} as const
+
 function ToastItem({ toast }: { toast: Toast }) {
   const [isVisible, setIsVisible] = useState(false)
   const [isLeaving, setIsLeaving] = useState(false)
 
   useEffect(() => {
-    // Trigger animation
     const timer = setTimeout(() => setIsVisible(true), 10)
     return () => clearTimeout(timer)
   }, [])
 
   const handleRemove = () => {
     setIsLeaving(true)
-    setTimeout(() => {
-      toastManager.removeToast(toast.id)
-    }, 300)
+    setTimeout(() => toastManager.removeToast(toast.id), 300)
   }
 
-  // Token-based, light/dark aware styling (matches cards + semantic tints).
-  const typeConfig = {
-    success: { tint: 'tint-pos', text: 'text-positive', accent: 'var(--positive)' },
-    error: { tint: 'tint-neg', text: 'text-negative', accent: 'var(--negative)' },
-    warning: { tint: 'tint-warn', text: 'text-caution', accent: 'var(--caution)' },
-    info: { tint: 'tint-accent', text: 'text-accent', accent: 'var(--accent)' },
-  } as const
   const cfg = typeConfig[toast.type as keyof typeof typeConfig] ?? typeConfig.info
-
-  const getToastStyles = () =>
-    `p-4 rounded-xl shadow-pop transition-all duration-300 ease-in-out transform ${cfg.tint} ${cfg.text}`
-
-  const getIcon = () => {
-    switch (toast.type) {
-      case 'success':
-        return '✅'
-      case 'error':
-        return '❌'
-      case 'warning':
-        return '⚠️'
-      case 'info':
-      default:
-        return 'ℹ️'
-    }
-  }
+  const shown = isVisible && !isLeaving
 
   return (
     <div
-      className={`
-        ${getToastStyles()}
-        ${isVisible && !isLeaving ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'}
-        ${isLeaving ? 'translate-x-full opacity-0' : ''}
-      `}
-      style={{
-        borderLeftWidth: '4px',
-        borderLeftColor: cfg.accent,
-        animation: isVisible && !isLeaving ? 'slideInRight 0.3s ease-out' : undefined
-      }}
+      className={`pointer-events-auto w-full max-w-sm transition-all duration-300 ease-out
+        ${shown ? 'opacity-100 translate-y-0 sm:translate-x-0' : 'opacity-0 translate-y-3 sm:translate-y-0 sm:translate-x-4'}`}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex items-start space-x-3">
-          <span className="text-lg flex-shrink-0">{getIcon()}</span>
-          <div className="flex-1">
-            <p className="text-sm font-medium leading-5">{toast.message}</p>
-          </div>
-        </div>
+      <div
+        role="status"
+        aria-live="polite"
+        className="flex items-center gap-3 p-3 rounded-2xl surface border border-line shadow-pop"
+      >
+        <span className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${cfg.tint} ${cfg.text}`}>
+          <cfg.Icon className="w-5 h-5" />
+        </span>
+        <p className="flex-1 text-sm font-medium text-content leading-snug">{toast.message}</p>
         <button
           onClick={handleRemove}
-          className="ml-4 flex-shrink-0 opacity-60 hover:opacity-100 transition-opacity"
+          className="icon-btn flex-shrink-0 text-muted"
           aria-label="বন্ধ করুন"
         >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-          </svg>
+          <CloseIcon className="w-4 h-4" />
         </button>
       </div>
     </div>
   )
-}
-
-// Add CSS animation
-if (typeof document !== 'undefined') {
-  const style = document.createElement('style')
-  style.textContent = `
-    @keyframes slideInRight {
-      from {
-        transform: translateX(100%);
-        opacity: 0;
-      }
-      to {
-        transform: translateX(0);
-        opacity: 1;
-      }
-    }
-  `
-  document.head.appendChild(style)
 }
