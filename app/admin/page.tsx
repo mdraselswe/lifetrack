@@ -9,6 +9,7 @@ import AppBar from '@/components/AppBar'
 import { ListSkeleton } from '@/components/SkeletonLoader'
 import { t, useLang, fmtInt, fmtDate, fmtRelative } from '@/lib/i18n'
 import { toast } from '@/lib/toast'
+import { SearchIcon } from '@/components/Icons'
 
 type AdminUser = {
   uid: string
@@ -27,6 +28,7 @@ export default function AdminPage() {
   const { user, loading } = useAuth()
   const router = useRouter()
   const [users, setUsers] = useState<AdminUser[] | null>(null)
+  const [search, setSearch] = useState('')
 
   const isAdmin = !!user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()
 
@@ -54,6 +56,8 @@ export default function AdminPage() {
 
   const now = Date.now()
   const active7d = (users || []).filter((u) => u.lastLoginAt > now - 7 * 24 * 60 * 60 * 1000).length
+  const q = search.trim().toLowerCase()
+  const shown = (users || []).filter((u) => !q || u.email.toLowerCase().includes(q) || u.name.toLowerCase().includes(q))
 
   return (
     <div className="min-h-full">
@@ -75,8 +79,23 @@ export default function AdminPage() {
               </div>
             </div>
 
+            <div className="relative">
+              <SearchIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="input pl-10"
+                placeholder={t('search.placeholder')}
+              />
+            </div>
+
+            {shown.length === 0 && (
+              <div className="text-center py-10 text-muted text-sm">{t('search.noResults')}</div>
+            )}
+
             <div className="space-y-3">
-              {users.map((u) => (
+              {shown.map((u) => (
                 <div key={u.uid} className="card space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
