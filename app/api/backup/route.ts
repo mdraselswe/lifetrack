@@ -9,6 +9,21 @@ export const maxDuration = 60
 const sumAmounts = (items?: { amount: number }[]) =>
   (items || []).reduce((s, p) => s + (typeof p.amount === 'number' ? p.amount : 0), 0)
 
+// Sheets cells must be primitives. Coerce Firestore Timestamps (and any stray
+// object) to strings — some docs store createdAt/date as a Timestamp.
+const cell = (v: unknown): string | number | boolean => {
+  if (v === null || v === undefined) return ''
+  if (typeof v === 'object') {
+    const o = v as { toDate?: () => Date; _seconds?: number; seconds?: number }
+    if (typeof o.toDate === 'function') return o.toDate().toISOString()
+    const secs = o._seconds ?? o.seconds
+    if (typeof secs === 'number') return new Date(secs * 1000).toISOString()
+    return JSON.stringify(v)
+  }
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return v
+  return String(v)
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url)
   const secret = process.env.CRON_SECRET
@@ -91,9 +106,10 @@ export async function GET(request: Request) {
     const at = new Date().toISOString()
     const metaRows = [['lastBackup', at], ['debts', debtDocs.length], ['loans', loanDocs.length], ['reminders', reminderDocs.length], ['users', uids.length]]
 
-    const write = async (tab: string, rows: (string | number)[][]) => {
+    const write = async (tab: string, rows: unknown[][]) => {
+      const values = rows.map((r) => r.map(cell))
       await sheets.spreadsheets.values.clear({ spreadsheetId: sheetId, range: tab })
-      await sheets.spreadsheets.values.update({ spreadsheetId: sheetId, range: `${tab}!A1`, valueInputOption: 'RAW', requestBody: { values: rows } })
+      await sheets.spreadsheets.values.update({ spreadsheetId: sheetId, range: `${tab}!A1`, valueInputOption: 'RAW', requestBody: { values } })
     }
 
     step = 'write-debts'; await write('Debts', debtRows)
