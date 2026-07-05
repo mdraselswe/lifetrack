@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getReminders, saveReminder, updateReminder, deleteReminder, subscribeToReminders } from '@/lib/storage'
 import { scheduleNotification } from '@/lib/notifications'
+import { enablePush, refreshPushIfGranted, pushSupported } from '@/lib/push'
 import type { Reminder, ReminderOccurrence } from '@/lib/types'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
@@ -42,12 +43,24 @@ export default function RemindersPage() {
   const [editOccurrenceDateTime, setEditOccurrenceDateTime] = useState('')
   const [rescheduleReminderId, setRescheduleReminderId] = useState<string | null>(null)
   const [rescheduleHours, setRescheduleHours] = useState('1')
+  const [pushState, setPushState] = useState<'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported'>('unknown')
   const { user, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
     setMounted(true)
     setupServiceWorker()
+    // Push opt-in state + silent re-subscribe when already granted
+    if (!pushSupported()) {
+      setPushState('unsupported')
+    } else if (Notification.permission === 'granted') {
+      setPushState('granted')
+      refreshPushIfGranted()
+    } else if (Notification.permission === 'denied') {
+      setPushState('denied')
+    } else {
+      setPushState('prompt')
+    }
     // Set default date after mount
     setScheduledTime(toLocalDateTimeValue())
     setIsRepetitive(false)
@@ -95,6 +108,19 @@ export default function RemindersPage() {
       // Open the reschedule modal (replaces native prompt() for a PWA-friendly UX)
       setRescheduleHours('1')
       setRescheduleReminderId(reminderId)
+    }
+  }
+
+  const handleEnablePush = async () => {
+    const result = await enablePush()
+    if (result === 'subscribed') {
+      setPushState('granted')
+      toast.success(t('reminders.pushEnabled'))
+    } else if (result === 'denied') {
+      setPushState('denied')
+      toast.error(t('reminders.pushBlocked'))
+    } else {
+      toast.error(t('reminders.pushError'))
     }
   }
 
@@ -409,6 +435,27 @@ export default function RemindersPage() {
       <AppBar title={t('nav.reminders')} subtitle={t('reminders.subtitle')} />
 
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in">
+        {/* Push notification opt-in — makes reminders fire even with the app closed */}
+        {pushState === 'prompt' && (
+          <div className="card flex items-center gap-3 py-3">
+            <span className="tint-accent text-accent w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0">
+              <ClockIcon className="w-5 h-5" />
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-content">{t('reminders.pushTitle')}</p>
+              <p className="text-xs text-muted">{t('reminders.pushDesc')}</p>
+            </div>
+            <button onClick={handleEnablePush} className="btn btn-primary text-xs px-3 py-2 flex-shrink-0">
+              {t('reminders.pushEnable')}
+            </button>
+          </div>
+        )}
+        {pushState === 'denied' && (
+          <div className="card tint-warn py-3 px-4">
+            <p className="text-xs text-caution">{t('reminders.pushBlocked')}</p>
+          </div>
+        )}
+
         {/* Summary */}
         <div className="grid grid-cols-2 gap-3">
           <div className="stat-tile">

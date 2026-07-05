@@ -84,4 +84,10 @@ export const reminders: Dict = {
   'reminders.setButton': { bn: 'নির্ধারণ করুন', en: 'Set' },
   'reminders.invalidHours': { bn: 'সঠিক ঘন্টা সংখ্যা দিন', en: 'Enter a valid number of hours' },
   'reminders.rescheduled': { bn: 'রিমাইন্ডার পুনঃনির্ধারণ করা হয়েছে', en: 'Reminder rescheduled' },
+  'reminders.pushTitle': { bn: 'নোটিফিকেশন চালু করুন', en: 'Enable notifications' },
+  'reminders.pushDesc': { bn: 'অ্যাপ বন্ধ থাকলেও রিমাইন্ডার নোটিফিকেশন পাবেন', en: 'Get reminders even when the app is closed' },
+  'reminders.pushEnable': { bn: 'চালু করুন', en: 'Enable' },
+  'reminders.pushEnabled': { bn: 'নোটিফিকেশন চালু হয়েছে', en: 'Notifications enabled' },
+  'reminders.pushBlocked': { bn: 'নোটিফিকেশন ব্লক করা আছে। ব্রাউজার সেটিংস থেকে অনুমতি দিন', en: 'Notifications are blocked. Allow them in browser settings' },
+  'reminders.pushError': { bn: 'নোটিফিকেশন চালু করতে সমস্যা হয়েছে', en: 'Could not enable notifications' },
 }
