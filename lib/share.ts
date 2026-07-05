@@ -12,7 +12,10 @@ export async function shareOrCopy(title: string, text: string): Promise<'shared'
   }
   try {
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      await navigator.clipboard.writeText(text)
+      // Clipboard gets only the text (Web Share sends title separately), so
+      // fold the title in here to keep the name — without duplicating it in
+      // the share path, where the body intentionally omits the name.
+      await navigator.clipboard.writeText(title ? `${title}\n${text}` : text)
       return 'copied'
     }
   } catch {

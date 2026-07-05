@@ -663,7 +663,7 @@ export default function DebtsPage() {
   const handleShareDebt = async (debt: Debt) => {
     const total = round2(debt.amount + (debt.increases?.reduce((s, i) => s + i.amount, 0) || 0))
     const text =
-      `${debt.personName} — ${t('debts.remaining')}: ৳${bn(calculateRemaining(debt))}\n` +
+      `${t('debts.remaining')}: ৳${bn(calculateRemaining(debt))}\n` +
       `${t('debts.total')}: ৳${bn(total)} · ${t('debts.paid')}: ৳${bn(getTotalPaid(debt))}\n` +
       `${bnDate(debt.date)}`
     notifyShareResult(await shareOrCopy(debt.personName, text))
@@ -674,7 +674,7 @@ export default function DebtsPage() {
     const lines = entries
       .map((d) => `${bnDate(d.date)} — ৳${bn(calculateRemaining(d))}`)
       .join('\n')
-    const text = `${name}\n${lines}\n${t('person.totalDue')}: ৳${bn(totalDue)}`
+    const text = `${lines}\n${t('person.totalDue')}: ৳${bn(totalDue)}`
     notifyShareResult(await shareOrCopy(name, text))
   }
 

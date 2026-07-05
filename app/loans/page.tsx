@@ -623,7 +623,7 @@ export default function LoansPage() {
 
   const buildStatement = (loan: Loan): string => {
     const total = round2(loan.amount + (loan.increases?.reduce((s, i) => s + i.amount, 0) || 0))
-    return `${loan.personName} — ${t('loans.remaining')}: ৳${bn(calculateRemaining(loan))}\n${t('loans.total')}: ৳${bn(total)} · ${t('loans.paid')}: ৳${bn(getTotalPaid(loan))}\n${bnDate(loan.date)}`
+    return `${t('loans.remaining')}: ৳${bn(calculateRemaining(loan))}\n${t('loans.total')}: ৳${bn(total)} · ${t('loans.paid')}: ৳${bn(getTotalPaid(loan))}\n${bnDate(loan.date)}`
   }
 
   const toastShareResult = (result: 'shared' | 'copied' | 'failed') => {
@@ -638,7 +638,7 @@ export default function LoansPage() {
 
   const handleSharePerson = async (name: string, personLoans: Loan[], total: number) => {
     const body = personLoans.map(buildStatement).join('\n\n')
-    const text = `${name}\n${t('person.totalDue')}: ৳${bn(total)}\n\n${body}`
+    const text = `${t('person.totalDue')}: ৳${bn(total)}\n\n${body}`
     toastShareResult(await shareOrCopy(name, text))
   }
 
