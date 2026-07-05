@@ -4,7 +4,8 @@ import type { ReactNode } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/firebase-auth'
 import Navigation from './Navigation'
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { initLang } from '@/lib/i18n'
 
 interface ConditionalLayoutProps {
   children: ReactNode
@@ -28,6 +29,11 @@ export default function ConditionalLayout({ children }: ConditionalLayoutProps) 
   const touchStartY = useRef<number | null>(null)
   const touchStartTime = useRef<number | null>(null)
   const [swipeDirection, setSwipeDirection] = useState<'left' | 'right' | null>(null)
+
+  // Apply the persisted language choice after mount (avoids hydration mismatch).
+  useEffect(() => {
+    initLang()
+  }, [])
   
   // Pages that don't need bottom padding (login/register pages)
   const noPaddingPages = ['/login', '/register']

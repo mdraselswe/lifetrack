@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { confirmManager, type ConfirmToast } from '@/lib/confirm'
+import { useLang } from '@/lib/i18n'
 
 export default function ConfirmToastContainer() {
+  useLang() // re-render on language switch
   const [confirms, setConfirms] = useState<ConfirmToast[]>([])
 
   useEffect(() => {

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from '@/lib/toast'
+import { t, useLang } from '@/lib/i18n'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -9,6 +10,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function PWARegistration() {
+  useLang() // re-render on language switch
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
 
@@ -104,7 +106,7 @@ export default function PWARegistration() {
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
       // Fallback for browsers that don't support beforeinstallprompt
-      toast.info('Desktop/Mobile menu থেকে "Install" বা "Add to Home Screen" option ব্যবহার করুন')
+      toast.info(t('pwa.manualHint'))
       return
     }
 
@@ -113,16 +115,16 @@ export default function PWARegistration() {
       const { outcome } = await deferredPrompt.userChoice
       
       if (outcome === 'accepted') {
-        toast.success('PWA সফলভাবে install হয়েছে!')
+        toast.success(t('pwa.installSuccess'))
       } else {
-        toast.info('Install cancelled')
+        toast.info(t('pwa.installCancelled'))
       }
       
       setDeferredPrompt(null)
       setShowInstallPrompt(false)
     } catch (error) {
       console.error('Error installing PWA:', error)
-      toast.error('Install করতে সমস্যা হয়েছে')
+      toast.error(t('pwa.installError'))
     }
   }
 
@@ -138,16 +140,16 @@ export default function PWARegistration() {
             <span className="text-2xl">📱</span>
           </div>
           <div className="flex-1">
-            <h3 className="font-bold text-content mb-1">LifeTrack Install করুন</h3>
+            <h3 className="font-bold text-content mb-1">{t('pwa.installTitle')}</h3>
             <p className="text-sm text-muted mb-3">
-              App home screen-এ add করুন দ্রুত access-এর জন্য
+              {t('pwa.installDescription')}
             </p>
             <div className="flex gap-2">
               <button
                 onClick={handleInstallClick}
                 className="btn btn-primary flex-1"
               >
-                Install করুন
+                {t('pwa.installButton')}
               </button>
               <button
                 onClick={() => {
@@ -156,13 +158,13 @@ export default function PWARegistration() {
                 }}
                 className="btn btn-secondary"
               >
-                পরে
+                {t('pwa.later')}
               </button>
             </div>
             <details className="mt-3 text-xs text-muted">
-              <summary className="cursor-pointer">Manual install instructions</summary>
+              <summary className="cursor-pointer">{t('pwa.manualInstructionsTitle')}</summary>
               <div className="mt-2 space-y-1 text-muted">
-                <p><strong>Desktop:</strong> Address bar-এ install icon</p>
+                <p><strong>Desktop:</strong> {t('pwa.manualDesktop')}</p>
                 <p><strong>Mobile Chrome:</strong> Menu → "Add to Home Screen"</p>
                 <p><strong>Mobile Safari:</strong> Share → "Add to Home Screen"</p>
               </div>

@@ -1,4 +1,6 @@
 // Confirmation toast system
+import { t } from '@/lib/i18n'
+
 export interface ConfirmToast {
   id: string
   title: string
@@ -32,8 +34,9 @@ class ConfirmManager {
       message,
       onConfirm,
       onCancel: options.onCancel,
-      confirmText: options.confirmText || 'হ্যাঁ',
-      cancelText: options.cancelText || 'না',
+      // Evaluated at call time so the current language applies.
+      confirmText: options.confirmText || t('common.yes'),
+      cancelText: options.cancelText || t('common.no'),
       type: options.type || 'warning'
     }
     
@@ -73,25 +76,25 @@ export const confirmManager = new ConfirmManager()
 
 // Convenience functions
 export const confirm = {
-  delete: (title: string, message: string, onConfirm: () => void) => 
+  delete: (title: string, message: string, onConfirm: () => void) =>
     confirmManager.showConfirm(title, message, onConfirm, {
       type: 'danger',
-      confirmText: 'মুছুন',
-      cancelText: 'বাতিল'
+      confirmText: t('common.delete'),
+      cancelText: t('common.cancel')
     }),
-  
-  update: (title: string, message: string, onConfirm: () => void) => 
+
+  update: (title: string, message: string, onConfirm: () => void) =>
     confirmManager.showConfirm(title, message, onConfirm, {
       type: 'warning',
-      confirmText: 'আপডেট করুন',
-      cancelText: 'বাতিল'
+      confirmText: t('confirm.update'),
+      cancelText: t('common.cancel')
     }),
-  
-  edit: (title: string, message: string, onConfirm: () => void) => 
+
+  edit: (title: string, message: string, onConfirm: () => void) =>
     confirmManager.showConfirm(title, message, onConfirm, {
       type: 'info',
-      confirmText: 'সম্পাদনা করুন',
-      cancelText: 'বাতিল'
+      confirmText: t('confirm.edit'),
+      cancelText: t('common.cancel')
     }),
   
   custom: (title: string, message: string, onConfirm: () => void, options: {

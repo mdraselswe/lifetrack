@@ -1,3 +1,5 @@
+import { t } from '@/lib/i18n'
+
 // setTimeout stores its delay in a signed 32-bit int; delays above this value
 // overflow and fire immediately. Clamp to the cap and re-schedule the remainder
 // so far-future notifications don't fire instantly.
@@ -13,7 +15,7 @@ const scheduleTimeout = (callback: () => void, delay: number): void => {
 
 export const requestNotificationPermission = async (): Promise<boolean> => {
   if (!('Notification' in window)) {
-    alert('এই ব্রাউজার নোটিফিকেশন সাপোর্ট করে না')
+    alert(t('reminders.notifNotSupported'))
     return false
   }
 

@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import ProfileMenu from './ProfileMenu'
 import ThemeToggle from './ThemeToggle'
+import LanguageToggle from './LanguageToggle'
 
 interface AppBarProps {
   title: string
@@ -19,6 +20,7 @@ export default function AppBar({ title, subtitle, action }: AppBarProps) {
       </div>
       <div className="flex items-center gap-1">
         {action}
+        <LanguageToggle />
         <ThemeToggle />
         <ProfileMenu />
       </div>

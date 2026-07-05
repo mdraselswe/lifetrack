@@ -3,9 +3,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { getLoans, saveLoan, updateLoan, deleteLoan, addLoanPayment, deleteLoanPayment, addLoanIncrease, deleteLoanIncrease, subscribeToLoans } from '@/lib/storage'
 import type { Loan, Payment, AmountIncrease } from '@/lib/types'
-import { round2, toBnDigits, toBnNumber } from '@/lib/format'
-import { format } from 'date-fns'
-import { bn as bnLocale } from 'date-fns/locale'
+import { round2 } from '@/lib/format'
+import { t, useLang, fmtNum, fmtDate } from '@/lib/i18n'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
 import Modal, { ActionButton } from '@/components/Modal'
@@ -15,14 +14,15 @@ import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
 import { ArrowDownLeftIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon } from '@/components/Icons'
 
-const bn = (n: number) => toBnNumber(n)
-const bnDate = (v: string) => toBnDigits(format(new Date(v), 'MMMM d, yyyy', { locale: bnLocale }))
+const bn = (n: number) => fmtNum(n)
+const bnDate = (v: string) => fmtDate(v)
 // datetime-local expects a LOCAL wall-clock string; toISOString() is UTC and
 // would shift the prefilled value by the timezone offset.
 const localDatetimeValue = (d = new Date()) =>
   new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 
 export default function LoansPage() {
+  useLang() // re-render on language switch
   const [loans, setLoans] = useState<Loan[]>([])
   const [showForm, setShowForm] = useState(false)
   const [dataLoading, setDataLoading] = useState(true)
@@ -95,13 +95,13 @@ export default function LoansPage() {
     e.preventDefault()
     
     if (!personName || !amount) {
-      toast.error('নাম এবং পরিমাণ দিন')
+      toast.error(t('loans.errNameAmount'))
       return
     }
 
     const parsedAmount = parseFloat(amount)
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) {
-      toast.error('সঠিক পরিমাণ দিন')
+      toast.error(t('loans.errValidAmount'))
       return
     }
 
@@ -123,24 +123,24 @@ export default function LoansPage() {
       setReason('')
       setDate(localDatetimeValue())
       setShowForm(false)
-      toast.success('ধার সফলভাবে যোগ করা হয়েছে')
+      toast.success(t('loans.addSuccess'))
     }).catch((error) => {
       console.error('Error saving loan:', error)
-      toast.error('ধার যোগ করতে সমস্যা হয়েছে')
+      toast.error(t('loans.addError'))
     })
   }
 
   const handleToggleReturned = (loan: Loan) => {
     const newStatus = !loan.returned
-    const actionText = newStatus ? 'ফেরত দিয়েছেন' : 'ফেরত দেননি'
-    const confirmText = newStatus ? 'ফেরত দিয়েছি' : 'ফেরত দেইনি'
-    
+    const actionText = newStatus ? t('loans.statusReturned') : t('loans.statusNotReturned')
+    const confirmText = newStatus ? t('loans.confirmReturned') : t('loans.confirmNotReturned')
+
     // Calculate total amount including increments
     const totalAmount = round2(loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))
-    
+
     confirm.custom(
-      'ধারের অবস্থা পরিবর্তন করুন',
-      `${loan.personName} এর ${totalAmount} টাকার ধার ${actionText} হিসেবে চিহ্নিত করবেন?`,
+      t('loans.toggleTitle'),
+      t('loans.toggleMessage', { name: loan.personName, amount: fmtNum(totalAmount), action: actionText }),
       () => {
         if (newStatus) {
           // When marking as returned, ensure payment amount equals total amount
@@ -152,7 +152,7 @@ export default function LoansPage() {
               id: crypto.randomUUID(),
               amount: remainingAmount,
               date: localDatetimeValue(),
-              note: 'সম্পূর্ণ পরিশোধ',
+              note: t('loans.fullPaymentNote'),
               createdAt: new Date().toISOString(),
             }
             addLoanPayment(loan.id, remainingPayment)
@@ -160,15 +160,15 @@ export default function LoansPage() {
         }
         updateLoan(loan.id, { returned: newStatus }).then(() => {
           loadLoans().catch(console.error)
-          toast.success(`ধার ${actionText} হিসেবে চিহ্নিত করা হয়েছে`)
+          toast.success(t('loans.toggleSuccess', { action: actionText }))
         }).catch((error) => {
           console.error('Error updating loan status:', error)
-          toast.error('ধারের অবস্থা পরিবর্তন করতে সমস্যা হয়েছে')
+          toast.error(t('loans.toggleError'))
         })
       },
       {
         confirmText: confirmText,
-        cancelText: 'বাতিল',
+        cancelText: t('common.cancel'),
         type: newStatus ? 'info' : 'warning'
       }
     )
@@ -179,15 +179,15 @@ export default function LoansPage() {
     if (!loan) return
     
     confirm.delete(
-      'ধার মুছুন',
-      `${loan.personName} এর ${loan.amount} টাকার ধার মুছে ফেলবেন?`,
+      t('loans.deleteTitle'),
+      t('loans.deleteMessage', { name: loan.personName, amount: fmtNum(loan.amount) }),
       () => {
         deleteLoan(id).then(() => {
           loadLoans().catch(console.error)
-          toast.success('ধার সফলভাবে মুছে ফেলা হয়েছে')
+          toast.success(t('loans.deleteSuccess'))
         }).catch((error) => {
           console.error('Error deleting loan:', error)
-          toast.error('ধার মুছতে সমস্যা হয়েছে')
+          toast.error(t('loans.deleteError'))
         })
       }
     )
@@ -195,13 +195,13 @@ export default function LoansPage() {
 
   const handleAddPayment = (loanId: string) => {
     if (!paymentAmount || !paymentDate) {
-      toast.error('পরিমাণ এবং তারিখ প্রয়োজন')
+      toast.error(t('loans.errAmountDate'))
       return
     }
 
     const amount = Number(parseFloat(paymentAmount).toFixed(2))
     if (isNaN(amount) || amount <= 0) {
-      toast.error('সঠিক পরিমাণ দিন')
+      toast.error(t('loans.errValidAmount'))
       return
     }
 
@@ -209,9 +209,9 @@ export default function LoansPage() {
     if (!loan) return
 
     const remaining = calculateRemaining(loan)
-    
+
     if (amount > remaining) {
-      toast.error(`বাকি পরিমাণ: ৳${remaining}. তার চেয়ে বেশি পরিশোধ করা যাবে না।`)
+      toast.error(t('loans.errOverpay', { remaining: fmtNum(remaining) }))
       return
     }
 
@@ -230,22 +230,22 @@ export default function LoansPage() {
       setShowPaymentForm(null)
       setShowPaymentModal(null)
       loadLoans().catch(console.error)
-      toast.success('পেমেন্ট সফলভাবে যোগ করা হয়েছে')
+      toast.success(t('loans.paymentAddSuccess'))
     }).catch((error) => {
       console.error('Error adding payment:', error)
-      toast.error('পেমেন্ট যোগ করতে সমস্যা হয়েছে')
+      toast.error(t('loans.paymentAddError'))
     })
   }
 
   const handleIncreaseLoanAmount = (loanId: string) => {
     if (!increaseAmount || !increaseDate) {
-      toast.error('পরিমাণ এবং তারিখ প্রয়োজন')
+      toast.error(t('loans.errAmountDate'))
       return
     }
 
     const amount = Number(parseFloat(increaseAmount).toFixed(2))
     if (isNaN(amount) || amount <= 0) {
-      toast.error('সঠিক পরিমাণ দিন')
+      toast.error(t('loans.errValidAmount'))
       return
     }
 
@@ -257,8 +257,8 @@ export default function LoansPage() {
     const newTotalAmount = round2(currentTotalAmount + amount)
 
     confirm.update(
-      'ধারের পরিমাণ বৃদ্ধি করুন',
-      `${loan.personName} এর ধারের পরিমাণ ৳${currentTotalAmount} থেকে ৳${newTotalAmount} বৃদ্ধি করবেন?`,
+      t('loans.increaseTitle'),
+      t('loans.increaseConfirmMessage', { name: loan.personName, from: fmtNum(currentTotalAmount), to: fmtNum(newTotalAmount) }),
       () => {
         // Add increase to history
         const increase: AmountIncrease = {
@@ -270,12 +270,12 @@ export default function LoansPage() {
         }
         
         addLoanIncrease(loanId, increase).then(() => {
-          toast.success('ধারের পরিমাণ বৃদ্ধি করা হয়েছে')
+          toast.success(t('loans.increaseSuccess'))
           handleCloseIncreaseModal()
           loadLoans().catch(console.error)
         }).catch((error) => {
           console.error('Error increasing loan amount:', error)
-          toast.error('ধারের পরিমাণ বৃদ্ধি করতে সমস্যা হয়েছে')
+          toast.error(t('loans.increaseError'))
         })
       }
     )
@@ -317,15 +317,15 @@ export default function LoansPage() {
     if (!loan || !payment) return
     
     confirm.delete(
-      'পেমেন্ট মুছুন',
-      `${payment.amount} টাকার পেমেন্ট মুছে ফেলবেন?`,
+      t('loans.paymentDeleteTitle'),
+      t('loans.paymentDeleteMessage', { amount: fmtNum(payment.amount) }),
       () => {
         deleteLoanPayment(loanId, paymentId).then(() => {
           loadLoans().catch(console.error)
-          toast.success('পেমেন্ট সফলভাবে মুছে ফেলা হয়েছে')
+          toast.success(t('loans.paymentDeleteSuccess'))
         }).catch((error) => {
           console.error('Error deleting payment:', error)
-          toast.error('পেমেন্ট মুছতে সমস্যা হয়েছে')
+          toast.error(t('loans.paymentDeleteError'))
         })
       }
     )
@@ -341,17 +341,17 @@ export default function LoansPage() {
     const newTotalAmount = round2(currentTotalAmount - increase.amount)
 
     confirm.delete(
-      'পরিমাণ বৃদ্ধি মুছুন',
-      `${increase.amount} টাকার পরিমাণ বৃদ্ধি মুছে ফেলবেন? ধারের পরিমাণ ৳${currentTotalAmount} থেকে ৳${newTotalAmount} হবে।`,
+      t('loans.increaseDeleteTitle'),
+      t('loans.increaseDeleteMessage', { amount: fmtNum(increase.amount), from: fmtNum(currentTotalAmount), to: fmtNum(newTotalAmount) }),
       () => {
         // Don't update loan.amount - it should always remain the initial amount
         // Just delete the increase record
         deleteLoanIncrease(loanId, increaseId).then(() => {
           loadLoans().catch(console.error)
-          toast.success('পরিমাণ বৃদ্ধি সফলভাবে মুছে ফেলা হয়েছে')
+          toast.success(t('loans.increaseDeleteSuccess'))
         }).catch((error) => {
           console.error('Error deleting increase:', error)
-          toast.error('পরিমাণ বৃদ্ধি মুছতে সমস্যা হয়েছে')
+          toast.error(t('loans.increaseDeleteError'))
         })
       }
     )
@@ -402,26 +402,26 @@ export default function LoansPage() {
     e.preventDefault()
     
     if (!editingLoan || !editPersonName || !editAmount) {
-      toast.error('নাম এবং পরিমাণ দিন')
+      toast.error(t('loans.errNameAmount'))
       return
     }
 
     const newAmount = parseFloat(editAmount)
     if (isNaN(newAmount) || newAmount <= 0) {
-      toast.error('সঠিক পরিমাণ দিন')
+      toast.error(t('loans.errValidAmount'))
       return
     }
 
     // Check if new amount is less than total paid amount
     const totalPaid = getTotalPaid(editingLoan)
     if (newAmount < totalPaid) {
-      toast.error(`মোট পরিশোধিত পরিমাণ: ৳${totalPaid}. নতুন পরিমাণ তার চেয়ে কম হতে পারবে না।`)
+      toast.error(t('loans.errAmountBelowPaid', { paid: fmtNum(totalPaid) }))
       return
     }
 
     confirm.update(
-      'ধার আপডেট করুন',
-      `${editPersonName} এর ধারের তথ্য আপডেট করবেন?`,
+      t('loans.updateTitle'),
+      t('loans.updateMessage', { name: editPersonName }),
       () => {
         // Returned only when total paid covers the full total (base + increases)
         const increasesTotal = editingLoan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0
@@ -440,10 +440,10 @@ export default function LoansPage() {
           setEditReason('')
           setEditDate('')
           loadLoans().catch(console.error)
-          toast.success('ধার সফলভাবে আপডেট করা হয়েছে')
+          toast.success(t('loans.updateSuccess'))
         }).catch((error) => {
           console.error('Error updating loan:', error)
-          toast.error('ধার আপডেট করতে সমস্যা হয়েছে')
+          toast.error(t('loans.updateError'))
         })
       }
     )
@@ -475,13 +475,13 @@ export default function LoansPage() {
     e.preventDefault()
     
     if (!editingPayment || !editPaymentAmount || !editPaymentDate) {
-      toast.error('পরিমাণ এবং তারিখ প্রয়োজন')
+      toast.error(t('loans.errAmountDate'))
       return
     }
 
     const amount = parseFloat(editPaymentAmount)
     if (isNaN(amount) || amount <= 0) {
-      toast.error('সঠিক পরিমাণ দিন')
+      toast.error(t('loans.errValidAmount'))
       return
     }
 
@@ -496,7 +496,7 @@ export default function LoansPage() {
     const remaining = round2(loan.amount + increasesTotal - otherPaymentsTotal)
     
     if (amount > remaining) {
-      toast.error(`বাকি পরিমাণ: ৳${remaining}. তার চেয়ে বেশি পরিশোধ করা যাবে না।`)
+      toast.error(t('loans.errOverpay', { remaining: fmtNum(remaining) }))
       return
     }
 
@@ -508,8 +508,8 @@ export default function LoansPage() {
     }
 
     confirm.update(
-      'পেমেন্ট আপডেট করুন',
-      `${amount} টাকার পেমেন্ট আপডেট করবেন?`,
+      t('loans.paymentUpdateTitle'),
+      t('loans.paymentUpdateMessage', { amount: fmtNum(amount) }),
       () => {
         // Delete old payment then add updated payment (chained to avoid a race)
         deleteLoanPayment(editingPayment.loanId, editingPayment.payment.id).then(() => {
@@ -520,10 +520,10 @@ export default function LoansPage() {
           setEditPaymentDate('')
           setEditPaymentNote('')
           loadLoans().catch(console.error)
-          toast.success('পেমেন্ট সফলভাবে আপডেট করা হয়েছে')
+          toast.success(t('loans.paymentUpdateSuccess'))
         }).catch((error) => {
           console.error('Error updating payment:', error)
-          toast.error('পেমেন্ট আপডেট করতে সমস্যা হয়েছে')
+          toast.error(t('loans.paymentUpdateError'))
         })
       }
     )
@@ -533,13 +533,13 @@ export default function LoansPage() {
     e.preventDefault()
     
     if (!editingIncrease || !editIncreaseAmount || !editIncreaseDate) {
-      toast.error('পরিমাণ এবং তারিখ প্রয়োজন')
+      toast.error(t('loans.errAmountDate'))
       return
     }
 
     const amount = parseFloat(editIncreaseAmount)
     if (isNaN(amount) || amount <= 0) {
-      toast.error('সঠিক পরিমাণ দিন')
+      toast.error(t('loans.errValidAmount'))
       return
     }
 
@@ -551,8 +551,8 @@ export default function LoansPage() {
     }
 
     confirm.update(
-      'পরিমাণ বৃদ্ধি আপডেট করুন',
-      `${amount} টাকার পরিমাণ বৃদ্ধি আপডেট করবেন?`,
+      t('loans.increaseUpdateTitle'),
+      t('loans.increaseUpdateMessage', { amount: fmtNum(amount) }),
       () => {
         // Delete old increase and add updated increase
         deleteLoanIncrease(editingIncrease.loanId, editingIncrease.increase.id).then(() => {
@@ -563,10 +563,10 @@ export default function LoansPage() {
           setEditIncreaseDate('')
           setEditIncreaseReason('')
           loadLoans().catch(console.error)
-          toast.success('পরিমাণ বৃদ্ধি সফলভাবে আপডেট করা হয়েছে')
+          toast.success(t('loans.increaseUpdateSuccess'))
         }).catch((error) => {
           console.error('Error updating increase:', error)
-          toast.error('পরিমাণ বৃদ্ধি আপডেট করতে সমস্যা হয়েছে')
+          toast.error(t('loans.increaseUpdateError'))
         })
       }
     )
@@ -614,7 +614,7 @@ export default function LoansPage() {
 
   return (
     <div className="min-h-full">
-      <AppBar title="ধার নিয়েছি" subtitle="আপনার ঋণ" />
+      <AppBar title={t('loans.title')} subtitle={t('loans.subtitle')} />
 
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in">
         {/* Summary */}
@@ -622,14 +622,14 @@ export default function LoansPage() {
           <div className="stat-tile tint-neg">
             <div className="flex items-center gap-2 mb-2 text-negative">
               <ArrowDownLeftIcon className="w-5 h-5" />
-              <span className="text-xs font-medium text-negative">দিতে হবে</span>
+              <span className="text-xs font-medium text-negative">{t('loans.statToPay')}</span>
             </div>
             <p className="text-2xl font-bold text-content">৳{bn(totalActive)}</p>
           </div>
           <div className="stat-tile tint-accent">
             <div className="flex items-center gap-2 mb-2 text-accent">
               <WalletIcon className="w-5 h-5" />
-              <span className="text-xs font-medium text-accent">ফেরত দিয়েছি</span>
+              <span className="text-xs font-medium text-accent">{t('loans.statReturned')}</span>
             </div>
             <p className="text-2xl font-bold text-content">৳{bn(totalReturned)}</p>
           </div>
@@ -642,17 +642,17 @@ export default function LoansPage() {
             <div className="mx-auto w-16 h-16 rounded-2xl bg-surface-2 flex items-center justify-center text-muted mb-4">
               <WalletIcon className="w-8 h-8" />
             </div>
-            <h3 className="text-base font-semibold text-content mb-1">কোনো ঋণ নেই</h3>
-            <p className="text-sm text-muted mb-5">এখনো কারো থেকে টাকা ধার নেননি</p>
+            <h3 className="text-base font-semibold text-content mb-1">{t('loans.emptyTitle')}</h3>
+            <p className="text-sm text-muted mb-5">{t('loans.emptyDesc')}</p>
             <button onClick={() => setShowForm(true)} className="btn btn-primary mx-auto">
-              <PlusIcon className="w-5 h-5" /> প্রথম ঋণ যোগ করুন
+              <PlusIcon className="w-5 h-5" /> {t('loans.addFirst')}
             </button>
           </div>
         ) : (
           <>
             {activeLoans.length > 0 && (
               <section className="space-y-3">
-                <h2 className="text-sm font-semibold text-muted px-1">ফেরত দিতে হবে</h2>
+                <h2 className="text-sm font-semibold text-muted px-1">{t('loans.sectionActive')}</h2>
                 {activeLoans.map((loan) => {
                   const remaining = calculateRemaining(loan)
                   const totalPaid = getTotalPaid(loan)
@@ -666,15 +666,15 @@ export default function LoansPage() {
                           <p className="text-xs text-muted">{bnDate(loan.date)}</p>
                         </div>
                         <div className="flex items-center gap-1">
-                          <button className="icon-btn" onClick={() => handleEdit(loan)} title="সম্পাদনা"><EditIcon className="w-5 h-5" /></button>
-                          <button className="icon-btn" onClick={() => handleDelete(loan.id)} title="মুছুন"><TrashIcon className="w-5 h-5" /></button>
+                          <button className="icon-btn" onClick={() => handleEdit(loan)} title={t('common.edit')}><EditIcon className="w-5 h-5" /></button>
+                          <button className="icon-btn" onClick={() => handleDelete(loan.id)} title={t('common.delete')}><TrashIcon className="w-5 h-5" /></button>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-3 gap-2 text-center">
-                        <div><p className="text-xs text-muted mb-0.5">মোট</p><p className="text-sm font-semibold text-content">৳{bn(total)}</p></div>
-                        <div><p className="text-xs text-muted mb-0.5">পরিশোধিত</p><p className="text-sm font-semibold text-positive">৳{bn(totalPaid)}</p></div>
-                        <div><p className="text-xs text-muted mb-0.5">বাকি</p><p className="text-sm font-semibold text-negative">৳{bn(remaining)}</p></div>
+                        <div><p className="text-xs text-muted mb-0.5">{t('loans.total')}</p><p className="text-sm font-semibold text-content">৳{bn(total)}</p></div>
+                        <div><p className="text-xs text-muted mb-0.5">{t('loans.paid')}</p><p className="text-sm font-semibold text-positive">৳{bn(totalPaid)}</p></div>
+                        <div><p className="text-xs text-muted mb-0.5">{t('loans.remaining')}</p><p className="text-sm font-semibold text-negative">৳{bn(remaining)}</p></div>
                       </div>
 
                       <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
@@ -683,7 +683,7 @@ export default function LoansPage() {
 
                       {loan.payments && loan.payments.length > 0 && (
                         <div className="space-y-1.5">
-                          <p className="text-xs font-semibold text-positive">পরিশোধের ইতিহাস</p>
+                          <p className="text-xs font-semibold text-positive">{t('loans.paymentHistory')}</p>
                           {loan.payments.map((p) => (
                             <div key={p.id} className="flex items-center justify-between rounded-xl tint-pos px-3 py-2">
                               <div className="min-w-0">
@@ -700,7 +700,7 @@ export default function LoansPage() {
                       )}
 
                       <div className="space-y-1.5">
-                        <p className="text-xs font-semibold text-accent">প্রাথমিক ধার</p>
+                        <p className="text-xs font-semibold text-accent">{t('loans.initialLoan')}</p>
                         <div className="flex items-center justify-between rounded-xl tint-accent px-3 py-2">
                           <div className="min-w-0">
                             <p className="text-sm font-semibold text-content">৳{bn(getInitialAmount(loan))}</p>
@@ -711,13 +711,13 @@ export default function LoansPage() {
 
                       {loan.increases && loan.increases.length > 0 && (
                         <div className="space-y-1.5">
-                          <p className="text-xs font-semibold text-caution">পরিমাণ বৃদ্ধি</p>
+                          <p className="text-xs font-semibold text-caution">{t('loans.amountIncrease')}</p>
                           {loan.increases.map((inc, idx) => {
                             const runningTotal = round2(loan.amount + (loan.increases ?? []).slice(0, idx + 1).reduce((s, i) => s + i.amount, 0))
                             return (
                               <div key={inc.id} className="flex items-center justify-between rounded-xl tint-warn px-3 py-2">
                                 <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-caution">+৳{bn(inc.amount)} <span className="text-muted font-normal">→ মোট ৳{bn(runningTotal)}</span></p>
+                                  <p className="text-sm font-semibold text-caution">+৳{bn(inc.amount)} <span className="text-muted font-normal">→ {t('loans.total')} ৳{bn(runningTotal)}</span></p>
                                   <p className="text-xs text-muted truncate">{bnDate(inc.date)}{inc.reason ? ` · ${inc.reason}` : ''}</p>
                                 </div>
                                 <div className="flex items-center gap-1">
@@ -731,14 +731,14 @@ export default function LoansPage() {
                       )}
 
                       <div className="flex gap-2 pt-1">
-                        <button className="btn btn-secondary flex-1" onClick={() => handleOpenIncreaseModal(loan.id)}>বৃদ্ধি</button>
+                        <button className="btn btn-secondary flex-1" onClick={() => handleOpenIncreaseModal(loan.id)}>{t('loans.increaseBtn')}</button>
                         {remaining > 0 ? (
                           <button className="btn btn-primary flex-1" onClick={() => handleOpenPaymentModal(loan.id)}>
-                            <CheckIcon className="w-4 h-4" /> ফেরত দিয়েছি
+                            <CheckIcon className="w-4 h-4" /> {t('loans.paidBackBtn')}
                           </button>
                         ) : (
                           <button className="btn btn-primary flex-1" onClick={() => handleToggleReturned(loan)}>
-                            <CheckIcon className="w-4 h-4" /> পরিশোধিত চিহ্নিত করুন
+                            <CheckIcon className="w-4 h-4" /> {t('loans.markPaid')}
                           </button>
                         )}
                       </div>
@@ -750,7 +750,7 @@ export default function LoansPage() {
 
             {returnedLoans.length > 0 && (
               <section className="space-y-3">
-                <h2 className="text-sm font-semibold text-muted px-1">ফেরত দিয়েছি</h2>
+                <h2 className="text-sm font-semibold text-muted px-1">{t('loans.sectionReturned')}</h2>
                 {returnedLoans.map((loan) => {
                   const totalPaid = getTotalPaid(loan)
                   const total = round2(loan.amount + (loan.increases?.reduce((s, i) => s + i.amount, 0) || 0))
@@ -759,19 +759,19 @@ export default function LoansPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="badge badge-success">পরিশোধিত</span>
+                            <span className="badge badge-success">{t('loans.paid')}</span>
                             <h3 className="font-semibold text-content truncate">{loan.personName}</h3>
                           </div>
-                          <p className="text-xs text-muted mt-1">মোট ৳{bn(total)} · পরিশোধ ৳{bn(totalPaid)}</p>
+                          <p className="text-xs text-muted mt-1">{t('loans.total')} ৳{bn(total)} · {t('loans.paidLabel')} ৳{bn(totalPaid)}</p>
                         </div>
                         <div className="flex items-center gap-1 flex-shrink-0">
-                          <button className="icon-btn" onClick={() => handleToggleReturned(loan)} title="ফেরত দেইনি"><RotateIcon className="w-5 h-5" /></button>
-                          <button className="icon-btn" onClick={() => handleDelete(loan.id)} title="মুছুন"><TrashIcon className="w-5 h-5" /></button>
+                          <button className="icon-btn" onClick={() => handleToggleReturned(loan)} title={t('loans.confirmNotReturned')}><RotateIcon className="w-5 h-5" /></button>
+                          <button className="icon-btn" onClick={() => handleDelete(loan.id)} title={t('common.delete')}><TrashIcon className="w-5 h-5" /></button>
                         </div>
                       </div>
                       {loan.payments && loan.payments.length > 0 && (
                         <div className="space-y-1.5">
-                          <p className="text-xs font-semibold text-positive">পরিশোধের ইতিহাস</p>
+                          <p className="text-xs font-semibold text-positive">{t('loans.paymentHistory')}</p>
                           {loan.payments.map((p) => (
                             <div key={p.id} className="flex items-center justify-between rounded-xl tint-pos px-3 py-2">
                               <span className="text-xs text-muted truncate">{bnDate(p.date)}{p.note ? ` · ${p.note}` : ''}</span>
@@ -790,7 +790,7 @@ export default function LoansPage() {
       </div>
 
       {/* FAB */}
-      <button className="fab" onClick={() => setShowForm(true)} aria-label="নতুন ঋণ যোগ করুন">
+      <button className="fab" onClick={() => setShowForm(true)} aria-label={t('loans.addNew')}>
         <PlusIcon className="w-6 h-6" />
       </button>
 
@@ -798,27 +798,27 @@ export default function LoansPage() {
       <Modal
         isOpen={showForm}
         onClose={() => setShowForm(false)}
-        title="নতুন ঋণ যোগ করুন"
+        title={t('loans.addNew')}
         footerActions={<>
-          <ActionButton onClick={() => setShowForm(false)} variant="secondary">বাতিল</ActionButton>
-          <ActionButton onClick={(e) => e && handleSubmit(e)} variant="primary">সংরক্ষণ</ActionButton>
+          <ActionButton onClick={() => setShowForm(false)} variant="secondary">{t('common.cancel')}</ActionButton>
+          <ActionButton onClick={(e) => e && handleSubmit(e)} variant="primary">{t('common.save')}</ActionButton>
         </>}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="label label-required">ব্যক্তির নাম</label>
-            <input type="text" value={personName} onChange={(e) => setPersonName(e.target.value)} className="input" placeholder="যেমন: রহিম" required />
+            <label className="label label-required">{t('loans.personName')}</label>
+            <input type="text" value={personName} onChange={(e) => setPersonName(e.target.value)} className="input" placeholder={t('loans.personPlaceholder')} required />
           </div>
           <div>
-            <label className="label label-required">পরিমাণ (৳)</label>
-            <input type="text" inputMode="decimal" value={amount} onChange={numChange(setAmount)} className="input" placeholder="০" required />
+            <label className="label label-required">{t('loans.amountLabel')}</label>
+            <input type="text" inputMode="decimal" value={amount} onChange={numChange(setAmount)} className="input" placeholder={t('loans.zero')} required />
           </div>
           <div>
-            <label className="label">প্রাথমিক কারণ (ঐচ্ছিক)</label>
-            <textarea value={reason} onChange={(e) => setReason(e.target.value)} className="input min-h-[80px] resize-none" placeholder="যেমন: জরুরি খরচ" rows={3} />
+            <label className="label">{t('loans.initialReasonOptional')}</label>
+            <textarea value={reason} onChange={(e) => setReason(e.target.value)} className="input min-h-[80px] resize-none" placeholder={t('loans.reasonPlaceholder')} rows={3} />
           </div>
           <div>
-            <label className="label label-required">তারিখ</label>
+            <label className="label label-required">{t('common.date')}</label>
             <input type="datetime-local" value={date} onChange={(e) => setDate(e.target.value)} className="input" required />
           </div>
         </form>
@@ -828,27 +828,27 @@ export default function LoansPage() {
       <Modal
         isOpen={editingLoan !== null}
         onClose={handleCancelEdit}
-        title="ঋণ সম্পাদনা করুন"
+        title={t('loans.editTitle')}
         footerActions={<>
-          <ActionButton onClick={handleCancelEdit} variant="secondary">বাতিল</ActionButton>
-          <ActionButton onClick={(e) => e && handleEditSubmit(e)} variant="primary">আপডেট</ActionButton>
+          <ActionButton onClick={handleCancelEdit} variant="secondary">{t('common.cancel')}</ActionButton>
+          <ActionButton onClick={(e) => e && handleEditSubmit(e)} variant="primary">{t('loans.updateBtn')}</ActionButton>
         </>}
       >
         <form onSubmit={handleEditSubmit} className="space-y-4">
           <div>
-            <label className="label label-required">ব্যক্তির নাম</label>
+            <label className="label label-required">{t('loans.personName')}</label>
             <input type="text" value={editPersonName} onChange={(e) => setEditPersonName(e.target.value)} className="input" required />
           </div>
           <div>
-            <label className="label label-required">পরিমাণ (৳)</label>
+            <label className="label label-required">{t('loans.amountLabel')}</label>
             <input type="text" inputMode="decimal" value={editAmount} onChange={numChange(setEditAmount)} className="input" required />
           </div>
           <div>
-            <label className="label">প্রাথমিক কারণ (ঐচ্ছিক)</label>
+            <label className="label">{t('loans.initialReasonOptional')}</label>
             <textarea value={editReason} onChange={(e) => setEditReason(e.target.value)} className="input min-h-[80px] resize-none" rows={3} />
           </div>
           <div>
-            <label className="label label-required">তারিখ</label>
+            <label className="label label-required">{t('common.date')}</label>
             <input type="datetime-local" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="input" required />
           </div>
         </form>
@@ -858,24 +858,24 @@ export default function LoansPage() {
       <Modal
         isOpen={editingPayment !== null}
         onClose={handleCancelPaymentEdit}
-        title="পেমেন্ট সম্পাদনা করুন"
+        title={t('loans.editPaymentTitle')}
         footerActions={<>
-          <ActionButton onClick={handleCancelPaymentEdit} variant="secondary">বাতিল</ActionButton>
-          <ActionButton onClick={(e) => e && handleEditPaymentSubmit(e)} variant="primary">আপডেট</ActionButton>
+          <ActionButton onClick={handleCancelPaymentEdit} variant="secondary">{t('common.cancel')}</ActionButton>
+          <ActionButton onClick={(e) => e && handleEditPaymentSubmit(e)} variant="primary">{t('loans.updateBtn')}</ActionButton>
         </>}
       >
         <form onSubmit={handleEditPaymentSubmit} className="space-y-4">
           <div>
-            <label className="label label-required">পরিমাণ (৳)</label>
+            <label className="label label-required">{t('loans.amountLabel')}</label>
             <input type="text" inputMode="decimal" value={editPaymentAmount} onChange={numChange(setEditPaymentAmount)} className="input" required />
           </div>
           <div>
-            <label className="label label-required">তারিখ</label>
+            <label className="label label-required">{t('common.date')}</label>
             <input type="datetime-local" value={editPaymentDate} onChange={(e) => setEditPaymentDate(e.target.value)} className="input" required />
           </div>
           <div>
-            <label className="label">নোট (ঐচ্ছিক)</label>
-            <input type="text" value={editPaymentNote} onChange={(e) => setEditPaymentNote(e.target.value)} className="input" placeholder="যেমন: আংশিক পরিশোধ" />
+            <label className="label">{t('loans.noteOptional')}</label>
+            <input type="text" value={editPaymentNote} onChange={(e) => setEditPaymentNote(e.target.value)} className="input" placeholder={t('loans.paymentNotePlaceholder')} />
           </div>
         </form>
       </Modal>
@@ -884,23 +884,23 @@ export default function LoansPage() {
       <Modal
         isOpen={editingIncrease !== null}
         onClose={handleCancelIncreaseEdit}
-        title="পরিমাণ বৃদ্ধি সম্পাদনা করুন"
+        title={t('loans.editIncreaseTitle')}
         footerActions={<>
-          <ActionButton onClick={handleCancelIncreaseEdit} variant="secondary">বাতিল</ActionButton>
-          <ActionButton onClick={(e) => e && handleEditIncreaseSubmit(e)} variant="primary">আপডেট</ActionButton>
+          <ActionButton onClick={handleCancelIncreaseEdit} variant="secondary">{t('common.cancel')}</ActionButton>
+          <ActionButton onClick={(e) => e && handleEditIncreaseSubmit(e)} variant="primary">{t('loans.updateBtn')}</ActionButton>
         </>}
       >
         <form onSubmit={handleEditIncreaseSubmit} className="space-y-4">
           <div>
-            <label className="label label-required">পরিমাণ (৳)</label>
+            <label className="label label-required">{t('loans.amountLabel')}</label>
             <input type="text" inputMode="decimal" value={editIncreaseAmount} onChange={numChange(setEditIncreaseAmount)} className="input" required />
           </div>
           <div>
-            <label className="label label-required">তারিখ</label>
+            <label className="label label-required">{t('common.date')}</label>
             <input type="datetime-local" value={editIncreaseDate} onChange={(e) => setEditIncreaseDate(e.target.value)} className="input" required />
           </div>
           <div>
-            <label className="label">কারণ (ঐচ্ছিক)</label>
+            <label className="label">{t('loans.reasonOptional')}</label>
             <textarea value={editIncreaseReason} onChange={(e) => setEditIncreaseReason(e.target.value)} className="input min-h-[80px] resize-none" rows={3} />
           </div>
         </form>
@@ -914,31 +914,31 @@ export default function LoansPage() {
           <Modal
             isOpen={!!showPaymentModal}
             onClose={handleClosePaymentModal}
-            title="ফেরত দিয়েছি"
+            title={t('loans.paidBackBtn')}
             footerActions={<>
-              <ActionButton onClick={handleClosePaymentModal} variant="secondary">বাতিল</ActionButton>
-              <ActionButton onClick={() => handleAddPayment(showPaymentModal)} variant="primary">সংরক্ষণ</ActionButton>
+              <ActionButton onClick={handleClosePaymentModal} variant="secondary">{t('common.cancel')}</ActionButton>
+              <ActionButton onClick={() => handleAddPayment(showPaymentModal)} variant="primary">{t('common.save')}</ActionButton>
             </>}
           >
             <div className="space-y-4">
               <div className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2.5">
-                <span className="text-sm text-muted">বাকি</span>
+                <span className="text-sm text-muted">{t('loans.remaining')}</span>
                 <span className="text-base font-semibold text-negative">৳{bn(rem)}</span>
               </div>
               <div>
-                <label className="label label-required">কত টাকা ফেরত দিলেন?</label>
-                <input type="text" inputMode="decimal" value={paymentAmount} onChange={numChange(setPaymentAmount)} className="input" placeholder="০" />
+                <label className="label label-required">{t('loans.howMuchReturned')}</label>
+                <input type="text" inputMode="decimal" value={paymentAmount} onChange={numChange(setPaymentAmount)} className="input" placeholder={t('loans.zero')} />
                 <button type="button" className="chip chip-accent mt-2" onClick={() => setPaymentAmount(String(rem))}>
-                  সম্পূর্ণ ৳{bn(rem)} ফেরত
+                  {t('loans.fullReturnChip', { amount: bn(rem) })}
                 </button>
               </div>
               <div>
-                <label className="label label-required">তারিখ</label>
+                <label className="label label-required">{t('common.date')}</label>
                 <input type="datetime-local" value={paymentDate} onChange={(e) => setPaymentDate(e.target.value)} className="input" />
               </div>
               <div>
-                <label className="label">নোট (ঐচ্ছিক)</label>
-                <textarea value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} className="input min-h-[80px] resize-none" placeholder="যেমন: আংশিক ফেরত" rows={3} />
+                <label className="label">{t('loans.noteOptional')}</label>
+                <textarea value={paymentNote} onChange={(e) => setPaymentNote(e.target.value)} className="input min-h-[80px] resize-none" placeholder={t('loans.returnNotePlaceholder')} rows={3} />
               </div>
             </div>
           </Modal>
@@ -950,24 +950,24 @@ export default function LoansPage() {
         <Modal
           isOpen={!!showIncreaseModal}
           onClose={handleCloseIncreaseModal}
-          title="ধারের পরিমাণ বৃদ্ধি করুন"
+          title={t('loans.increaseTitle')}
           footerActions={<>
-            <ActionButton onClick={handleCloseIncreaseModal} variant="secondary">বাতিল</ActionButton>
-            <ActionButton onClick={() => handleIncreaseLoanAmount(showIncreaseModal)} variant="primary">সংরক্ষণ</ActionButton>
+            <ActionButton onClick={handleCloseIncreaseModal} variant="secondary">{t('common.cancel')}</ActionButton>
+            <ActionButton onClick={() => handleIncreaseLoanAmount(showIncreaseModal)} variant="primary">{t('common.save')}</ActionButton>
           </>}
         >
           <div className="space-y-4">
             <div>
-              <label className="label label-required">বৃদ্ধির পরিমাণ (৳)</label>
-              <input type="text" inputMode="decimal" value={increaseAmount} onChange={numChange(setIncreaseAmount)} className="input" placeholder="০" />
+              <label className="label label-required">{t('loans.increaseAmountLabel')}</label>
+              <input type="text" inputMode="decimal" value={increaseAmount} onChange={numChange(setIncreaseAmount)} className="input" placeholder={t('loans.zero')} />
             </div>
             <div>
-              <label className="label label-required">তারিখ</label>
+              <label className="label label-required">{t('common.date')}</label>
               <input type="datetime-local" value={increaseDate} onChange={(e) => setIncreaseDate(e.target.value)} className="input" />
             </div>
             <div>
-              <label className="label">কারণ (ঐচ্ছিক)</label>
-              <textarea value={increaseReason} onChange={(e) => setIncreaseReason(e.target.value)} className="input min-h-[80px] resize-none" placeholder="যেমন: অতিরিক্ত প্রয়োজন" rows={3} />
+              <label className="label">{t('loans.reasonOptional')}</label>
+              <textarea value={increaseReason} onChange={(e) => setIncreaseReason(e.target.value)} className="input min-h-[80px] resize-none" placeholder={t('loans.increaseReasonPlaceholder')} rows={3} />
             </div>
           </div>
         </Modal>

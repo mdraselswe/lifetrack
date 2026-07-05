@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from 'react'
 import { SunIcon, MoonIcon } from './Icons'
+import { t, useLang } from '@/lib/i18n'
 
 export default function ThemeToggle({ className = '' }: { className?: string }) {
+  useLang() // re-render on language switch
   const [dark, setDark] = useState(false)
 
   useEffect(() => {
@@ -25,8 +27,8 @@ export default function ThemeToggle({ className = '' }: { className?: string }) 
     <button
       onClick={toggle}
       className={`icon-btn ${className}`}
-      aria-label={dark ? 'লাইট মোড' : 'ডার্ক মোড'}
-      title={dark ? 'লাইট মোড' : 'ডার্ক মোড'}
+      aria-label={dark ? t('theme.light') : t('theme.dark')}
+      title={dark ? t('theme.light') : t('theme.dark')}
     >
       {dark ? <SunIcon className="w-5 h-5" /> : <MoonIcon className="w-5 h-5" />}
     </button>

@@ -5,9 +5,11 @@ import { useAuth } from '@/lib/firebase-auth'
 import { LogoutIcon, DownloadIcon } from './Icons'
 import { exportMyData } from '@/lib/export'
 import { toast } from '@/lib/toast'
+import { t, useLang } from '@/lib/i18n'
 
 export default function ProfileMenu() {
   const { user, logout } = useAuth()
+  useLang() // re-render on language switch
   const [open, setOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -17,10 +19,10 @@ export default function ProfileMenu() {
     setExporting(true)
     try {
       await exportMyData(user?.email)
-      toast.success('ডেটা এক্সপোর্ট হয়েছে')
+      toast.success(t('profile.exportSuccess'))
       setOpen(false)
     } catch {
-      toast.error('এক্সপোর্ট করতে সমস্যা হয়েছে')
+      toast.error(t('profile.exportError'))
     } finally {
       setExporting(false)
     }
@@ -57,7 +59,7 @@ export default function ProfileMenu() {
         ref={triggerRef}
         onClick={() => setOpen((v) => !v)}
         className="w-9 h-9 rounded-full bg-accent text-accent-fg flex items-center justify-center font-semibold text-sm transition-transform active:scale-95"
-        aria-label="প্রোফাইল"
+        aria-label={t('profile.title')}
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -69,7 +71,7 @@ export default function ProfileMenu() {
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div role="menu" className="absolute right-0 mt-2 w-56 rounded-2xl surface shadow-pop overflow-hidden z-50">
             <div className="px-4 py-3 border-b border-line">
-              <p className="text-sm font-semibold text-content truncate">{user.displayName || 'ব্যবহারকারী'}</p>
+              <p className="text-sm font-semibold text-content truncate">{user.displayName || t('profile.user')}</p>
               <p className="text-xs text-muted truncate">{user.email}</p>
             </div>
             <button
@@ -79,14 +81,14 @@ export default function ProfileMenu() {
               disabled={exporting}
               className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm font-medium text-content hover:bg-surface-2 transition-colors disabled:opacity-60"
             >
-              <DownloadIcon className="w-5 h-5" /> {exporting ? 'এক্সপোর্ট হচ্ছে...' : 'ডেটা এক্সপোর্ট (JSON)'}
+              <DownloadIcon className="w-5 h-5" /> {exporting ? t('profile.exporting') : t('profile.export')}
             </button>
             <button
               role="menuitem"
               onClick={() => { logout(); setOpen(false) }}
               className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm font-medium text-negative hover:bg-surface-2 transition-colors border-t border-line"
             >
-              <LogoutIcon className="w-5 h-5" /> লগআউট
+              <LogoutIcon className="w-5 h-5" /> {t('profile.logout')}
             </button>
           </div>
         </>

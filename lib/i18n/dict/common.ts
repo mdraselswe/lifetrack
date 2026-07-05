@@ -1,0 +1,47 @@
+import type { Dict } from './types'
+
+export const common: Dict = {
+  'common.save': { bn: 'সংরক্ষণ', en: 'Save' },
+  'common.cancel': { bn: 'বাতিল', en: 'Cancel' },
+  'common.delete': { bn: 'মুছুন', en: 'Delete' },
+  'common.edit': { bn: 'সম্পাদনা', en: 'Edit' },
+  'common.close': { bn: 'বন্ধ করুন', en: 'Close' },
+  'common.add': { bn: 'যোগ করুন', en: 'Add' },
+  'common.loading': { bn: 'লোড হচ্ছে...', en: 'Loading...' },
+  'common.name': { bn: 'নাম', en: 'Name' },
+  'common.amount': { bn: 'পরিমাণ', en: 'Amount' },
+  'common.date': { bn: 'তারিখ', en: 'Date' },
+  'common.reason': { bn: 'কারণ', en: 'Reason' },
+  'common.note': { bn: 'নোট', en: 'Note' },
+  'common.invalidDate': { bn: 'অবৈধ তারিখ', en: 'Invalid date' },
+  'common.people': { bn: '{count} জন', en: '{count} people' },
+  'common.viewAll': { bn: 'সব দেখুন →', en: 'View all →' },
+  'common.yes': { bn: 'হ্যাঁ', en: 'Yes' },
+  'common.no': { bn: 'না', en: 'No' },
+  'common.unknown': { bn: 'অজানা', en: 'Unknown' },
+
+  'nav.home': { bn: 'হোম', en: 'Home' },
+  'nav.reminders': { bn: 'রিমাইন্ডার', en: 'Reminders' },
+  'nav.given': { bn: 'দিয়েছি', en: 'Given' },
+  'nav.taken': { bn: 'নিয়েছি', en: 'Taken' },
+
+  'profile.title': { bn: 'প্রোফাইল', en: 'Profile' },
+  'profile.user': { bn: 'ব্যবহারকারী', en: 'User' },
+  'profile.export': { bn: 'ডেটা এক্সপোর্ট (JSON)', en: 'Export data (JSON)' },
+  'profile.exporting': { bn: 'এক্সপোর্ট হচ্ছে...', en: 'Exporting...' },
+  'profile.exportSuccess': { bn: 'ডেটা এক্সপোর্ট হয়েছে', en: 'Data exported' },
+  'profile.exportError': { bn: 'এক্সপোর্ট করতে সমস্যা হয়েছে', en: 'Export failed' },
+  'profile.logout': { bn: 'লগআউট', en: 'Log out' },
+
+  'theme.light': { bn: 'লাইট মোড', en: 'Light mode' },
+  'theme.dark': { bn: 'ডার্ক মোড', en: 'Dark mode' },
+
+  'validation.passwordMin': { bn: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষর হতে হবে', en: 'Password must be at least 6 characters' },
+  'validation.passwordMax': { bn: 'পাসওয়ার্ড ১২৮ অক্ষরের বেশি হতে পারবে না', en: 'Password cannot exceed 128 characters' },
+  'validation.nameMin': { bn: 'নাম কমপক্ষে ২ অক্ষর হতে হবে', en: 'Name must be at least 2 characters' },
+  'validation.nameMax': { bn: 'নাম ৫০ অক্ষরের বেশি হতে পারবে না', en: 'Name cannot exceed 50 characters' },
+  'validation.nameChars': { bn: 'নামে শুধুমাত্র অক্ষর এবং স্পেস ব্যবহার করুন', en: 'Name may only contain letters and spaces' },
+  'validation.allFields': { bn: 'সব ফিল্ড পূরণ করুন', en: 'Please fill in all fields' },
+  'validation.validEmail': { bn: 'সঠিক ইমেইল ঠিকানা দিন', en: 'Enter a valid email address' },
+  'validation.passwordMismatch': { bn: 'পাসওয়ার্ড মিলছে না', en: 'Passwords do not match' },
+}

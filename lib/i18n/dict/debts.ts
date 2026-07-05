@@ -1,0 +1,111 @@
+import type { Dict } from './types'
+
+export const debts: Dict = {
+  // Page chrome
+  'debts.title': { bn: 'ধার দিয়েছি', en: 'Money Given' },
+  'debts.subtitle': { bn: 'আপনার পাওনা', en: 'What you are owed' },
+  'debts.statOutstanding': { bn: 'বাকি পাওনা', en: 'Outstanding' },
+  'debts.receivedBack': { bn: 'ফেরত পেয়েছি', en: 'Received back' },
+  'debts.sectionActive': { bn: 'বাকি আছে', en: 'Outstanding' },
+
+  // Empty state
+  'debts.emptyTitle': { bn: 'কোনো ধার নেই', en: 'No debts yet' },
+  'debts.emptyDesc': { bn: 'এখনো কাউকে টাকা ধার দেননি', en: 'You have not lent money to anyone yet' },
+  'debts.addFirst': { bn: 'প্রথম ধার যোগ করুন', en: 'Add your first debt' },
+  'debts.addNew': { bn: 'নতুন ধার যোগ করুন', en: 'Add new debt' },
+
+  // Card labels
+  'debts.total': { bn: 'মোট', en: 'Total' },
+  'debts.paid': { bn: 'পরিশোধিত', en: 'Paid' },
+  'debts.remaining': { bn: 'বাকি', en: 'Remaining' },
+  'debts.paymentHistory': { bn: 'পরিশোধের ইতিহাস', en: 'Payment history' },
+  'debts.initialDebt': { bn: 'প্রাথমিক ধার', en: 'Initial debt' },
+  'debts.increases': { bn: 'পরিমাণ বৃদ্ধি', en: 'Amount increases' },
+  'debts.settledSummary': { bn: 'মোট ৳{total} · পরিশোধ ৳{paid}', en: 'Total ৳{total} · Paid ৳{paid}' },
+
+  // Buttons
+  'debts.increaseBtn': { bn: 'বৃদ্ধি', en: 'Increase' },
+  'debts.markPaid': { bn: 'পরিশোধিত চিহ্নিত করুন', en: 'Mark as paid' },
+  'debts.update': { bn: 'আপডেট', en: 'Update' },
+  'debts.confirmReceived': { bn: 'ফেরত পেয়েছি', en: 'Received' },
+  'debts.confirmNotReceived': { bn: 'ফেরত পাইনি', en: 'Not received' },
+
+  // Form fields
+  'debts.personName': { bn: 'ব্যক্তির নাম', en: "Person's name" },
+  'debts.personNamePlaceholder': { bn: 'যেমন: আলী', en: 'e.g., Ali' },
+  'debts.amountLabel': { bn: 'পরিমাণ (৳)', en: 'Amount (৳)' },
+  'debts.zeroPlaceholder': { bn: '০', en: '0' },
+  'debts.initialReasonOptional': { bn: 'প্রাথমিক কারণ (ঐচ্ছিক)', en: 'Initial reason (optional)' },
+  'debts.reasonOptional': { bn: 'কারণ (ঐচ্ছিক)', en: 'Reason (optional)' },
+  'debts.noteOptional': { bn: 'নোট (ঐচ্ছিক)', en: 'Note (optional)' },
+  'debts.reasonPlaceholder': { bn: 'যেমন: জরুরি প্রয়োজন', en: 'e.g., emergency need' },
+  'debts.partialPaymentPlaceholder': { bn: 'যেমন: আংশিক পরিশোধ', en: 'e.g., partial payment' },
+  'debts.partialReturnPlaceholder': { bn: 'যেমন: আংশিক ফেরত', en: 'e.g., partial return' },
+  'debts.increaseReasonPlaceholder': { bn: 'যেমন: অতিরিক্ত প্রয়োজন', en: 'e.g., additional need' },
+  'debts.increaseAmountLabel': { bn: 'বৃদ্ধির পরিমাণ (৳)', en: 'Increase amount (৳)' },
+  'debts.howMuchReceived': { bn: 'কত টাকা ফেরত পেলেন?', en: 'How much did you receive back?' },
+  'debts.fullReturnChip': { bn: 'সম্পূর্ণ ৳{amount} ফেরত', en: 'Full return of ৳{amount}' },
+  'debts.fullPaymentNote': { bn: 'সম্পূর্ণ পরিশোধ', en: 'Full payment' },
+
+  // Modal titles
+  'debts.editTitle': { bn: 'ধার সম্পাদনা করুন', en: 'Edit debt' },
+  'debts.editPaymentTitle': { bn: 'পেমেন্ট সম্পাদনা করুন', en: 'Edit payment' },
+  'debts.editIncreaseTitle': { bn: 'পরিমাণ বৃদ্ধি সম্পাদনা করুন', en: 'Edit amount increase' },
+
+  // Validation errors
+  'debts.errNameAmount': { bn: 'নাম এবং পরিমাণ দিন', en: 'Enter a name and amount' },
+  'debts.errValidAmount': { bn: 'সঠিক পরিমাণ দিন', en: 'Enter a valid amount' },
+  'debts.errAmountDate': { bn: 'পরিমাণ এবং তারিখ প্রয়োজন', en: 'Amount and date are required' },
+  'debts.errExceedsRemaining': { bn: 'বাকি পরিমাণ: ৳{remaining}. তার চেয়ে বেশি পরিশোধ করা যাবে না।', en: 'Remaining amount: ৳{remaining}. You cannot pay more than that.' },
+  'debts.errLessThanPaid': { bn: 'মোট পরিশোধিত পরিমাণ: ৳{paid}. নতুন পরিমাণ তার চেয়ে কম হতে পারবে না।', en: 'Total paid: ৳{paid}. The new amount cannot be less than that.' },
+
+  // Add debt
+  'debts.addSuccess': { bn: 'ধার সফলভাবে যোগ করা হয়েছে', en: 'Debt added successfully' },
+  'debts.addError': { bn: 'ধার যোগ করতে সমস্যা হয়েছে', en: 'Failed to add debt' },
+
+  // Delete debt
+  'debts.deleteTitle': { bn: 'ধার মুছুন', en: 'Delete debt' },
+  'debts.deleteMsg': { bn: '{name} এর {amount} টাকার ধার মুছে ফেলবেন?', en: "Delete {name}'s debt of {amount} taka?" },
+  'debts.deleteSuccess': { bn: 'ধার সফলভাবে মুছে ফেলা হয়েছে', en: 'Debt deleted successfully' },
+  'debts.deleteError': { bn: 'ধার মুছতে সমস্যা হয়েছে', en: 'Failed to delete debt' },
+
+  // Toggle returned status
+  'debts.statusTitle': { bn: 'ধারের অবস্থা পরিবর্তন করুন', en: 'Change debt status' },
+  'debts.statusConfirmReceived': { bn: '{name} এর {amount} টাকার ধার ফেরত পেয়েছেন হিসেবে চিহ্নিত করবেন?', en: "Mark {name}'s debt of {amount} taka as returned?" },
+  'debts.statusConfirmNotReceived': { bn: '{name} এর {amount} টাকার ধার ফেরত পাননি হিসেবে চিহ্নিত করবেন?', en: "Mark {name}'s debt of {amount} taka as not returned?" },
+  'debts.statusMarkedReceived': { bn: 'ধার ফেরত পেয়েছেন হিসেবে চিহ্নিত করা হয়েছে', en: 'Debt marked as returned' },
+  'debts.statusMarkedNotReceived': { bn: 'ধার ফেরত পাননি হিসেবে চিহ্নিত করা হয়েছে', en: 'Debt marked as not returned' },
+  'debts.statusError': { bn: 'ধারের অবস্থা পরিবর্তন করতে সমস্যা হয়েছে', en: 'Failed to change debt status' },
+
+  // Update debt
+  'debts.updateTitle': { bn: 'ধার আপডেট করুন', en: 'Update debt' },
+  'debts.updateConfirmMsg': { bn: '{name} এর ধারের তথ্য আপডেট করবেন?', en: "Update {name}'s debt details?" },
+  'debts.updateSuccess': { bn: 'ধার সফলভাবে আপডেট করা হয়েছে', en: 'Debt updated successfully' },
+  'debts.updateError': { bn: 'ধার আপডেট করতে সমস্যা হয়েছে', en: 'Failed to update debt' },
+
+  // Payments
+  'debts.paymentAddSuccess': { bn: 'পেমেন্ট সফলভাবে যোগ করা হয়েছে', en: 'Payment added successfully' },
+  'debts.paymentAddError': { bn: 'পেমেন্ট যোগ করতে সমস্যা হয়েছে', en: 'Failed to add payment' },
+  'debts.paymentDeleteTitle': { bn: 'পেমেন্ট মুছুন', en: 'Delete payment' },
+  'debts.paymentDeleteMsg': { bn: '{amount} টাকার পেমেন্ট মুছে ফেলবেন?', en: 'Delete the payment of {amount} taka?' },
+  'debts.paymentDeleteSuccess': { bn: 'পেমেন্ট সফলভাবে মুছে ফেলা হয়েছে', en: 'Payment deleted successfully' },
+  'debts.paymentDeleteError': { bn: 'পেমেন্ট মুছতে সমস্যা হয়েছে', en: 'Failed to delete payment' },
+  'debts.paymentUpdateTitle': { bn: 'পেমেন্ট আপডেট করুন', en: 'Update payment' },
+  'debts.paymentUpdateMsg': { bn: '{amount} টাকার পেমেন্ট আপডেট করবেন?', en: 'Update the payment of {amount} taka?' },
+  'debts.paymentUpdateSuccess': { bn: 'পেমেন্ট সফলভাবে আপডেট করা হয়েছে', en: 'Payment updated successfully' },
+  'debts.paymentUpdateError': { bn: 'পেমেন্ট আপডেট করতে সমস্যা হয়েছে', en: 'Failed to update payment' },
+
+  // Amount increases
+  'debts.increaseTitle': { bn: 'ধারের পরিমাণ বৃদ্ধি করুন', en: 'Increase debt amount' },
+  'debts.increaseConfirmMsg': { bn: '{name} এর ধারের পরিমাণ ৳{from} থেকে ৳{to} বৃদ্ধি করবেন?', en: "Increase {name}'s debt amount from ৳{from} to ৳{to}?" },
+  'debts.increaseSuccess': { bn: 'ধারের পরিমাণ বৃদ্ধি করা হয়েছে', en: 'Debt amount increased' },
+  'debts.increaseError': { bn: 'ধারের পরিমাণ বৃদ্ধি করতে সমস্যা হয়েছে', en: 'Failed to increase debt amount' },
+  'debts.increaseDeleteTitle': { bn: 'পরিমাণ বৃদ্ধি মুছুন', en: 'Delete amount increase' },
+  'debts.increaseDeleteMsg': { bn: '{amount} টাকার পরিমাণ বৃদ্ধি মুছে ফেলবেন? ধারের পরিমাণ ৳{from} থেকে ৳{to} হবে।', en: 'Delete the amount increase of {amount} taka? The debt amount will change from ৳{from} to ৳{to}.' },
+  'debts.increaseDeleteSuccess': { bn: 'পরিমাণ বৃদ্ধি সফলভাবে মুছে ফেলা হয়েছে', en: 'Amount increase deleted successfully' },
+  'debts.increaseDeleteError': { bn: 'পরিমাণ বৃদ্ধি মুছতে সমস্যা হয়েছে', en: 'Failed to delete amount increase' },
+  'debts.increaseUpdateTitle': { bn: 'পরিমাণ বৃদ্ধি আপডেট করুন', en: 'Update amount increase' },
+  'debts.increaseUpdateMsg': { bn: '{amount} টাকার পরিমাণ বৃদ্ধি আপডেট করবেন?', en: 'Update the amount increase of {amount} taka?' },
+  'debts.increaseUpdateSuccess': { bn: 'পরিমাণ বৃদ্ধি সফলভাবে আপডেট করা হয়েছে', en: 'Amount increase updated successfully' },
+  'debts.increaseUpdateError': { bn: 'পরিমাণ বৃদ্ধি আপডেট করতে সমস্যা হয়েছে', en: 'Failed to update amount increase' },
+}

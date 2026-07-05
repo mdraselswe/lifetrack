@@ -1,0 +1,117 @@
+import type { Dict } from './types'
+
+export const loans: Dict = {
+  // AppBar
+  'loans.title': { bn: 'ধার নিয়েছি', en: 'Money Borrowed' },
+  'loans.subtitle': { bn: 'আপনার ঋণ', en: 'Your loans' },
+
+  // Stats
+  'loans.statToPay': { bn: 'দিতে হবে', en: 'To pay' },
+  'loans.statReturned': { bn: 'ফেরত দিয়েছি', en: 'Returned' },
+
+  // Empty state
+  'loans.emptyTitle': { bn: 'কোনো ঋণ নেই', en: 'No loans' },
+  'loans.emptyDesc': { bn: 'এখনো কারো থেকে টাকা ধার নেননি', en: "You haven't borrowed money from anyone yet" },
+  'loans.addFirst': { bn: 'প্রথম ঋণ যোগ করুন', en: 'Add your first loan' },
+
+  // Section headers
+  'loans.sectionActive': { bn: 'ফেরত দিতে হবে', en: 'To repay' },
+  'loans.sectionReturned': { bn: 'ফেরত দিয়েছি', en: 'Returned' },
+  'loans.paymentHistory': { bn: 'পরিশোধের ইতিহাস', en: 'Payment history' },
+  'loans.initialLoan': { bn: 'প্রাথমিক ধার', en: 'Initial loan' },
+  'loans.amountIncrease': { bn: 'পরিমাণ বৃদ্ধি', en: 'Amount increases' },
+
+  // Card labels
+  'loans.total': { bn: 'মোট', en: 'Total' },
+  'loans.paid': { bn: 'পরিশোধিত', en: 'Paid' },
+  'loans.paidLabel': { bn: 'পরিশোধ', en: 'Paid' },
+  'loans.remaining': { bn: 'বাকি', en: 'Remaining' },
+
+  // Buttons
+  'loans.increaseBtn': { bn: 'বৃদ্ধি', en: 'Increase' },
+  'loans.paidBackBtn': { bn: 'ফেরত দিয়েছি', en: 'Paid back' },
+  'loans.markPaid': { bn: 'পরিশোধিত চিহ্নিত করুন', en: 'Mark as paid' },
+  'loans.updateBtn': { bn: 'আপডেট', en: 'Update' },
+
+  // Modal titles
+  'loans.addNew': { bn: 'নতুন ঋণ যোগ করুন', en: 'Add a new loan' },
+  'loans.editTitle': { bn: 'ঋণ সম্পাদনা করুন', en: 'Edit loan' },
+  'loans.editPaymentTitle': { bn: 'পেমেন্ট সম্পাদনা করুন', en: 'Edit payment' },
+  'loans.editIncreaseTitle': { bn: 'পরিমাণ বৃদ্ধি সম্পাদনা করুন', en: 'Edit amount increase' },
+  'loans.increaseTitle': { bn: 'ধারের পরিমাণ বৃদ্ধি করুন', en: 'Increase loan amount' },
+
+  // Form fields & placeholders
+  'loans.personName': { bn: 'ব্যক্তির নাম', en: "Person's name" },
+  'loans.personPlaceholder': { bn: 'যেমন: রহিম', en: 'e.g. Rahim' },
+  'loans.amountLabel': { bn: 'পরিমাণ (৳)', en: 'Amount (৳)' },
+  'loans.zero': { bn: '০', en: '0' },
+  'loans.initialReasonOptional': { bn: 'প্রাথমিক কারণ (ঐচ্ছিক)', en: 'Initial reason (optional)' },
+  'loans.reasonOptional': { bn: 'কারণ (ঐচ্ছিক)', en: 'Reason (optional)' },
+  'loans.noteOptional': { bn: 'নোট (ঐচ্ছিক)', en: 'Note (optional)' },
+  'loans.reasonPlaceholder': { bn: 'যেমন: জরুরি খরচ', en: 'e.g. emergency expense' },
+  'loans.paymentNotePlaceholder': { bn: 'যেমন: আংশিক পরিশোধ', en: 'e.g. partial payment' },
+  'loans.returnNotePlaceholder': { bn: 'যেমন: আংশিক ফেরত', en: 'e.g. partial return' },
+  'loans.increaseReasonPlaceholder': { bn: 'যেমন: অতিরিক্ত প্রয়োজন', en: 'e.g. needed more' },
+  'loans.increaseAmountLabel': { bn: 'বৃদ্ধির পরিমাণ (৳)', en: 'Increase amount (৳)' },
+  'loans.howMuchReturned': { bn: 'কত টাকা ফেরত দিলেন?', en: 'How much did you pay back?' },
+  'loans.fullReturnChip': { bn: 'সম্পূর্ণ ৳{amount} ফেরত', en: 'Return full ৳{amount}' },
+
+  // Validation errors
+  'loans.errNameAmount': { bn: 'নাম এবং পরিমাণ দিন', en: 'Enter a name and amount' },
+  'loans.errValidAmount': { bn: 'সঠিক পরিমাণ দিন', en: 'Enter a valid amount' },
+  'loans.errAmountDate': { bn: 'পরিমাণ এবং তারিখ প্রয়োজন', en: 'Amount and date are required' },
+  'loans.errOverpay': { bn: 'বাকি পরিমাণ: ৳{remaining}. তার চেয়ে বেশি পরিশোধ করা যাবে না।', en: 'Remaining: ৳{remaining}. You cannot pay more than that.' },
+  'loans.errAmountBelowPaid': { bn: 'মোট পরিশোধিত পরিমাণ: ৳{paid}. নতুন পরিমাণ তার চেয়ে কম হতে পারবে না।', en: 'Total paid: ৳{paid}. The new amount cannot be less than that.' },
+
+  // Add loan
+  'loans.addSuccess': { bn: 'ধার সফলভাবে যোগ করা হয়েছে', en: 'Loan added successfully' },
+  'loans.addError': { bn: 'ধার যোগ করতে সমস্যা হয়েছে', en: 'Failed to add loan' },
+
+  // Toggle returned status
+  'loans.toggleTitle': { bn: 'ধারের অবস্থা পরিবর্তন করুন', en: 'Change loan status' },
+  'loans.toggleMessage': { bn: '{name} এর {amount} টাকার ধার {action} হিসেবে চিহ্নিত করবেন?', en: "Mark {name}'s loan of ৳{amount} as {action}?" },
+  'loans.toggleSuccess': { bn: 'ধার {action} হিসেবে চিহ্নিত করা হয়েছে', en: 'Loan marked as {action}' },
+  'loans.toggleError': { bn: 'ধারের অবস্থা পরিবর্তন করতে সমস্যা হয়েছে', en: 'Failed to change loan status' },
+  'loans.statusReturned': { bn: 'ফেরত দিয়েছেন', en: 'returned' },
+  'loans.statusNotReturned': { bn: 'ফেরত দেননি', en: 'not returned' },
+  'loans.confirmReturned': { bn: 'ফেরত দিয়েছি', en: 'Returned' },
+  'loans.confirmNotReturned': { bn: 'ফেরত দেইনি', en: 'Not returned' },
+  'loans.fullPaymentNote': { bn: 'সম্পূর্ণ পরিশোধ', en: 'Full payment' },
+
+  // Delete loan
+  'loans.deleteTitle': { bn: 'ধার মুছুন', en: 'Delete loan' },
+  'loans.deleteMessage': { bn: '{name} এর {amount} টাকার ধার মুছে ফেলবেন?', en: "Delete {name}'s loan of ৳{amount}?" },
+  'loans.deleteSuccess': { bn: 'ধার সফলভাবে মুছে ফেলা হয়েছে', en: 'Loan deleted successfully' },
+  'loans.deleteError': { bn: 'ধার মুছতে সমস্যা হয়েছে', en: 'Failed to delete loan' },
+
+  // Update loan
+  'loans.updateTitle': { bn: 'ধার আপডেট করুন', en: 'Update loan' },
+  'loans.updateMessage': { bn: '{name} এর ধারের তথ্য আপডেট করবেন?', en: "Update {name}'s loan details?" },
+  'loans.updateSuccess': { bn: 'ধার সফলভাবে আপডেট করা হয়েছে', en: 'Loan updated successfully' },
+  'loans.updateError': { bn: 'ধার আপডেট করতে সমস্যা হয়েছে', en: 'Failed to update loan' },
+
+  // Payments
+  'loans.paymentAddSuccess': { bn: 'পেমেন্ট সফলভাবে যোগ করা হয়েছে', en: 'Payment added successfully' },
+  'loans.paymentAddError': { bn: 'পেমেন্ট যোগ করতে সমস্যা হয়েছে', en: 'Failed to add payment' },
+  'loans.paymentDeleteTitle': { bn: 'পেমেন্ট মুছুন', en: 'Delete payment' },
+  'loans.paymentDeleteMessage': { bn: '{amount} টাকার পেমেন্ট মুছে ফেলবেন?', en: 'Delete the payment of ৳{amount}?' },
+  'loans.paymentDeleteSuccess': { bn: 'পেমেন্ট সফলভাবে মুছে ফেলা হয়েছে', en: 'Payment deleted successfully' },
+  'loans.paymentDeleteError': { bn: 'পেমেন্ট মুছতে সমস্যা হয়েছে', en: 'Failed to delete payment' },
+  'loans.paymentUpdateTitle': { bn: 'পেমেন্ট আপডেট করুন', en: 'Update payment' },
+  'loans.paymentUpdateMessage': { bn: '{amount} টাকার পেমেন্ট আপডেট করবেন?', en: 'Update the payment of ৳{amount}?' },
+  'loans.paymentUpdateSuccess': { bn: 'পেমেন্ট সফলভাবে আপডেট করা হয়েছে', en: 'Payment updated successfully' },
+  'loans.paymentUpdateError': { bn: 'পেমেন্ট আপডেট করতে সমস্যা হয়েছে', en: 'Failed to update payment' },
+
+  // Increases
+  'loans.increaseConfirmMessage': { bn: '{name} এর ধারের পরিমাণ ৳{from} থেকে ৳{to} বৃদ্ধি করবেন?', en: "Increase {name}'s loan amount from ৳{from} to ৳{to}?" },
+  'loans.increaseSuccess': { bn: 'ধারের পরিমাণ বৃদ্ধি করা হয়েছে', en: 'Loan amount increased' },
+  'loans.increaseError': { bn: 'ধারের পরিমাণ বৃদ্ধি করতে সমস্যা হয়েছে', en: 'Failed to increase loan amount' },
+  'loans.increaseDeleteTitle': { bn: 'পরিমাণ বৃদ্ধি মুছুন', en: 'Delete amount increase' },
+  'loans.increaseDeleteMessage': { bn: '{amount} টাকার পরিমাণ বৃদ্ধি মুছে ফেলবেন? ধারের পরিমাণ ৳{from} থেকে ৳{to} হবে।', en: 'Delete the increase of ৳{amount}? The loan amount will change from ৳{from} to ৳{to}.' },
+  'loans.increaseDeleteSuccess': { bn: 'পরিমাণ বৃদ্ধি সফলভাবে মুছে ফেলা হয়েছে', en: 'Amount increase deleted successfully' },
+  'loans.increaseDeleteError': { bn: 'পরিমাণ বৃদ্ধি মুছতে সমস্যা হয়েছে', en: 'Failed to delete amount increase' },
+  'loans.increaseUpdateTitle': { bn: 'পরিমাণ বৃদ্ধি আপডেট করুন', en: 'Update amount increase' },
+  'loans.increaseUpdateMessage': { bn: '{amount} টাকার পরিমাণ বৃদ্ধি আপডেট করবেন?', en: 'Update the increase of ৳{amount}?' },
+  'loans.increaseUpdateSuccess': { bn: 'পরিমাণ বৃদ্ধি সফলভাবে আপডেট করা হয়েছে', en: 'Amount increase updated successfully' },
+  'loans.increaseUpdateError': { bn: 'পরিমাণ বৃদ্ধি আপডেট করতে সমস্যা হয়েছে', en: 'Failed to update amount increase' },
+}

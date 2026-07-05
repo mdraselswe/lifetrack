@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { toastManager, type Toast } from '@/lib/toast'
 import { CheckCircleIcon, AlertCircleIcon, AlertTriangleIcon, InfoIcon, CloseIcon } from './Icons'
+import { t, useLang } from '@/lib/i18n'
 
 export default function ToastContainer() {
   const [toasts, setToasts] = useState<Toast[]>([])
@@ -36,6 +37,7 @@ const typeConfig = {
 } as const
 
 function ToastItem({ toast }: { toast: Toast }) {
+  useLang() // re-render on language switch
   const [isVisible, setIsVisible] = useState(false)
   const [isLeaving, setIsLeaving] = useState(false)
 
@@ -69,7 +71,7 @@ function ToastItem({ toast }: { toast: Toast }) {
         <button
           onClick={handleRemove}
           className="icon-btn flex-shrink-0 text-muted"
-          aria-label="বন্ধ করুন"
+          aria-label={t('common.close')}
         >
           <CloseIcon className="w-4 h-4" />
         </button>

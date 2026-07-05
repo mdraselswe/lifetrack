@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState, type ReactNode, type FormEvent } from 'react'
 import { CloseIcon } from './Icons'
+import { t, useLang } from '@/lib/i18n'
 
 // Module-level stack of open modal ids so only the topmost modal reacts to Escape.
 const modalStack: string[] = []
@@ -20,6 +21,7 @@ interface ModalProps {
 }
 
 export default function Modal({ isOpen, onClose, title, children, className = '', footerActions, zIndex = 9999 }: ModalProps) {
+  useLang() // re-render on language switch
   const [isVisible, setIsVisible] = useState(false)
   const modalId = useId()
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -117,7 +119,7 @@ export default function Modal({ isOpen, onClose, title, children, className = ''
   const Header = (
     <div className="flex-shrink-0 flex items-center justify-between px-5 py-4 border-b border-line">
       <h2 className="text-base font-semibold text-content">{title}</h2>
-      <button onClick={onClose} className="icon-btn" aria-label="বন্ধ করুন">
+      <button onClick={onClose} className="icon-btn" aria-label={t('common.close')}>
         <CloseIcon className="w-5 h-5" />
       </button>
     </div>
@@ -185,6 +187,7 @@ interface ActionButtonProps {
 }
 
 export function ActionButton({ onClick, children, variant = 'primary', disabled = false, loading = false }: ActionButtonProps) {
+  useLang() // re-render on language switch
   const variantClass =
     variant === 'secondary' ? 'btn-secondary' : variant === 'danger' ? 'btn-danger' : 'btn-primary'
 
@@ -193,7 +196,7 @@ export function ActionButton({ onClick, children, variant = 'primary', disabled 
       {loading ? (
         <span className="flex items-center gap-2">
           <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-          লোড হচ্ছে...
+          {t('common.loading')}
         </span>
       ) : (
         children

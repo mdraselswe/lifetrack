@@ -8,38 +8,28 @@ import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
 import { DashboardSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
-import { round2, toBnDigits, toBnNumber } from '@/lib/format'
-import { formatDistanceToNow } from 'date-fns'
-import { bn as bnLocale } from 'date-fns/locale'
+import { round2 } from '@/lib/format'
+import { t, useLang, fmtNum, fmtInt, fmtRelative } from '@/lib/i18n'
 import {
   ClockIcon, ArrowUpRightIcon, ArrowDownLeftIcon, WalletIcon,
   RotateIcon, PlusCircleIcon,
 } from '@/components/Icons'
 
-const bn = (n: number) => toBnNumber(round2(n))
-const bnInt = (n: number) => toBnNumber(Math.round(n))
+const bn = (n: number) => fmtNum(round2(n))
+const bnInt = (n: number) => fmtNum(Math.round(n))
 
 const greeting = () => {
   const h = new Date().getHours()
-  if (h < 12) return 'শুভ সকাল'
-  if (h < 16) return 'শুভ দুপুর'
-  if (h < 19) return 'শুভ বিকাল'
-  return 'শুভ সন্ধ্যা'
+  if (h < 12) return t('greeting.morning')
+  if (h < 16) return t('greeting.noon')
+  if (h < 19) return t('greeting.afternoon')
+  return t('greeting.evening')
 }
 
 const ts = (s?: string) => {
   if (!s) return 0
   const t = new Date(s).getTime()
   return Number.isFinite(t) ? t : 0
-}
-
-const relFromMs = (t: number) => {
-  if (!t) return ''
-  try {
-    return toBnDigits(formatDistanceToNow(new Date(t), { locale: bnLocale, addSuffix: true }))
-  } catch {
-    return ''
-  }
 }
 
 const sumPayments = (items?: { amount: number }[]) =>
@@ -113,6 +103,7 @@ export default function Dashboard() {
   const startY = useRef<number | null>(null)
   const { user, loading } = useAuth()
   const router = useRouter()
+  useLang() // re-render on language switch
 
   useEffect(() => {
     if (!loading && !user) {
@@ -180,11 +171,11 @@ export default function Dashboard() {
 
   const debtDetails = debts
     .filter((d) => !d.returned)
-    .map((d) => ({ id: d.id, name: d.personName || 'অজানা', amount: remainingOf(d) }))
+    .map((d) => ({ id: d.id, name: d.personName || t('common.unknown'), amount: remainingOf(d) }))
     .filter((d) => d.amount > 0)
   const loanDetails = loans
     .filter((l) => !l.returned)
-    .map((l) => ({ id: l.id, name: l.personName || 'অজানা', amount: remainingOf(l) }))
+    .map((l) => ({ id: l.id, name: l.personName || t('common.unknown'), amount: remainingOf(l) }))
     .filter((l) => l.amount > 0)
 
   const totalLent = round2(debtDetails.reduce((s, d) => s + d.amount, 0))
@@ -212,7 +203,7 @@ export default function Dashboard() {
 
   // Everything below runs client-only (after mount), so Date.now()/new Date()
   // is safe here — never executed during static prerender.
-  const firstName = user.displayName || user.email?.split('@')[0] || 'ব্যবহারকারী'
+  const firstName = user.displayName || user.email?.split('@')[0] || t('profile.user')
 
   // Reminders — overdue / today
   const now = Date.now()
@@ -234,16 +225,16 @@ export default function Dashboard() {
   // Recent activity feed
   const activity: Activity[] = []
   debts.forEach((d) => {
-    const name = d.personName || 'অজানা'
-    activity.push({ id: `dc-${d.id}`, t: ts(d.createdAt || d.date), tone: 'pos', Icon: ArrowUpRightIcon, text: `${name}-কে ধার দিয়েছেন`, amount: d.amount || 0 })
-    ;(d.payments || []).forEach((p) => activity.push({ id: `dp-${p.id}`, t: ts(p.createdAt || p.date), tone: 'pos', Icon: RotateIcon, text: `${name} ফেরত দিয়েছে`, amount: p.amount || 0 }))
-    ;(d.increases || []).forEach((i) => activity.push({ id: `di-${i.id}`, t: ts(i.createdAt || i.date), tone: 'warn', Icon: PlusCircleIcon, text: `${name}-এর ধার বেড়েছে`, amount: i.amount || 0 }))
+    const name = d.personName || t('common.unknown')
+    activity.push({ id: `dc-${d.id}`, t: ts(d.createdAt || d.date), tone: 'pos', Icon: ArrowUpRightIcon, text: t('dashboard.lentTo', { name }), amount: d.amount || 0 })
+    ;(d.payments || []).forEach((p) => activity.push({ id: `dp-${p.id}`, t: ts(p.createdAt || p.date), tone: 'pos', Icon: RotateIcon, text: t('dashboard.returnedYou', { name }), amount: p.amount || 0 }))
+    ;(d.increases || []).forEach((i) => activity.push({ id: `di-${i.id}`, t: ts(i.createdAt || i.date), tone: 'warn', Icon: PlusCircleIcon, text: t('dashboard.increased', { name }), amount: i.amount || 0 }))
   })
   loans.forEach((l) => {
-    const name = l.personName || 'অজানা'
-    activity.push({ id: `lc-${l.id}`, t: ts(l.createdAt || l.date), tone: 'neg', Icon: ArrowDownLeftIcon, text: `${name} থেকে ধার নিয়েছেন`, amount: l.amount || 0 })
-    ;(l.payments || []).forEach((p) => activity.push({ id: `lp-${p.id}`, t: ts(p.createdAt || p.date), tone: 'neg', Icon: RotateIcon, text: `${name}-কে ফেরত দিয়েছেন`, amount: p.amount || 0 }))
-    ;(l.increases || []).forEach((i) => activity.push({ id: `li-${i.id}`, t: ts(i.createdAt || i.date), tone: 'warn', Icon: PlusCircleIcon, text: `${name}-এর ধার বেড়েছে`, amount: i.amount || 0 }))
+    const name = l.personName || t('common.unknown')
+    activity.push({ id: `lc-${l.id}`, t: ts(l.createdAt || l.date), tone: 'neg', Icon: ArrowDownLeftIcon, text: t('dashboard.borrowedFrom', { name }), amount: l.amount || 0 })
+    ;(l.payments || []).forEach((p) => activity.push({ id: `lp-${p.id}`, t: ts(p.createdAt || p.date), tone: 'neg', Icon: RotateIcon, text: t('dashboard.youReturned', { name }), amount: p.amount || 0 }))
+    ;(l.increases || []).forEach((i) => activity.push({ id: `li-${i.id}`, t: ts(i.createdAt || i.date), tone: 'warn', Icon: PlusCircleIcon, text: t('dashboard.increased', { name }), amount: i.amount || 0 }))
   })
   const recent = activity.sort((a, b) => b.t - a.t).slice(0, 6)
 
@@ -275,9 +266,9 @@ export default function Dashboard() {
                 <ClockIcon className="w-5 h-5" />
               </span>
               <span className="text-sm text-content flex-1">
-                {toBnDigits(String(overdue.length))}টি রিমাইন্ডার মেয়াদোত্তীর্ণ
+                {t('dashboard.overdueReminders', { count: fmtInt(overdue.length) })}
               </span>
-              <span className="text-xs text-accent font-medium">দেখুন →</span>
+              <span className="text-xs text-accent font-medium">{t('dashboard.view')}</span>
             </Link>
           ) : todayRem.length > 0 ? (
             <Link href="/reminders" className="card card-interactive bar-pos flex items-center gap-3 py-3">
@@ -285,24 +276,24 @@ export default function Dashboard() {
                 <ClockIcon className="w-5 h-5" />
               </span>
               <span className="text-sm text-content flex-1">
-                আজ {toBnDigits(String(todayRem.length))}টি রিমাইন্ডার আছে
+                {t('dashboard.todayReminders', { count: fmtInt(todayRem.length) })}
               </span>
-              <span className="text-xs text-accent font-medium">দেখুন →</span>
+              <span className="text-xs text-accent font-medium">{t('dashboard.view')}</span>
             </Link>
           ) : null}
 
           {/* Net balance hero */}
           <div className="card">
-            <p className="text-sm text-muted mb-1">নেট ব্যালেন্স</p>
+            <p className="text-sm text-muted mb-1">{t('dashboard.netBalance')}</p>
             <p className={`text-4xl font-bold tracking-tight ${netBalance >= 0 ? 'text-positive' : 'text-negative'}`}>
               ৳{bn(animNet)}
             </p>
             <p className="text-sm text-muted mt-1">
               {netBalance > 0
-                ? `সব মিলিয়ে আপনি ৳${bn(Math.abs(netBalance))} এগিয়ে আছেন`
+                ? t('dashboard.aheadBy', { amount: bn(Math.abs(netBalance)) })
                 : netBalance < 0
-                  ? `সব মিলিয়ে আপনাকে ৳${bn(Math.abs(netBalance))} দিতে হবে`
-                  : 'সব হিসাব মিলে গেছে'}
+                  ? t('dashboard.oweBy', { amount: bn(Math.abs(netBalance)) })
+                  : t('dashboard.allSettled')}
             </p>
 
             {total > 0 && (
@@ -313,10 +304,10 @@ export default function Dashboard() {
                 </div>
                 <div className="flex justify-between mt-2 text-[11px] text-muted">
                   <span className="flex items-center gap-1">
-                    <span className="w-2 h-2 rounded-full bg-positive inline-block" /> পাবেন
+                    <span className="w-2 h-2 rounded-full bg-positive inline-block" /> {t('dashboard.willReceive')}
                   </span>
                   <span className="flex items-center gap-1">
-                    দিতে হবে <span className="w-2 h-2 rounded-full bg-negative inline-block" />
+                    {t('dashboard.willPay')} <span className="w-2 h-2 rounded-full bg-negative inline-block" />
                   </span>
                 </div>
               </div>
@@ -328,32 +319,32 @@ export default function Dashboard() {
             <div className="stat-tile tint-pos">
               <div className="flex items-center gap-2 text-positive mb-2">
                 <ArrowUpRightIcon className="w-5 h-5" />
-                <span className="text-xs font-medium text-positive">পাবেন</span>
+                <span className="text-xs font-medium text-positive">{t('dashboard.willReceive')}</span>
               </div>
               <p className="text-2xl font-bold text-content">৳{bn(animLent)}</p>
-              <p className="text-[11px] text-muted mt-0.5">{toBnDigits(String(debtDetails.length))} জন</p>
+              <p className="text-[11px] text-muted mt-0.5">{t('common.people', { count: fmtInt(debtDetails.length) })}</p>
             </div>
             <div className="stat-tile tint-neg">
               <div className="flex items-center gap-2 text-negative mb-2">
                 <ArrowDownLeftIcon className="w-5 h-5" />
-                <span className="text-xs font-medium text-negative">দিতে হবে</span>
+                <span className="text-xs font-medium text-negative">{t('dashboard.willPay')}</span>
               </div>
               <p className="text-2xl font-bold text-content">৳{bn(animBorrowed)}</p>
-              <p className="text-[11px] text-muted mt-0.5">{toBnDigits(String(loanDetails.length))} জন</p>
+              <p className="text-[11px] text-muted mt-0.5">{t('common.people', { count: fmtInt(loanDetails.length) })}</p>
             </div>
           </div>
 
           {/* This month summary */}
           {(receivedThisMonth > 0 || paidThisMonth > 0) && (
             <div className="card">
-              <p className="text-sm font-semibold text-content mb-3">এই মাসে</p>
+              <p className="text-sm font-semibold text-content mb-3">{t('dashboard.thisMonth')}</p>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <p className="text-xs text-muted mb-1">ফেরত পেয়েছেন</p>
+                  <p className="text-xs text-muted mb-1">{t('dashboard.receivedBack')}</p>
                   <p className="text-lg font-bold text-positive">৳{bn(receivedThisMonth)}</p>
                 </div>
                 <div>
-                  <p className="text-xs text-muted mb-1">ফেরত দিয়েছেন</p>
+                  <p className="text-xs text-muted mb-1">{t('dashboard.paidBack')}</p>
                   <p className="text-lg font-bold text-negative">৳{bn(paidThisMonth)}</p>
                 </div>
               </div>
@@ -367,12 +358,12 @@ export default function Dashboard() {
                 <WalletIcon className="w-7 h-7" />
               </span>
               <div>
-                <p className="text-base font-semibold text-content">এখনো কোনো হিসাব নেই</p>
-                <p className="text-sm text-muted mt-1">ধার দেওয়া বা নেওয়া যোগ করে শুরু করুন</p>
+                <p className="text-base font-semibold text-content">{t('dashboard.noRecords')}</p>
+                <p className="text-sm text-muted mt-1">{t('dashboard.startHint')}</p>
               </div>
               <div className="flex gap-2 mt-1">
-                <Link href="/debts" className="btn btn-primary">ধার দিয়েছি</Link>
-                <Link href="/loans" className="btn btn-secondary">ধার নিয়েছি</Link>
+                <Link href="/debts" className="btn btn-primary">{t('dashboard.lentBtn')}</Link>
+                <Link href="/loans" className="btn btn-secondary">{t('dashboard.borrowedBtn')}</Link>
               </div>
             </div>
           )}
@@ -381,9 +372,9 @@ export default function Dashboard() {
           {topDebts.length > 0 && (
             <div className="card bar-pos">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold text-positive">যারা আপনাকে দেবে</p>
+                <p className="text-sm font-semibold text-positive">{t('dashboard.receivables')}</p>
                 {topDebts.length > LIST_CAP && (
-                  <Link href="/debts" className="text-xs font-medium text-accent">সব দেখুন →</Link>
+                  <Link href="/debts" className="text-xs font-medium text-accent">{t('common.viewAll')}</Link>
                 )}
               </div>
               <div className="divide-y divide-line">
@@ -402,9 +393,9 @@ export default function Dashboard() {
           {topLoans.length > 0 && (
             <div className="card bar-neg">
               <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold text-negative">যাদের আপনি দেবেন</p>
+                <p className="text-sm font-semibold text-negative">{t('dashboard.payables')}</p>
                 {topLoans.length > LIST_CAP && (
-                  <Link href="/loans" className="text-xs font-medium text-accent">সব দেখুন →</Link>
+                  <Link href="/loans" className="text-xs font-medium text-accent">{t('common.viewAll')}</Link>
                 )}
               </div>
               <div className="divide-y divide-line">
@@ -422,7 +413,7 @@ export default function Dashboard() {
           {/* Recent activity feed */}
           {recent.length > 0 && (
             <div className="card">
-              <p className="text-sm font-semibold text-content mb-3">সাম্প্রতিক কার্যক্রম</p>
+              <p className="text-sm font-semibold text-content mb-3">{t('dashboard.recentActivity')}</p>
               <div className="divide-y divide-line">
                 {recent.map((a) => (
                   <div key={a.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
@@ -431,7 +422,7 @@ export default function Dashboard() {
                     </span>
                     <div className="flex-1 min-w-0">
                       <p className="text-sm text-content truncate">{a.text}</p>
-                      {a.t > 0 && <p className="text-[11px] text-muted">{relFromMs(a.t)}</p>}
+                      {a.t > 0 && <p className="text-[11px] text-muted">{fmtRelative(a.t)}</p>}
                     </div>
                     <span className={`text-sm font-semibold ${toneText[a.tone]}`}>৳{bn(a.amount)}</span>
                   </div>
@@ -444,17 +435,17 @@ export default function Dashboard() {
           <div className="grid grid-cols-3 gap-3">
             <Link href="/reminders" className="card card-interactive flex flex-col items-center gap-2 py-4 text-center">
               <span className="text-accent"><ClockIcon className="w-6 h-6" /></span>
-              <span className="text-xs font-medium text-content">রিমাইন্ডার</span>
-              <span className="text-[11px] text-muted">{toBnDigits(String(reminderCount))} সক্রিয়</span>
+              <span className="text-xs font-medium text-content">{t('nav.reminders')}</span>
+              <span className="text-[11px] text-muted">{t('dashboard.activeCount', { count: fmtInt(reminderCount) })}</span>
             </Link>
             <Link href="/debts" className="card card-interactive bar-pos flex flex-col items-center gap-2 py-4 text-center">
               <span className="text-positive"><ArrowUpRightIcon className="w-6 h-6" /></span>
-              <span className="text-xs font-medium text-content">দিয়েছি</span>
+              <span className="text-xs font-medium text-content">{t('nav.given')}</span>
               <span className="text-[11px] text-muted">৳{bnInt(totalLent)}</span>
             </Link>
             <Link href="/loans" className="card card-interactive bar-neg flex flex-col items-center gap-2 py-4 text-center">
               <span className="text-negative"><ArrowDownLeftIcon className="w-6 h-6" /></span>
-              <span className="text-xs font-medium text-content">নিয়েছি</span>
+              <span className="text-xs font-medium text-content">{t('nav.taken')}</span>
               <span className="text-[11px] text-muted">৳{bnInt(totalBorrowed)}</span>
             </Link>
           </div>

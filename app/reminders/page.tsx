@@ -4,9 +4,6 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { getReminders, saveReminder, updateReminder, deleteReminder, subscribeToReminders } from '@/lib/storage'
 import { scheduleNotification } from '@/lib/notifications'
 import type { Reminder, ReminderOccurrence } from '@/lib/types'
-import { addDays, addWeeks, addMonths } from 'date-fns'
-import { format } from 'date-fns'
-import { bn } from 'date-fns/locale'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
 import Modal, { ActionButton } from '@/components/Modal'
@@ -15,9 +12,7 @@ import { useRouter } from 'next/navigation'
 import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
 import { ClockIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, HistoryIcon } from '@/components/Icons'
-import { toBnDigits } from '@/lib/format'
-
-const fmtDate = (v?: string) => (v && !isNaN(new Date(v).getTime()) ? toBnDigits(format(new Date(v), 'MMMM d, yyyy, h:mm a', { locale: bn })) : 'অবৈধ তারিখ')
+import { t, useLang, fmtInt, fmtDate } from '@/lib/i18n'
 
 // datetime-local expects a LOCAL time string; toISOString() is UTC, so we
 // shift by the timezone offset before slicing to avoid an off-by-hours default.
@@ -27,6 +22,7 @@ const toLocalDateTimeValue = (date: Date = new Date()) => {
 }
 
 export default function RemindersPage() {
+  useLang() // re-render on language switch
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [showForm, setShowForm] = useState(false)
   const [dataLoading, setDataLoading] = useState(true)
@@ -107,7 +103,7 @@ export default function RemindersPage() {
 
     const hours = parseFloat(rescheduleHours)
     if (isNaN(hours) || hours <= 0) {
-      toast.error('সঠিক ঘন্টা সংখ্যা দিন')
+      toast.error(t('reminders.invalidHours'))
       return
     }
 
@@ -119,7 +115,7 @@ export default function RemindersPage() {
       scheduleNotification(rescheduleReminderId, reminder.title, reminder.description || '', newTime)
     }
     loadReminders().catch(console.error)
-    toast.success('রিমাইন্ডার পুনঃনির্ধারণ করা হয়েছে')
+    toast.success(t('reminders.rescheduled'))
     setRescheduleReminderId(null)
   }
 
@@ -150,7 +146,7 @@ export default function RemindersPage() {
     e.preventDefault()
     
     if (!title || !scheduledTime) {
-      toast.error('শিরোনাম এবং সময় দিন')
+      toast.error(t('reminders.titleTimeRequired'))
       return
     }
 
@@ -174,12 +170,12 @@ export default function RemindersPage() {
       )
       
       if (hasPermission === false) {
-        toast.error('নোটিফিকেশন পাঠাতে পারমিশন দিন')
-        toast.info('ব্রাউজার সেটিংস থেকে নোটিফিকেশন পারমিশন দিন', 8000)
+        toast.error(t('reminders.notifPermission'))
+        toast.info(t('reminders.notifPermissionHint'), 8000)
         return
       }
-      
-      toast.success('রিমাইন্ডার সফলভাবে আপডেট করা হয়েছে!')
+
+      toast.success(t('reminders.updated'))
     } else {
       // Creating new reminder
       const reminder: Reminder = {
@@ -206,7 +202,7 @@ export default function RemindersPage() {
         await saveReminder(reminder)
       } catch (error) {
         console.error('Error saving reminder:', error)
-        toast.error('রিমাইন্ডার সংরক্ষণ করতে সমস্যা হয়েছে')
+        toast.error(t('reminders.saveError'))
         return
       }
 
@@ -219,19 +215,19 @@ export default function RemindersPage() {
       )
       
       if (hasPermission === false) {
-        toast.error('নোটিফিকেশন পাঠাতে পারমিশন দিন')
-        toast.info('ব্রাউজার সেটিংস থেকে নোটিফিকেশন পারমিশন দিন', 8000)
+        toast.error(t('reminders.notifPermission'))
+        toast.info(t('reminders.notifPermissionHint'), 8000)
         return
       }
-      
-      toast.success('রিমাইন্ডার সফলভাবে সেট করা হয়েছে!')
-      
+
+      toast.success(t('reminders.created'))
+
       // Check if browser supports background notifications
       const supportsBackground = 'serviceWorker' in navigator && navigator.serviceWorker.controller
       if (supportsBackground) {
-        toast.info('নোটিফিকেশন background এ কাজ করবে (browser বন্ধ থাকলেও)', 6000)
+        toast.info(t('reminders.backgroundInfo'), 6000)
       } else {
-        toast.warning('ব্রাউজার খোলা রাখুন নোটিফিকেশনের জন্য', 6000)
+        toast.warning(t('reminders.keepBrowserOpen'), 6000)
       }
     }
 
@@ -263,12 +259,12 @@ export default function RemindersPage() {
     if (!reminder) return
     
     confirm.delete(
-      'রিমাইন্ডার মুছুন',
-      `"${reminder.title}" রিমাইন্ডার মুছে ফেলবেন?`,
+      t('reminders.deleteTitle'),
+      t('reminders.deleteConfirm', { title: reminder.title }),
       () => {
         deleteReminder(id)
         loadReminders().catch(console.error)
-        toast.success('রিমাইন্ডার সফলভাবে মুছে ফেলা হয়েছে')
+        toast.success(t('reminders.deleted'))
       }
     )
   }
@@ -282,7 +278,7 @@ export default function RemindersPage() {
 
   const handleSaveCompletion = async () => {
     if (!reminderToComplete || !completionDateTime) {
-      toast.error('সময় দিন')
+      toast.error(t('reminders.timeRequired'))
       return
     }
 
@@ -303,7 +299,7 @@ export default function RemindersPage() {
     })
 
     loadReminders().catch(console.error)
-    toast.success(`"${reminderToComplete.title}" সম্পন্ন! ${updatedCount} বার সম্পন্ন হয়েছে।`)
+    toast.success(t('reminders.completedToast', { title: reminderToComplete.title, count: fmtInt(updatedCount) }))
 
     setShowCompleteModal(false)
     setReminderToComplete(null)
@@ -326,7 +322,7 @@ export default function RemindersPage() {
 
   const handleSaveOccurrenceEdit = async () => {
     if (!editingOccurrence || !editOccurrenceDateTime) {
-      toast.error('সময় দিন')
+      toast.error(t('reminders.timeRequired'))
       return
     }
 
@@ -342,7 +338,7 @@ export default function RemindersPage() {
     })
 
     loadReminders().catch(console.error)
-    toast.success('সম্পন্নের তারিখ/সময় আপডেট করা হয়েছে')
+    toast.success(t('reminders.occurrenceUpdated'))
 
     // Refresh history
     const updated = await getReminders()
@@ -357,12 +353,8 @@ export default function RemindersPage() {
 
   const handleDeleteOccurrence = (reminder: Reminder, occurrence: ReminderOccurrence) => {
     confirm.delete(
-      'সম্পন্নের রেকর্ড মুছুন',
-      `এই সম্পন্নের রেকর্ড মুছে ফেলবেন? তারিখ: ${
-        occurrence.completedTime && !isNaN(new Date(occurrence.completedTime).getTime())
-          ? format(new Date(occurrence.completedTime), 'PPpp', { locale: bn })
-          : 'Invalid date'
-      }`,
+      t('reminders.deleteOccurrenceTitle'),
+      t('reminders.deleteOccurrenceConfirm', { date: fmtDate(occurrence.completedTime, true) }),
       async () => {
         const updatedOccurrences = (reminder.occurrences || []).filter(occ => occ.id !== occurrence.id)
         const updatedCount = Math.max(0, (reminder.completionCount || 0) - 1)
@@ -373,7 +365,7 @@ export default function RemindersPage() {
         })
 
         loadReminders().catch(console.error)
-        toast.success('সম্পন্নের রেকর্ড মুছে ফেলা হয়েছে')
+        toast.success(t('reminders.occurrenceDeleted'))
 
         // Refresh history
         const updated = await getReminders()
@@ -387,20 +379,18 @@ export default function RemindersPage() {
 
   const handleToggleDismiss = (reminder: Reminder) => {
     const newStatus = !reminder.dismissed
-    const actionText = newStatus ? 'বাতিল করেছেন' : 'সক্রিয় করেছেন'
-    const confirmText = newStatus ? 'বাতিল করি' : 'সক্রিয় করি'
-    
+
     confirm.custom(
-      'রিমাইন্ডার অবস্থা পরিবর্তন করুন',
-      `"${reminder.title}" রিমাইন্ডার ${actionText} হিসেবে চিহ্নিত করবেন?`,
+      t('reminders.toggleTitle'),
+      t(newStatus ? 'reminders.markDismissedConfirm' : 'reminders.markActiveConfirm', { title: reminder.title }),
       () => {
         updateReminder(reminder.id, { dismissed: newStatus })
         loadReminders().catch(console.error)
-        toast.success(`রিমাইন্ডার ${actionText} হিসেবে চিহ্নিত করা হয়েছে`)
+        toast.success(t(newStatus ? 'reminders.markedDismissed' : 'reminders.markedActive'))
       },
       {
-        confirmText: confirmText,
-        cancelText: 'বাতিল',
+        confirmText: t(newStatus ? 'reminders.confirmDismiss' : 'reminders.confirmActivate'),
+        cancelText: t('common.cancel'),
         type: newStatus ? 'warning' : 'info'
       }
     )
@@ -416,7 +406,7 @@ export default function RemindersPage() {
 
   return (
     <div className="min-h-full">
-      <AppBar title="রিমাইন্ডার" subtitle="সময়মতো মনে করিয়ে দেবে" />
+      <AppBar title={t('nav.reminders')} subtitle={t('reminders.subtitle')} />
 
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in">
         {/* Summary */}
@@ -424,16 +414,16 @@ export default function RemindersPage() {
           <div className="stat-tile">
             <div className="flex items-center gap-2 mb-2 text-accent">
               <ClockIcon className="w-5 h-5" />
-              <span className="text-xs font-medium text-muted">সক্রিয়</span>
+              <span className="text-xs font-medium text-muted">{t('reminders.active')}</span>
             </div>
-            <p className="text-2xl font-bold text-content">{toBnDigits(String(activeReminders.length))}</p>
+            <p className="text-2xl font-bold text-content">{fmtInt(activeReminders.length)}</p>
           </div>
           <div className="stat-tile">
             <div className="flex items-center gap-2 mb-2 text-positive">
               <CheckIcon className="w-5 h-5" />
-              <span className="text-xs font-medium text-muted">সম্পন্ন</span>
+              <span className="text-xs font-medium text-muted">{t('reminders.completed')}</span>
             </div>
-            <p className="text-2xl font-bold text-content">{toBnDigits(String(dismissedReminders.length))}</p>
+            <p className="text-2xl font-bold text-content">{fmtInt(dismissedReminders.length)}</p>
           </div>
         </div>
 
@@ -444,29 +434,29 @@ export default function RemindersPage() {
             <div className="mx-auto w-16 h-16 rounded-2xl bg-surface-2 flex items-center justify-center text-muted mb-4">
               <ClockIcon className="w-8 h-8" />
             </div>
-            <h3 className="text-base font-semibold text-content mb-1">কোনো রিমাইন্ডার নেই</h3>
-            <p className="text-sm text-muted mb-5">এখনো কোনো রিমাইন্ডার সেট করেননি</p>
+            <h3 className="text-base font-semibold text-content mb-1">{t('reminders.emptyTitle')}</h3>
+            <p className="text-sm text-muted mb-5">{t('reminders.emptySubtitle')}</p>
             <button onClick={() => setShowForm(true)} className="btn btn-primary mx-auto">
-              <PlusIcon className="w-5 h-5" /> প্রথম রিমাইন্ডার যোগ করুন
+              <PlusIcon className="w-5 h-5" /> {t('reminders.addFirst')}
             </button>
           </div>
         ) : (
           <>
             {activeReminders.length > 0 && (
               <section className="space-y-3">
-                <h2 className="text-sm font-semibold text-muted px-1">সক্রিয়</h2>
+                <h2 className="text-sm font-semibold text-muted px-1">{t('reminders.active')}</h2>
                 {activeReminders.map((r) => (
                   <div key={r.id} className="card space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <h3 className="font-semibold text-content truncate">{r.title}</h3>
                         <p className="text-xs text-muted flex items-center gap-1 mt-0.5">
-                          <ClockIcon className="w-3.5 h-3.5" /> {fmtDate(r.scheduledTime)}
+                          <ClockIcon className="w-3.5 h-3.5" /> {fmtDate(r.scheduledTime, true)}
                         </p>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        <button className="icon-btn" onClick={() => handleEdit(r)} title="সম্পাদনা"><EditIcon className="w-5 h-5" /></button>
-                        <button className="icon-btn" onClick={() => handleDelete(r.id)} title="মুছুন"><TrashIcon className="w-5 h-5" /></button>
+                        <button className="icon-btn" onClick={() => handleEdit(r)} title={t('common.edit')}><EditIcon className="w-5 h-5" /></button>
+                        <button className="icon-btn" onClick={() => handleDelete(r.id)} title={t('common.delete')}><TrashIcon className="w-5 h-5" /></button>
                       </div>
                     </div>
 
@@ -474,8 +464,8 @@ export default function RemindersPage() {
 
                     {(r.isRepetitive || (r.completionCount ?? 0) > 0) && (
                       <div className="flex flex-wrap gap-2">
-                        {r.isRepetitive && <span className="chip chip-accent">একাধিকবার</span>}
-                        {(r.completionCount ?? 0) > 0 && <span className="chip">✓ {r.completionCount} বার সম্পন্ন</span>}
+                        {r.isRepetitive && <span className="chip chip-accent">{t('reminders.repetitiveChip')}</span>}
+                        {(r.completionCount ?? 0) > 0 && <span className="chip">{t('reminders.timesCompleted', { count: fmtInt(r.completionCount ?? 0) })}</span>}
                       </div>
                     )}
 
@@ -484,11 +474,11 @@ export default function RemindersPage() {
                         className="btn btn-primary flex-1"
                         onClick={() => (r.isRepetitive ? handleCompleteReminder(r) : handleToggleDismiss(r))}
                       >
-                        <CheckIcon className="w-4 h-4" /> সম্পন্ন
+                        <CheckIcon className="w-4 h-4" /> {t('reminders.markDone')}
                       </button>
                       {r.occurrences && r.occurrences.length > 0 && (
                         <button className="btn btn-secondary" onClick={() => setSelectedReminderForHistory(r)}>
-                          <HistoryIcon className="w-4 h-4" /> ইতিহাস
+                          <HistoryIcon className="w-4 h-4" /> {t('reminders.history')}
                         </button>
                       )}
                     </div>
@@ -499,19 +489,19 @@ export default function RemindersPage() {
 
             {dismissedReminders.length > 0 && (
               <section className="space-y-3">
-                <h2 className="text-sm font-semibold text-muted px-1">সম্পন্ন</h2>
+                <h2 className="text-sm font-semibold text-muted px-1">{t('reminders.completed')}</h2>
                 {dismissedReminders.map((r) => (
                   <div key={r.id} className="card flex items-center justify-between gap-3 opacity-90">
                     <div className="min-w-0">
                       <h3 className="font-medium text-content truncate line-through">{r.title}</h3>
-                      <p className="text-xs text-muted mt-0.5">{fmtDate(r.scheduledTime)}</p>
+                      <p className="text-xs text-muted mt-0.5">{fmtDate(r.scheduledTime, true)}</p>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
                       {r.occurrences && r.occurrences.length > 0 && (
-                        <button className="icon-btn" onClick={() => setSelectedReminderForHistory(r)} title="ইতিহাস"><HistoryIcon className="w-5 h-5" /></button>
+                        <button className="icon-btn" onClick={() => setSelectedReminderForHistory(r)} title={t('reminders.history')}><HistoryIcon className="w-5 h-5" /></button>
                       )}
-                      <button className="icon-btn" onClick={() => handleToggleDismiss(r)} title="সক্রিয় করুন"><RotateIcon className="w-5 h-5" /></button>
-                      <button className="icon-btn" onClick={() => handleDelete(r.id)} title="মুছুন"><TrashIcon className="w-5 h-5" /></button>
+                      <button className="icon-btn" onClick={() => handleToggleDismiss(r)} title={t('reminders.activate')}><RotateIcon className="w-5 h-5" /></button>
+                      <button className="icon-btn" onClick={() => handleDelete(r.id)} title={t('common.delete')}><TrashIcon className="w-5 h-5" /></button>
                     </div>
                   </div>
                 ))}
@@ -522,7 +512,7 @@ export default function RemindersPage() {
       </div>
 
       {/* FAB */}
-      <button className="fab" onClick={() => setShowForm(true)} aria-label="নতুন রিমাইন্ডার যোগ করুন">
+      <button className="fab" onClick={() => setShowForm(true)} aria-label={t('reminders.addNew')}>
         <PlusIcon className="w-6 h-6" />
       </button>
 
@@ -530,28 +520,28 @@ export default function RemindersPage() {
       <Modal
         isOpen={showForm}
         onClose={handleCancelEdit}
-        title={editingReminder ? 'রিমাইন্ডার সম্পাদনা করুন' : 'নতুন রিমাইন্ডার'}
+        title={editingReminder ? t('reminders.editTitle') : t('reminders.newTitle')}
         footerActions={<>
-          <ActionButton onClick={handleCancelEdit} variant="secondary">বাতিল</ActionButton>
-          <ActionButton onClick={(e) => e && handleSubmit(e)} variant="primary">{editingReminder ? 'আপডেট' : 'সংরক্ষণ'}</ActionButton>
+          <ActionButton onClick={handleCancelEdit} variant="secondary">{t('common.cancel')}</ActionButton>
+          <ActionButton onClick={(e) => e && handleSubmit(e)} variant="primary">{editingReminder ? t('reminders.update') : t('common.save')}</ActionButton>
         </>}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="label label-required">শিরোনাম</label>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="input" placeholder="যেমন: ওষুধ খাওয়া" required />
+            <label className="label label-required">{t('reminders.fieldTitle')}</label>
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="input" placeholder={t('reminders.titlePlaceholder')} required />
           </div>
           <div>
-            <label className="label">বিবরণ (ঐচ্ছিক)</label>
-            <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input min-h-[80px] resize-none" placeholder="অতিরিক্ত বিবরণ" rows={3} />
+            <label className="label">{t('reminders.fieldDescription')}</label>
+            <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="input min-h-[80px] resize-none" placeholder={t('reminders.descriptionPlaceholder')} rows={3} />
           </div>
           <div>
-            <label className="label label-required">সময়</label>
+            <label className="label label-required">{t('reminders.fieldTime')}</label>
             <input type="datetime-local" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} className="input" required />
           </div>
           <label className="flex items-center gap-3 cursor-pointer pt-1">
             <input type="checkbox" checked={isRepetitive} onChange={(e) => setIsRepetitive(e.target.checked)} className="w-5 h-5 rounded accent-[color:var(--accent)]" />
-            <span className="text-sm text-content">একাধিকবার সম্পন্ন করব (ইতিহাস রাখা হবে)</span>
+            <span className="text-sm text-content">{t('reminders.repetitiveLabel')}</span>
           </label>
         </form>
       </Modal>
@@ -560,18 +550,18 @@ export default function RemindersPage() {
       <Modal
         isOpen={showCompleteModal}
         onClose={() => { setShowCompleteModal(false); setReminderToComplete(null); setCompletionDateTime('') }}
-        title={reminderToComplete ? `${reminderToComplete.title} — সম্পন্ন` : 'সম্পন্ন করুন'}
+        title={reminderToComplete ? t('reminders.completeModalTitle', { title: reminderToComplete.title }) : t('reminders.completeTitle')}
         footerActions={<>
-          <ActionButton onClick={() => { setShowCompleteModal(false); setReminderToComplete(null); setCompletionDateTime('') }} variant="secondary">বাতিল</ActionButton>
-          <ActionButton onClick={handleSaveCompletion} variant="primary">সম্পন্ন</ActionButton>
+          <ActionButton onClick={() => { setShowCompleteModal(false); setReminderToComplete(null); setCompletionDateTime('') }} variant="secondary">{t('common.cancel')}</ActionButton>
+          <ActionButton onClick={handleSaveCompletion} variant="primary">{t('reminders.markDone')}</ActionButton>
         </>}
       >
         <div className="space-y-3">
           {reminderToComplete && (reminderToComplete.completionCount ?? 0) > 0 && (
-            <p className="text-sm text-muted">পূর্বে {reminderToComplete.completionCount} বার সম্পন্ন হয়েছে</p>
+            <p className="text-sm text-muted">{t('reminders.previouslyCompleted', { count: fmtInt(reminderToComplete.completionCount ?? 0) })}</p>
           )}
           <div>
-            <label className="label label-required">কখন সম্পন্ন করেছেন?</label>
+            <label className="label label-required">{t('reminders.whenCompleted')}</label>
             <input type="datetime-local" value={completionDateTime} onChange={(e) => setCompletionDateTime(e.target.value)} className="input" required />
           </div>
         </div>
@@ -581,15 +571,15 @@ export default function RemindersPage() {
       <Modal
         isOpen={!!editingOccurrence}
         onClose={() => { setEditingOccurrence(null); setEditOccurrenceDateTime('') }}
-        title="সম্পন্নের সময় সম্পাদনা"
+        title={t('reminders.editOccurrenceTitle')}
         zIndex={10000}
         footerActions={<>
-          <ActionButton onClick={() => { setEditingOccurrence(null); setEditOccurrenceDateTime('') }} variant="secondary">বাতিল</ActionButton>
-          <ActionButton onClick={handleSaveOccurrenceEdit} variant="primary">আপডেট</ActionButton>
+          <ActionButton onClick={() => { setEditingOccurrence(null); setEditOccurrenceDateTime('') }} variant="secondary">{t('common.cancel')}</ActionButton>
+          <ActionButton onClick={handleSaveOccurrenceEdit} variant="primary">{t('reminders.update')}</ActionButton>
         </>}
       >
         <div>
-          <label className="label label-required">সম্পন্ন তারিখ/সময়</label>
+          <label className="label label-required">{t('reminders.completedDateTime')}</label>
           <input type="datetime-local" value={editOccurrenceDateTime} onChange={(e) => setEditOccurrenceDateTime(e.target.value)} className="input" required />
         </div>
       </Modal>
@@ -598,20 +588,20 @@ export default function RemindersPage() {
       <Modal
         isOpen={!!selectedReminderForHistory}
         onClose={() => setSelectedReminderForHistory(null)}
-        title={selectedReminderForHistory ? `${selectedReminderForHistory.title} — ইতিহাস` : 'ইতিহাস'}
-        footerActions={<ActionButton onClick={() => setSelectedReminderForHistory(null)} variant="secondary">বন্ধ করুন</ActionButton>}
+        title={selectedReminderForHistory ? t('reminders.historyModalTitle', { title: selectedReminderForHistory.title }) : t('reminders.history')}
+        footerActions={<ActionButton onClick={() => setSelectedReminderForHistory(null)} variant="secondary">{t('common.close')}</ActionButton>}
       >
         {selectedReminderForHistory && (
           <div className="space-y-3">
-            <p className="text-sm text-muted">মোট সম্পন্ন: {selectedReminderForHistory.completionCount || 0} বার</p>
+            <p className="text-sm text-muted">{t('reminders.totalCompleted', { count: fmtInt(selectedReminderForHistory.completionCount || 0) })}</p>
             {selectedReminderForHistory.occurrences && selectedReminderForHistory.occurrences.length > 0 ? (
               [...selectedReminderForHistory.occurrences]
                 .sort((a, b) => new Date(a.completedTime).getTime() - new Date(b.completedTime).getTime())
                 .map((occ, index) => (
                   <div key={occ.id} className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-medium text-content">#{toBnDigits(String(index + 1))}</p>
-                      <p className="text-xs text-muted truncate">{fmtDate(occ.completedTime)}</p>
+                      <p className="text-sm font-medium text-content">#{fmtInt(index + 1)}</p>
+                      <p className="text-xs text-muted truncate">{fmtDate(occ.completedTime, true)}</p>
                     </div>
                     <div className="flex items-center gap-1">
                       <button className="icon-btn w-8 h-8" onClick={() => handleEditOccurrence(selectedReminderForHistory, occ)}><EditIcon className="w-4 h-4" /></button>
@@ -620,7 +610,7 @@ export default function RemindersPage() {
                   </div>
                 ))
             ) : (
-              <p className="text-sm text-muted text-center py-6">এখনো কোনো সম্পন্নের রেকর্ড নেই</p>
+              <p className="text-sm text-muted text-center py-6">{t('reminders.noOccurrences')}</p>
             )}
           </div>
         )}
@@ -630,15 +620,15 @@ export default function RemindersPage() {
       <Modal
         isOpen={!!rescheduleReminderId}
         onClose={() => setRescheduleReminderId(null)}
-        title="আবার মনে করিয়ে দিন"
+        title={t('reminders.rescheduleTitle')}
         zIndex={10001}
         footerActions={<>
-          <ActionButton onClick={() => setRescheduleReminderId(null)} variant="secondary">বাতিল</ActionButton>
-          <ActionButton onClick={handleSaveReschedule} variant="primary">নির্ধারণ করুন</ActionButton>
+          <ActionButton onClick={() => setRescheduleReminderId(null)} variant="secondary">{t('common.cancel')}</ActionButton>
+          <ActionButton onClick={handleSaveReschedule} variant="primary">{t('reminders.setButton')}</ActionButton>
         </>}
       >
         <div>
-          <label className="label label-required">কত ঘন্টা পরে আবার রিমাইন্ডার দিতে চান?</label>
+          <label className="label label-required">{t('reminders.rescheduleLabel')}</label>
           <input
             type="number"
             min="0.5"
@@ -646,7 +636,7 @@ export default function RemindersPage() {
             value={rescheduleHours}
             onChange={(e) => setRescheduleHours(e.target.value)}
             className="input"
-            placeholder="যেমন: ১"
+            placeholder={t('reminders.reschedulePlaceholder')}
             required
           />
         </div>
