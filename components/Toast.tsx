@@ -19,7 +19,7 @@ export default function ToastContainer() {
     // Bottom-center on mobile (above the nav), top-right on desktop — native feel.
     <div
       className="fixed z-[100000] inset-x-0 bottom-0 flex flex-col items-center gap-2 px-4 pointer-events-none
-                 sm:inset-x-auto sm:bottom-auto sm:top-4 sm:right-4 sm:items-end sm:px-0"
+                 sm:inset-x-auto sm:bottom-auto sm:top-20 sm:right-4 sm:items-end sm:px-0"
       style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom))' }}
     >
       {toasts.map((toast) => (
