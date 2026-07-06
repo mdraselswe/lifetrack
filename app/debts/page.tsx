@@ -52,6 +52,7 @@ export default function DebtsPage() {
   const [editAmount, setEditAmount] = useState('')
   const [editReason, setEditReason] = useState('')
   const [editDate, setEditDate] = useState('')
+  const [editDueDate, setEditDueDate] = useState('')
   const [editingPayment, setEditingPayment] = useState<{debtId: string, payment: Payment} | null>(null)
   const [editPaymentAmount, setEditPaymentAmount] = useState('')
   const [editPaymentDate, setEditPaymentDate] = useState('')
@@ -470,6 +471,7 @@ export default function DebtsPage() {
     setEditAmount(debt.amount.toString())
     setEditReason(getInitialReason(debt))
     setEditDate(debt.date)
+    setEditDueDate(debt.dueDate || '')
   }
 
   const handleEditSubmit = (e: FormEvent) => {
@@ -501,18 +503,33 @@ export default function DebtsPage() {
         const increasesTotal = editingDebt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0
         const shouldBeReturned = round2(totalPaid) >= round2(newAmount + increasesTotal)
 
+        const dueNewlySet = !editingDebt.dueDate && !!editDueDate
         updateDebt(editingDebt.id, {
           personName: editPersonName,
           amount: newAmount,
           reason: editReason,
           date: editDate,
+          dueDate: editDueDate || '',
           returned: shouldBeReturned,
         }).then(() => {
+          // A due date added during edit spawns a reminder (mirrors the add flow);
+          // only when it was previously empty, to avoid duplicates.
+          if (dueNewlySet) {
+            saveReminder({
+              id: crypto.randomUUID(),
+              title: t('debts.dueReminderTitle', { name: editPersonName }),
+              description: t('debts.dueReminderDesc', { name: editPersonName, amount: bn(newAmount) }),
+              scheduledTime: editDueDate,
+              dismissed: false,
+              createdAt: new Date().toISOString(),
+            }).then(() => toast.info(t('debts.dueReminderCreated'))).catch(console.error)
+          }
           setEditingDebt(null)
           setEditPersonName('')
           setEditAmount('')
           setEditReason('')
           setEditDate('')
+          setEditDueDate('')
           loadDebts().catch(console.error)
           toast.success(t('debts.updateSuccess'))
         }).catch((error) => {
@@ -529,6 +546,7 @@ export default function DebtsPage() {
     setEditAmount('')
     setEditReason('')
     setEditDate('')
+    setEditDueDate('')
   }
 
   const handleEditPayment = (debtId: string, payment: Payment) => {
@@ -1232,6 +1250,10 @@ export default function DebtsPage() {
           <div>
             <label className="label label-required">{t('common.date')}</label>
             <input type="datetime-local" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="input" required />
+          </div>
+          <div>
+            <label className="label">{t('debts.dueDateOptional')}</label>
+            <input type="datetime-local" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} className="input" />
           </div>
         </form>
       </Modal>
