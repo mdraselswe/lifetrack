@@ -40,7 +40,9 @@ class ConfirmManager {
       type: options.type || 'warning'
     }
     
-    this.confirms.push(confirm)
+    // Only ever show one dialog: a rapid double-click on a Save button would
+    // otherwise stack two identical confirms (and could apply the action twice).
+    this.confirms = [confirm]
     this.notifyListeners()
 
     return id

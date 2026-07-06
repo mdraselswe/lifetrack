@@ -272,6 +272,7 @@ export default function LoansPage() {
   }
 
   const handleAddPayment = (loanId: string) => {
+    if (savingRef.current) return
     if (!paymentAmount || !paymentDate) {
       toast.error(t('loans.errAmountDate'))
       return
@@ -302,6 +303,7 @@ export default function LoansPage() {
     }
 
     const fullPayoff = amount >= remaining
+    savingRef.current = true; setSaving(true)
     addLoanPayment(loanId, payment).then(() => {
       haptic(fullPayoff ? [20, 40, 20] : 12)
       if (fullPayoff) celebrate()
@@ -315,7 +317,7 @@ export default function LoansPage() {
     }).catch((error) => {
       console.error('Error adding payment:', error)
       toast.error(t('loans.paymentAddError'))
-    })
+    }).finally(() => { savingRef.current = false; setSaving(false) })
   }
 
   const handleIncreaseLoanAmount = (loanId: string) => {
@@ -1288,7 +1290,7 @@ export default function LoansPage() {
             title={t('loans.paidBackBtn')}
             footerActions={<>
               <ActionButton onClick={handleClosePaymentModal} variant="secondary">{t('common.cancel')}</ActionButton>
-              <ActionButton onClick={() => handleAddPayment(showPaymentModal)} variant="primary">{t('common.save')}</ActionButton>
+              <ActionButton onClick={() => handleAddPayment(showPaymentModal)} variant="primary" loading={saving}>{t('common.save')}</ActionButton>
             </>}
           >
             <div className="space-y-4">
@@ -1324,7 +1326,7 @@ export default function LoansPage() {
           title={t('loans.increaseTitle')}
           footerActions={<>
             <ActionButton onClick={handleCloseIncreaseModal} variant="secondary">{t('common.cancel')}</ActionButton>
-            <ActionButton onClick={() => handleIncreaseLoanAmount(showIncreaseModal)} variant="primary">{t('common.save')}</ActionButton>
+            <ActionButton onClick={() => handleIncreaseLoanAmount(showIncreaseModal)} variant="primary" loading={saving}>{t('common.save')}</ActionButton>
           </>}
         >
           <div className="space-y-4">

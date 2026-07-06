@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { confirmManager, type ConfirmToast } from '@/lib/confirm'
 import { useLang } from '@/lib/i18n'
 
@@ -28,6 +28,7 @@ export default function ConfirmToastContainer() {
 
 function ConfirmToastItem({ confirm }: { confirm: ConfirmToast }) {
   const [isVisible, setIsVisible] = useState(false)
+  const firedRef = useRef(false) // guard: a fast double-tap must fire onConfirm only once
 
   useEffect(() => {
     // Trigger animation
@@ -36,6 +37,8 @@ function ConfirmToastItem({ confirm }: { confirm: ConfirmToast }) {
   }, [])
 
   const handleConfirm = () => {
+    if (firedRef.current) return
+    firedRef.current = true
     confirm.onConfirm()
     confirmManager.removeConfirm(confirm.id)
   }

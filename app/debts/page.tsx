@@ -269,6 +269,7 @@ export default function DebtsPage() {
   }
 
   const handleAddPayment = (debtId: string) => {
+    if (savingRef.current) return
     const parsedAmount = parseFloat(paymentAmount)
     if (!paymentAmount || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
       toast.error(t('debts.errValidAmount'))
@@ -295,6 +296,7 @@ export default function DebtsPage() {
     }
 
     const fullPayoff = amount >= remaining
+    savingRef.current = true; setSaving(true)
     addDebtPayment(debtId, payment).then(() => {
       haptic(fullPayoff ? [20, 40, 20] : 12)
       if (fullPayoff) celebrate()
@@ -308,7 +310,7 @@ export default function DebtsPage() {
     }).catch((error) => {
       console.error('Error adding payment:', error)
       toast.error(t('debts.paymentAddError'))
-    })
+    }).finally(() => { savingRef.current = false; setSaving(false) })
   }
 
   const handleOpenPaymentModal = (debtId: string) => {
@@ -1297,7 +1299,7 @@ export default function DebtsPage() {
             title={t('debts.receivedBack')}
             footerActions={<>
               <ActionButton onClick={handleClosePaymentModal} variant="secondary">{t('common.cancel')}</ActionButton>
-              <ActionButton onClick={() => handleAddPayment(showPaymentModal)} variant="primary">{t('common.save')}</ActionButton>
+              <ActionButton onClick={() => handleAddPayment(showPaymentModal)} variant="primary" loading={saving}>{t('common.save')}</ActionButton>
             </>}
           >
             <div className="space-y-4">
@@ -1333,7 +1335,7 @@ export default function DebtsPage() {
           title={t('debts.increaseTitle')}
           footerActions={<>
             <ActionButton onClick={handleCloseIncreaseModal} variant="secondary">{t('common.cancel')}</ActionButton>
-            <ActionButton onClick={() => handleIncreaseDebtAmount(showIncreaseModal)} variant="primary">{t('common.save')}</ActionButton>
+            <ActionButton onClick={() => handleIncreaseDebtAmount(showIncreaseModal)} variant="primary" loading={saving}>{t('common.save')}</ActionButton>
           </>}
         >
           <div className="space-y-4">
