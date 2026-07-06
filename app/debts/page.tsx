@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, type FormEvent } from 'react'
-import { getDebts, saveDebt, updateDebt, deleteDebt, addDebtPayment, deleteDebtPayment, addDebtIncrease, deleteDebtIncrease, subscribeToDebts, saveReminder } from '@/lib/storage'
+import { getDebts, saveDebt, updateDebt, deleteDebt, deleteRemindersForSource, addDebtPayment, deleteDebtPayment, addDebtIncrease, deleteDebtIncrease, subscribeToDebts, saveReminder } from '@/lib/storage'
 import type { Debt, Payment, AmountIncrease, Reminder } from '@/lib/types'
 import { round2, toMillis } from '@/lib/format'
 import { t, useLang, fmtNum, fmtDate, fmtInt } from '@/lib/i18n'
@@ -167,7 +167,7 @@ export default function DebtsPage() {
       increases: [],
     }
 
-    saveDebt(debt).then(() => {
+    saveDebt(debt).then((newId) => {
       if (dueDate) {
         const reminder: Reminder = {
           id: crypto.randomUUID(),
@@ -176,6 +176,8 @@ export default function DebtsPage() {
           scheduledTime: dueDate,
           dismissed: false,
           createdAt: new Date().toISOString(),
+          sourceId: newId,
+          sourceType: 'debt',
         }
         saveReminder(reminder).then(() => {
           toast.info(t('debts.dueReminderCreated'))
@@ -262,6 +264,7 @@ export default function DebtsPage() {
       t('debts.deleteMsg', { name: debt.personName, amount: bn(round2(debt.amount + (debt.increases?.reduce((s, i) => s + i.amount, 0) || 0))) }),
       () => {
         deleteDebt(id).then(() => {
+          deleteRemindersForSource(id) // remove the linked due-date reminder, if any
           loadDebts().catch(console.error)
           toast.success(t('debts.deleteSuccess'))
         }).catch((error) => {
@@ -533,6 +536,8 @@ export default function DebtsPage() {
               scheduledTime: editDueDate,
               dismissed: false,
               createdAt: new Date().toISOString(),
+              sourceId: editingDebt.id,
+              sourceType: 'debt',
             }).then(() => toast.info(t('debts.dueReminderCreated'))).catch(console.error)
           }
           setEditingDebt(null)
@@ -738,7 +743,7 @@ export default function DebtsPage() {
       t('select.delete'),
       t('select.bulkDeleteConfirm', { count: fmtInt(ids.length) }),
       () => {
-        Promise.all(ids.map((id) => deleteDebt(id)))
+        Promise.all(ids.map((id) => deleteDebt(id).then(() => deleteRemindersForSource(id))))
           .then(() => {
             setSelectedIds(new Set())
             loadDebts().catch(console.error)

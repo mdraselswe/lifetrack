@@ -248,9 +248,10 @@ export default function Dashboard() {
       increases: [],
     }
     const save = isDebt ? saveDebt(item as Debt) : saveLoan(item as Loan)
-    save.then(() => {
+    save.then((newId) => {
       if (fDueDate) {
-        // Same pattern as the debts/loans pages: a due date spawns a reminder.
+        // Same pattern as the debts/loans pages: a due date spawns a reminder,
+        // linked to the new record so deleting it removes the reminder too.
         saveReminder({
           id: crypto.randomUUID(),
           title: t(`${k}.dueReminderTitle`, { name: fName }),
@@ -258,6 +259,8 @@ export default function Dashboard() {
           scheduledTime: fDueDate,
           dismissed: false,
           createdAt: new Date().toISOString(),
+          sourceId: newId,
+          sourceType: isDebt ? 'debt' : 'loan',
         }).then(() => toast.info(t(`${k}.dueReminderCreated`))).catch(console.error)
       }
       setAddType(null)

@@ -5,6 +5,10 @@ export interface Reminder {
   scheduledTime: string
   dismissed: boolean
   createdAt: string
+  // Set when auto-created from a debt/loan due date; lets us remove the
+  // reminder if that debt/loan is deleted.
+  sourceId?: string
+  sourceType?: 'debt' | 'loan'
   // Repetitive reminder fields
   isRepetitive?: boolean
   repeatInterval?: number // number of days/weeks/months

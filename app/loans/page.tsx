@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, type FormEvent } from 'react'
-import { getLoans, saveLoan, updateLoan, deleteLoan, addLoanPayment, deleteLoanPayment, addLoanIncrease, deleteLoanIncrease, subscribeToLoans, saveReminder } from '@/lib/storage'
+import { getLoans, saveLoan, updateLoan, deleteLoan, deleteRemindersForSource, addLoanPayment, deleteLoanPayment, addLoanIncrease, deleteLoanIncrease, subscribeToLoans, saveReminder } from '@/lib/storage'
 import type { Loan, Payment, AmountIncrease, Reminder } from '@/lib/types'
 import { round2, toMillis } from '@/lib/format'
 import { t, useLang, fmtNum, fmtDate, fmtInt } from '@/lib/i18n'
@@ -171,7 +171,7 @@ export default function LoansPage() {
       increases: [],
     }
 
-    saveLoan(loan).then(() => {
+    saveLoan(loan).then((newId) => {
       if (dueDate) {
         const reminder: Reminder = {
           id: crypto.randomUUID(),
@@ -180,6 +180,8 @@ export default function LoansPage() {
           scheduledTime: dueDate,
           dismissed: false,
           createdAt: new Date().toISOString(),
+          sourceId: newId,
+          sourceType: 'loan',
         }
         saveReminder(reminder).then(() => {
           toast.info(t('loans.dueReminderCreated'))
@@ -263,6 +265,7 @@ export default function LoansPage() {
       t('loans.deleteMessage', { name: loan.personName, amount: bn(round2(loan.amount + (loan.increases?.reduce((s, i) => s + i.amount, 0) || 0))) }),
       () => {
         deleteLoan(id).then(() => {
+          deleteRemindersForSource(id) // remove the linked due-date reminder, if any
           loadLoans().catch(console.error)
           toast.success(t('loans.deleteSuccess'))
         }).catch((error) => {
@@ -538,6 +541,8 @@ export default function LoansPage() {
               scheduledTime: editDueDate,
               dismissed: false,
               createdAt: new Date().toISOString(),
+              sourceId: editingLoan.id,
+              sourceType: 'loan',
             }).then(() => toast.info(t('loans.dueReminderCreated'))).catch(console.error)
           }
           setEditingLoan(null)
@@ -762,7 +767,7 @@ export default function LoansPage() {
       t('select.delete'),
       t('select.bulkDeleteConfirm', { count: fmtInt(ids.length) }),
       () => {
-        Promise.all(ids.map((id) => deleteLoan(id)))
+        Promise.all(ids.map((id) => deleteLoan(id).then(() => deleteRemindersForSource(id))))
           .then(() => {
             setSelectedIds(new Set())
             loadLoans().catch(console.error)

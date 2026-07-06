@@ -133,6 +133,19 @@ export const deleteReminder = async (id: string): Promise<void> => {
   }
 }
 
+// Delete any auto-created reminders linked to a deleted debt/loan.
+export const deleteRemindersForSource = async (sourceId: string): Promise<void> => {
+  if (!isBrowser || !sourceId) return
+  try {
+    const reminders = await getReminders()
+    await Promise.all(
+      reminders.filter((r) => r.sourceId === sourceId).map((r) => deleteReminder(r.id))
+    )
+  } catch (error) {
+    console.error('Error deleting linked reminders:', error)
+  }
+}
+
 // Debts (money lent)
 export const getDebts = async (): Promise<Debt[]> => {
   if (!isBrowser) return []
@@ -150,8 +163,8 @@ export const getDebts = async (): Promise<Debt[]> => {
   }
 }
 
-export const saveDebt = async (debt: Debt): Promise<void> => {
-  if (!isBrowser) return
+export const saveDebt = async (debt: Debt): Promise<string> => {
+  if (!isBrowser) return ''
   const userId = await resolveUserId()
   
   if (!userId) {
@@ -160,7 +173,7 @@ export const saveDebt = async (debt: Debt): Promise<void> => {
   
   try {
     const { id, ...debtWithoutId } = debt
-    await saveFirebaseDebt(userId, debtWithoutId)
+    return await saveFirebaseDebt(userId, debtWithoutId)
   } catch (error) {
     console.error('Error saving debt to Firebase:', error)
     throw error // Don't fallback to localStorage - force Firebase usage
@@ -216,8 +229,8 @@ export const getLoans = async (): Promise<Loan[]> => {
   }
 }
 
-export const saveLoan = async (loan: Loan): Promise<void> => {
-  if (!isBrowser) return
+export const saveLoan = async (loan: Loan): Promise<string> => {
+  if (!isBrowser) return ''
   const userId = await resolveUserId()
   
   if (!userId) {
@@ -226,7 +239,7 @@ export const saveLoan = async (loan: Loan): Promise<void> => {
   
   try {
     const { id, ...loanWithoutId } = loan
-    await saveFirebaseLoan(userId, loanWithoutId)
+    return await saveFirebaseLoan(userId, loanWithoutId)
   } catch (error) {
     console.error('Error saving loan to Firebase:', error)
     throw error // Don't fallback to localStorage - force Firebase usage
