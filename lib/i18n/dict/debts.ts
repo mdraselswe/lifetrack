@@ -50,7 +50,7 @@ export const debts: Dict = {
   // Return due date & auto reminder
   'debts.dueDateOptional': { bn: 'ফেরতের তারিখ (ঐচ্ছিক)', en: 'Return due date (optional)' },
   'debts.dueReminderTitle': { bn: 'ধার ফেরত: {name}', en: 'Debt due: {name}' },
-  'debts.dueReminderDesc': { bn: '{name}-এর কাছ থেকে ৳{amount} ফেরত নেওয়ার কথা', en: 'Collect ৳{amount} from {name}' },
+  'debts.dueReminderDesc': { bn: '{name}-এর কাছ থেকে ৳{amount} ফেরত নেওয়ার কথা ({date})', en: 'Collect ৳{amount} from {name} (due {date})' },
   'debts.dueReminderCreated': { bn: 'ফেরতের রিমাইন্ডার তৈরি হয়েছে', en: 'Return reminder created' },
 
   // Modal titles

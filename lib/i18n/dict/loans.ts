@@ -59,7 +59,7 @@ export const loans: Dict = {
   // Return due date & auto reminder
   'loans.dueDateOptional': { bn: 'ফেরতের তারিখ (ঐচ্ছিক)', en: 'Return due date (optional)' },
   'loans.dueReminderTitle': { bn: 'ধার পরিশোধ: {name}', en: 'Repayment due: {name}' },
-  'loans.dueReminderDesc': { bn: '{name}-কে ৳{amount} ফেরত দেওয়ার কথা', en: 'Repay ৳{amount} to {name}' },
+  'loans.dueReminderDesc': { bn: '{name}-কে ৳{amount} ফেরত দেওয়ার কথা ({date})', en: 'Repay ৳{amount} to {name} (due {date})' },
   'loans.dueReminderCreated': { bn: 'ফেরতের রিমাইন্ডার তৈরি হয়েছে', en: 'Return reminder created' },
 
   // Validation errors

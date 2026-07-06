@@ -9,7 +9,7 @@ import { useRouter } from 'next/navigation'
 import { DashboardSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
 import { round2, toMillis } from '@/lib/format'
-import { t, useLang, fmtNum, fmtInt, fmtRelative } from '@/lib/i18n'
+import { t, useLang, fmtNum, fmtInt, fmtRelative, fmtDate } from '@/lib/i18n'
 import Modal, { ActionButton } from '@/components/Modal'
 import { MoneyIllustration } from '@/components/Illustrations'
 import { avatarColor } from '@/lib/avatar'
@@ -255,7 +255,7 @@ export default function Dashboard() {
         saveReminder({
           id: crypto.randomUUID(),
           title: t(`${k}.dueReminderTitle`, { name: fName }),
-          description: t(`${k}.dueReminderDesc`, { name: fName, amount: bn(parsedAmount) }),
+          description: t(`${k}.dueReminderDesc`, { name: fName, amount: bn(parsedAmount), date: fmtDate(fDueDate) }),
           scheduledTime: fDueDate,
           dismissed: false,
           createdAt: new Date().toISOString(),

@@ -172,7 +172,7 @@ export default function DebtsPage() {
         const reminder: Reminder = {
           id: crypto.randomUUID(),
           title: t('debts.dueReminderTitle', { name: personName }),
-          description: t('debts.dueReminderDesc', { name: personName, amount: bn(parsedAmount) }),
+          description: t('debts.dueReminderDesc', { name: personName, amount: bn(parsedAmount), date: bnDate(dueDate) }),
           scheduledTime: dueDate,
           dismissed: false,
           createdAt: new Date().toISOString(),
@@ -532,7 +532,7 @@ export default function DebtsPage() {
             saveReminder({
               id: crypto.randomUUID(),
               title: t('debts.dueReminderTitle', { name: editPersonName }),
-              description: t('debts.dueReminderDesc', { name: editPersonName, amount: bn(newAmount) }),
+              description: t('debts.dueReminderDesc', { name: editPersonName, amount: bn(newAmount), date: bnDate(editDueDate) }),
               scheduledTime: editDueDate,
               dismissed: false,
               createdAt: new Date().toISOString(),
