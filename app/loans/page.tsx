@@ -14,6 +14,7 @@ import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
 import { ArrowDownLeftIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, SearchIcon, SortIcon, ShareIcon, ChevronDownIcon } from '@/components/Icons'
 import { shareOrCopy } from '@/lib/share'
+import { LEAD_OPTIONS, dueReminderTime, type LeadKey } from '@/lib/reminder-lead'
 import { MoneyIllustration, NoResultsIllustration } from '@/components/Illustrations'
 import { avatarColor } from '@/lib/avatar'
 import { celebrate } from '@/lib/celebrate'
@@ -40,6 +41,7 @@ export default function LoansPage() {
   const [reason, setReason] = useState('')
   const [date, setDate] = useState('')
   const [dueDate, setDueDate] = useState('')
+  const [reminderLead, setReminderLead] = useState<LeadKey>('onTime')
   const [mounted, setMounted] = useState(false)
   const { user, loading } = useAuth()
   const router = useRouter()
@@ -53,6 +55,7 @@ export default function LoansPage() {
   const [editReason, setEditReason] = useState('')
   const [editDate, setEditDate] = useState('')
   const [editDueDate, setEditDueDate] = useState('')
+  const [editReminderLead, setEditReminderLead] = useState<LeadKey>('onTime')
   const [editingPayment, setEditingPayment] = useState<{loanId: string, payment: Payment} | null>(null)
   const [editPaymentAmount, setEditPaymentAmount] = useState('')
   const [editPaymentDate, setEditPaymentDate] = useState('')
@@ -177,7 +180,7 @@ export default function LoansPage() {
           id: crypto.randomUUID(),
           title: t('loans.dueReminderTitle', { name: personName }),
           description: t('loans.dueReminderDesc', { name: personName, amount: bn(parsedAmount), date: bnDate(dueDate) }),
-          scheduledTime: dueDate,
+          scheduledTime: dueReminderTime(dueDate, reminderLead),
           dismissed: false,
           createdAt: new Date().toISOString(),
           sourceId: newId,
@@ -192,6 +195,7 @@ export default function LoansPage() {
       setReason('')
       setDate(localDatetimeValue())
       setDueDate('')
+      setReminderLead('onTime')
       setShowForm(false)
       toast.success(t('loans.addSuccess'))
     }).catch((error) => {
@@ -493,6 +497,7 @@ export default function LoansPage() {
     setEditReason(getInitialReason(loan))
     setEditDate(loan.date)
     setEditDueDate(loan.dueDate || '')
+    setEditReminderLead('onTime')
   }
 
   const handleEditSubmit = (e: FormEvent) => {
@@ -538,7 +543,7 @@ export default function LoansPage() {
               id: crypto.randomUUID(),
               title: t('loans.dueReminderTitle', { name: editPersonName }),
               description: t('loans.dueReminderDesc', { name: editPersonName, amount: bn(newAmount), date: bnDate(editDueDate) }),
-              scheduledTime: editDueDate,
+              scheduledTime: dueReminderTime(editDueDate, editReminderLead),
               dismissed: false,
               createdAt: new Date().toISOString(),
               sourceId: editingLoan.id,
@@ -1224,6 +1229,14 @@ export default function LoansPage() {
             <label className="label">{t('loans.dueDateOptional')}</label>
             <input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="input" />
           </div>
+          {dueDate && (
+          <div>
+            <label className="label">{t('lead.label')}</label>
+            <select value={reminderLead} onChange={(e) => setReminderLead(e.target.value as LeadKey)} className="input">
+              {LEAD_OPTIONS.map((o) => <option key={o} value={o}>{t(`lead.${o}`)}</option>)}
+            </select>
+          </div>
+          )}
         </form>
       </Modal>
 
@@ -1258,6 +1271,14 @@ export default function LoansPage() {
             <label className="label">{t('loans.dueDateOptional')}</label>
             <input type="datetime-local" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} className="input" />
           </div>
+          {editDueDate && (
+          <div>
+            <label className="label">{t('lead.label')}</label>
+            <select value={editReminderLead} onChange={(e) => setEditReminderLead(e.target.value as LeadKey)} className="input">
+              {LEAD_OPTIONS.map((o) => <option key={o} value={o}>{t(`lead.${o}`)}</option>)}
+            </select>
+          </div>
+          )}
         </form>
       </Modal>
 

@@ -85,4 +85,12 @@ export const common: Dict = {
   'common.paidPct': { bn: '{pct}% পরিশোধিত', en: '{pct}% paid' },
   'common.details': { bn: 'বিস্তারিত', en: 'Details' },
   'common.showLess': { bn: 'কম দেখুন', en: 'Show less' },
+  'lead.label': { bn: 'কখন মনে করাব', en: 'Remind me' },
+  'lead.onTime': { bn: 'সময়মতো', en: 'On time' },
+  'lead.h1': { bn: '১ ঘণ্টা আগে', en: '1 hour before' },
+  'lead.h3': { bn: '৩ ঘণ্টা আগে', en: '3 hours before' },
+  'lead.d1': { bn: '১ দিন আগে', en: '1 day before' },
+  'lead.d2': { bn: '২ দিন আগে', en: '2 days before' },
+  'lead.d3': { bn: '৩ দিন আগে', en: '3 days before' },
+  'lead.w1': { bn: '১ সপ্তাহ আগে', en: '1 week before' },
 }

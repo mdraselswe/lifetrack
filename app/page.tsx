@@ -13,6 +13,7 @@ import { t, useLang, fmtNum, fmtInt, fmtRelative, fmtDate } from '@/lib/i18n'
 import Modal, { ActionButton } from '@/components/Modal'
 import { MoneyIllustration } from '@/components/Illustrations'
 import { avatarColor } from '@/lib/avatar'
+import { LEAD_OPTIONS, dueReminderTime, type LeadKey } from '@/lib/reminder-lead'
 import { celebrate } from '@/lib/celebrate'
 import { haptic } from '@/lib/haptics'
 import { toast } from '@/lib/toast'
@@ -134,6 +135,7 @@ export default function Dashboard() {
   const [fReason, setFReason] = useState('')
   const [fDate, setFDate] = useState('')
   const [fDueDate, setFDueDate] = useState('')
+  const [fReminderLead, setFReminderLead] = useState<LeadKey>('onTime')
   const [rTitle, setRTitle] = useState('')
   const [rDesc, setRDesc] = useState('')
   const [rTime, setRTime] = useState('')
@@ -201,7 +203,7 @@ export default function Dashboard() {
 
   const openAdd = (type: 'debt' | 'loan' | 'reminder') => {
     setFabOpen(false)
-    setFName(''); setFAmount(''); setFReason(''); setFDueDate('')
+    setFName(''); setFAmount(''); setFReason(''); setFDueDate(''); setFReminderLead('onTime')
     setFDate(localDatetimeValue())
     setRTitle(''); setRDesc(''); setRTime(localDatetimeValue())
     setAddType(type)
@@ -256,7 +258,7 @@ export default function Dashboard() {
           id: crypto.randomUUID(),
           title: t(`${k}.dueReminderTitle`, { name: fName }),
           description: t(`${k}.dueReminderDesc`, { name: fName, amount: bn(parsedAmount), date: fmtDate(fDueDate) }),
-          scheduledTime: fDueDate,
+          scheduledTime: dueReminderTime(fDueDate, fReminderLead),
           dismissed: false,
           createdAt: new Date().toISOString(),
           sourceId: newId,
@@ -767,6 +769,14 @@ export default function Dashboard() {
             <label className="label">{addType === 'loan' ? t('loans.dueDateOptional') : t('debts.dueDateOptional')}</label>
             <input type="datetime-local" value={fDueDate} onChange={(e) => setFDueDate(e.target.value)} className="input" />
           </div>
+          {fDueDate && (
+          <div>
+            <label className="label">{t('lead.label')}</label>
+            <select value={fReminderLead} onChange={(e) => setFReminderLead(e.target.value as LeadKey)} className="input">
+              {LEAD_OPTIONS.map((o) => <option key={o} value={o}>{t(`lead.${o}`)}</option>)}
+            </select>
+          </div>
+          )}
         </div>
       </Modal>
 
