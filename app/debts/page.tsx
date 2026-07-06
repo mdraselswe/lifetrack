@@ -226,6 +226,7 @@ export default function DebtsPage() {
         if (newStatus) {
           haptic([20, 40, 20])
           celebrate()
+          deleteRemindersForSource(debt.id) // settled → drop its due-date reminder
           // Mark paid: add a payment covering the balance (auto-flagged).
           const totalPaid = getTotalPaid(debt)
           if (totalPaid < totalAmount) {
@@ -310,7 +311,7 @@ export default function DebtsPage() {
     savingRef.current = true; setSaving(true)
     addDebtPayment(debtId, payment).then(() => {
       haptic(fullPayoff ? [20, 40, 20] : 12)
-      if (fullPayoff) celebrate()
+      if (fullPayoff) { celebrate(); deleteRemindersForSource(debtId) }
       setPaymentAmount('')
       setPaymentDate(localDatetimeValue())
       setPaymentNote('')
@@ -729,6 +730,7 @@ export default function DebtsPage() {
         }))
           .then(() => {
             setSelectedIds(new Set())
+            ids.forEach((id) => deleteRemindersForSource(id))
             loadDebts().catch(console.error)
             toast.success(t('select.bulkPaidDone'))
             haptic([20, 40, 20])

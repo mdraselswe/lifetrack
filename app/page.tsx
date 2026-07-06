@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, type ComponentType } from 'react'
-import { subscribeToDebts, subscribeToLoans, subscribeToReminders, saveDebt, saveLoan, saveReminder, addDebtPayment, addLoanPayment } from '@/lib/storage'
+import { subscribeToDebts, subscribeToLoans, subscribeToReminders, saveDebt, saveLoan, saveReminder, addDebtPayment, addLoanPayment, deleteRemindersForSource } from '@/lib/storage'
 import type { Debt, Loan, Reminder, Payment } from '@/lib/types'
 import Link from 'next/link'
 import { useAuth } from '@/lib/firebase-auth'
@@ -302,7 +302,7 @@ export default function Dashboard() {
       setPayFor(null)
       toast.success(t(`${k}.paymentAddSuccess`))
       haptic(fullPayoff ? [20, 40, 20] : 12)
-      if (fullPayoff) celebrate()
+      if (fullPayoff) { celebrate(); deleteRemindersForSource(payFor.id) }
     }).catch((e) => { console.error(e); toast.error(t(`${k}.paymentAddError`)) })
       .finally(() => { savingRef.current = false; setSaving(false) })
   }

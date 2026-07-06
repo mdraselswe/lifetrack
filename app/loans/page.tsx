@@ -230,6 +230,7 @@ export default function LoansPage() {
         if (newStatus) {
           haptic([20, 40, 20])
           celebrate()
+          deleteRemindersForSource(loan.id) // settled → drop its due-date reminder
           const totalPaid = getTotalPaid(loan)
           if (totalPaid < totalAmount) {
             const remainingPayment: Payment = {
@@ -315,7 +316,7 @@ export default function LoansPage() {
     savingRef.current = true; setSaving(true)
     addLoanPayment(loanId, payment).then(() => {
       haptic(fullPayoff ? [20, 40, 20] : 12)
-      if (fullPayoff) celebrate()
+      if (fullPayoff) { celebrate(); deleteRemindersForSource(loanId) }
       setPaymentAmount('')
       setPaymentDate(localDatetimeValue())
       setPaymentNote('')
@@ -754,6 +755,7 @@ export default function LoansPage() {
         }))
           .then(() => {
             setSelectedIds(new Set())
+            ids.forEach((id) => deleteRemindersForSource(id))
             loadLoans().catch(console.error)
             toast.success(t('select.bulkPaidDone'))
             haptic([20, 40, 20])
