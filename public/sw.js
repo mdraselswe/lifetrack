@@ -1,6 +1,6 @@
 // Service Worker for LifeTrack PWA - Next.js 16 Optimized
 
-const CACHE_VERSION = 'v6'
+const CACHE_VERSION = 'v7'
 const STATIC_CACHE = `lifetrack-static-${CACHE_VERSION}`
 const DYNAMIC_CACHE = `lifetrack-dynamic-${CACHE_VERSION}`
 const RUNTIME_CACHE = `lifetrack-runtime-${CACHE_VERSION}`
@@ -23,6 +23,19 @@ const STATIC_ASSETS = [
   '/_next/static/js/',
   '/_next/static/media/'
 ]
+
+// Last-resort offline page for a navigation when nothing is cached yet — never
+// let respondWith resolve to undefined (iOS Safari then shows its own error).
+async function fallbackNav(request) {
+  return (
+    (await caches.match(request)) ||
+    (await caches.match('/')) ||
+    new Response(
+      '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LifeTrack</title><body style="margin:0;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#0a0d14;color:#e5e7eb;font-family:system-ui,sans-serif;text-align:center;padding:24px"><div><p style="font-size:15px">অফলাইন — ইন্টারনেট সংযোগ ফিরলে আবার চেষ্টা করুন।<br>Offline — reconnect and reload.</p></div></body>',
+      { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+    )
+  )
+}
 
 // Install event - Next.js 16 optimized
 self.addEventListener('install', (event) => {
@@ -115,32 +128,29 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Network-first for navigation requests so online users always get the latest shell,
-  // with cache fallback so offline still serves a cached page.
+  // Navigations: cache-first (stale-while-revalidate). Serving the cached shell
+  // instantly — instead of waiting on the network — is far more reliable offline
+  // on iOS Safari, where a cold, offline navigation often errors before a
+  // network-first SW can fall back. The cache is refreshed in the background.
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request).then((response) => {
-        if (response && response.status === 200) {
-          const responseToCache = response.clone()
-          caches.open(DYNAMIC_CACHE).then((cache) => {
-            cache.put(request, responseToCache)
-          })
+      (async () => {
+        const cached = (await caches.match(request)) || (await caches.match('/'))
+        const network = fetch(request).then((response) => {
+          if (response && response.status === 200) {
+            const copy = response.clone()
+            caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, copy))
+          }
+          return response
+        }).catch(() => null)
+        // If we have a cached shell, return it immediately and update in background.
+        if (cached) {
+          network.catch(() => {})
+          return cached
         }
-        return response
-      }).catch(async () => {
-        // Offline: serve the exact page if cached, else the app shell ('/'),
-        // else a tiny inline page — never let respondWith resolve to undefined
-        // (that makes iOS Safari show its own "not connected" error).
-        return (
-          (await caches.match(request)) ||
-          (await caches.match('/')) ||
-          (await caches.match('/index.html')) ||
-          new Response(
-            '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LifeTrack</title><body style="margin:0;display:flex;min-height:100vh;align-items:center;justify-content:center;background:#0a0d14;color:#e5e7eb;font-family:system-ui,sans-serif;text-align:center;padding:24px"><div><p style="font-size:15px">অফলাইন — ইন্টারনেট সংযোগ ফিরলে আবার চেষ্টা করুন।<br>Offline — reconnect and reload.</p></div></body>',
-            { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
-          )
-        )
-      })
+        // Nothing cached yet → wait for the network, with a safe fallback.
+        return (await network) || (await fallbackNav(request))
+      })()
     )
     return
   }
