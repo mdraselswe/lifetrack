@@ -259,7 +259,7 @@ export default function LoansPage() {
     
     confirm.delete(
       t('loans.deleteTitle'),
-      t('loans.deleteMessage', { name: loan.personName, amount: fmtNum(loan.amount) }),
+      t('loans.deleteMessage', { name: loan.personName, amount: bn(round2(loan.amount + (loan.increases?.reduce((s, i) => s + i.amount, 0) || 0))) }),
       () => {
         deleteLoan(id).then(() => {
           loadLoans().catch(console.error)

@@ -256,7 +256,7 @@ export default function DebtsPage() {
     
     confirm.delete(
       t('debts.deleteTitle'),
-      t('debts.deleteMsg', { name: debt.personName, amount: debt.amount }),
+      t('debts.deleteMsg', { name: debt.personName, amount: bn(round2(debt.amount + (debt.increases?.reduce((s, i) => s + i.amount, 0) || 0))) }),
       () => {
         deleteDebt(id).then(() => {
           loadDebts().catch(console.error)
