@@ -514,9 +514,11 @@ export default function LoansPage() {
       return
     }
 
-    // Check if new amount is less than total paid amount
+    // Block only if the new TOTAL (initial + increases) would fall below what's
+    // already paid — payments are against the total, not the initial amount.
     const totalPaid = getTotalPaid(editingLoan)
-    if (newAmount < totalPaid) {
+    const increasesTotal = editingLoan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0
+    if (round2(newAmount + increasesTotal) < totalPaid) {
       toast.error(t('loans.errAmountBelowPaid', { paid: fmtNum(totalPaid) }))
       return
     }
