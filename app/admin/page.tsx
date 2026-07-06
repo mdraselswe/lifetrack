@@ -10,6 +10,7 @@ import { ListSkeleton } from '@/components/SkeletonLoader'
 import { t, useLang, fmtInt, fmtDate, fmtRelative } from '@/lib/i18n'
 import { toast } from '@/lib/toast'
 import { SearchIcon } from '@/components/Icons'
+import { NoResultsIllustration } from '@/components/Illustrations'
 
 type AdminUser = {
   uid: string
@@ -91,7 +92,7 @@ export default function AdminPage() {
             </div>
 
             {shown.length === 0 && (
-              <div className="text-center py-10 text-muted text-sm">{t('search.noResults')}</div>
+              <div className="text-center py-10"><NoResultsIllustration className="w-44 h-26 mx-auto mb-3" /><p className="text-muted text-sm">{t('search.noResults')}</p></div>
             )}
 
             <div className="space-y-3 list-stagger" key={q}>

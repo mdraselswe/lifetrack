@@ -11,6 +11,7 @@ import AppBar from '@/components/AppBar'
 import { round2, toMillis } from '@/lib/format'
 import { t, useLang, fmtNum, fmtInt, fmtRelative } from '@/lib/i18n'
 import Modal, { ActionButton } from '@/components/Modal'
+import { MoneyIllustration } from '@/components/Illustrations'
 import { toast } from '@/lib/toast'
 import {
   ClockIcon, ArrowUpRightIcon, ArrowDownLeftIcon, WalletIcon,
@@ -531,9 +532,7 @@ export default function Dashboard() {
           {/* Empty state */}
           {isEmpty && (
             <div className="card flex flex-col items-center text-center py-8 gap-3">
-              <span className="w-14 h-14 rounded-full tint-accent text-accent flex items-center justify-center">
-                <WalletIcon className="w-7 h-7" />
-              </span>
+              <MoneyIllustration className="w-52 h-36" />
               <div>
                 <p className="text-base font-semibold text-content">{t('dashboard.noRecords')}</p>
                 <p className="text-sm text-muted mt-1">{t('dashboard.startHint')}</p>

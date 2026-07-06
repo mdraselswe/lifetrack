@@ -14,6 +14,7 @@ import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
 import { ArrowDownLeftIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, SearchIcon, SortIcon, ShareIcon } from '@/components/Icons'
 import { shareOrCopy } from '@/lib/share'
+import { MoneyIllustration, NoResultsIllustration } from '@/components/Illustrations'
 
 type LoanSortKey = 'recent' | 'oldest' | 'amountHigh' | 'amountLow' | 'nameAz'
 type LoanFilterKey = 'all' | 'active' | 'settled' | 'overdue'
@@ -865,9 +866,7 @@ export default function LoansPage() {
           <ListSkeleton count={3} />
         ) : loans.length === 0 ? (
           <div className="text-center py-16">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-surface-2 flex items-center justify-center text-muted mb-4">
-              <WalletIcon className="w-8 h-8" />
-            </div>
+            <MoneyIllustration tone="neg" className="w-56 h-40 mx-auto mb-2" />
             <h3 className="text-base font-semibold text-content mb-1">{t('loans.emptyTitle')}</h3>
             <p className="text-sm text-muted mb-5">{t('loans.emptyDesc')}</p>
             <button onClick={() => setShowForm(true)} className="btn btn-primary mx-auto">
@@ -901,10 +900,10 @@ export default function LoansPage() {
               })}
             </section>
           ) : (
-            <div className="text-center py-16 text-muted text-sm">{t('search.noResults')}</div>
+            <div className="text-center py-12"><NoResultsIllustration className="w-48 h-28 mx-auto mb-3" /><p className="text-muted text-sm">{t('search.noResults')}</p></div>
           )
         ) : nothingToShow ? (
-          <div className="text-center py-16 text-muted text-sm">{t('search.noResults')}</div>
+          <div className="text-center py-12"><NoResultsIllustration className="w-48 h-28 mx-auto mb-3" /><p className="text-muted text-sm">{t('search.noResults')}</p></div>
         ) : (
           <>
             {showActiveSection && displayActive.length > 0 && (

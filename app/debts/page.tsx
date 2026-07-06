@@ -14,6 +14,7 @@ import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
 import { ArrowUpRightIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, SearchIcon, SortIcon, ShareIcon } from '@/components/Icons'
 import { shareOrCopy } from '@/lib/share'
+import { MoneyIllustration, NoResultsIllustration } from '@/components/Illustrations'
 
 const bn = (n: number) => fmtNum(n)
 const bnDate = (v: string) => fmtDate(v)
@@ -877,9 +878,7 @@ export default function DebtsPage() {
           <ListSkeleton count={3} />
         ) : debts.length === 0 ? (
           <div className="text-center py-16">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-surface-2 flex items-center justify-center text-muted mb-4">
-              <WalletIcon className="w-8 h-8" />
-            </div>
+            <MoneyIllustration tone="pos" className="w-56 h-40 mx-auto mb-2" />
             <h3 className="text-base font-semibold text-content mb-1">{t('debts.emptyTitle')}</h3>
             <p className="text-sm text-muted mb-5">{t('debts.emptyDesc')}</p>
             <button onClick={() => setShowForm(true)} className="btn btn-primary mx-auto">
@@ -888,7 +887,7 @@ export default function DebtsPage() {
           </div>
         ) : viewMode === 'byPerson' ? (
           personGroups.length === 0 ? (
-            <div className="text-center py-16 text-muted text-sm">{t('search.noResults')}</div>
+            <div className="text-center py-12"><NoResultsIllustration className="w-48 h-28 mx-auto mb-3" /><p className="text-muted text-sm">{t('search.noResults')}</p></div>
           ) : (
             <section className="space-y-3 list-stagger">
               <h2 className="text-sm font-semibold text-muted px-1">{t('debts.sectionActive')}</h2>
@@ -913,7 +912,7 @@ export default function DebtsPage() {
             </section>
           )
         ) : visibleCount === 0 ? (
-          <div className="text-center py-16 text-muted text-sm">{t('search.noResults')}</div>
+          <div className="text-center py-12"><NoResultsIllustration className="w-48 h-28 mx-auto mb-3" /><p className="text-muted text-sm">{t('search.noResults')}</p></div>
         ) : (
           <>
             {showActiveSection && filteredActive.length > 0 && (

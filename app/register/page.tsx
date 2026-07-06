@@ -10,6 +10,7 @@ import { GoogleIcon, WalletIcon } from '@/components/Icons'
 import ThemeToggle from '@/components/ThemeToggle'
 import LanguageToggle from '@/components/LanguageToggle'
 import { t, useLang } from '@/lib/i18n'
+import { FinanceHeroIllustration } from '@/components/Illustrations'
 
 export default function RegisterPage() {
   useLang() // re-render on language switch
@@ -77,10 +78,8 @@ export default function RegisterPage() {
       </div>
 
       <div className="w-full max-w-sm fade-in">
-        <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-accent text-accent-fg flex items-center justify-center mb-4 shadow-pop">
-            <WalletIcon className="w-7 h-7" />
-          </div>
+        <div className="flex flex-col items-center mb-6">
+          <FinanceHeroIllustration className="w-64 h-44 mb-1" />
           <h1 className="text-2xl font-bold text-content">{t('auth.register.title')}</h1>
           <p className="text-sm text-muted mt-1">{t('auth.register.subtitle')}</p>
         </div>

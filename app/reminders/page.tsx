@@ -14,6 +14,7 @@ import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
 import { ClockIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, HistoryIcon } from '@/components/Icons'
 import { t, useLang, fmtInt, fmtDate } from '@/lib/i18n'
+import { BellIllustration } from '@/components/Illustrations'
 
 // datetime-local expects a LOCAL time string; toISOString() is UTC, so we
 // shift by the timezone offset before slicing to avoid an off-by-hours default.
@@ -609,9 +610,7 @@ export default function RemindersPage() {
           <ListSkeleton count={3} />
         ) : reminders.length === 0 ? (
           <div className="text-center py-16">
-            <div className="mx-auto w-16 h-16 rounded-2xl bg-surface-2 flex items-center justify-center text-muted mb-4">
-              <ClockIcon className="w-8 h-8" />
-            </div>
+            <BellIllustration className="w-56 h-40 mx-auto mb-2" />
             <h3 className="text-base font-semibold text-content mb-1">{t('reminders.emptyTitle')}</h3>
             <p className="text-sm text-muted mb-5">{t('reminders.emptySubtitle')}</p>
             <button onClick={() => setShowForm(true)} className="btn btn-primary mx-auto">
