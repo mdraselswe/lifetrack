@@ -141,6 +141,8 @@ export default function Dashboard() {
   const [payDate, setPayDate] = useState('')
   const [payNote, setPayNote] = useState('')
   const [selMonth, setSelMonth] = useState<number | null>(null)
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false) // guard against double-submit
   const { user, loading } = useAuth()
   const router = useRouter()
   useLang() // re-render on language switch
@@ -205,8 +207,10 @@ export default function Dashboard() {
   }
 
   const handleQuickAdd = () => {
+    if (savingRef.current) return
     if (addType === 'reminder') {
       if (!rTitle || !rTime) { toast.error(t('reminders.titleTimeRequired')); return }
+      savingRef.current = true; setSaving(true)
       const reminder: Reminder = {
         id: crypto.randomUUID(),
         title: rTitle,
@@ -221,6 +225,7 @@ export default function Dashboard() {
         setAddType(null)
         toast.success(t('reminders.created'))
       }).catch((e) => { console.error(e); toast.error(t('reminders.saveError')) })
+        .finally(() => { savingRef.current = false; setSaving(false) })
       return
     }
     const isDebt = addType === 'debt'
@@ -228,6 +233,7 @@ export default function Dashboard() {
     if (!fName || !fAmount) { toast.error(t(`${k}.errNameAmount`)); return }
     const parsedAmount = parseFloat(fAmount)
     if (!Number.isFinite(parsedAmount) || parsedAmount <= 0) { toast.error(t(`${k}.errValidAmount`)); return }
+    savingRef.current = true; setSaving(true)
     const item = {
       id: '',
       personName: fName,
@@ -256,6 +262,7 @@ export default function Dashboard() {
       setAddType(null)
       toast.success(t(`${k}.addSuccess`))
     }).catch((e) => { console.error(e); toast.error(t(`${k}.addError`)) })
+      .finally(() => { savingRef.current = false; setSaving(false) })
   }
 
   const openPay = (kind: 'debt' | 'loan', id: string, remaining: number) => {
@@ -266,7 +273,7 @@ export default function Dashboard() {
   }
 
   const handleQuickPay = () => {
-    if (!payFor) return
+    if (!payFor || savingRef.current) return
     const k = payFor.kind === 'debt' ? 'debts' : 'loans'
     const source = payFor.kind === 'debt' ? debts : loans
     const item = source.find((x) => x.id === payFor.id)
@@ -283,6 +290,7 @@ export default function Dashboard() {
       createdAt: new Date().toISOString(),
     }
     const fullPayoff = amount >= remaining
+    savingRef.current = true; setSaving(true)
     const add = payFor.kind === 'debt' ? addDebtPayment(payFor.id, payment) : addLoanPayment(payFor.id, payment)
     add.then(() => {
       setPayFor(null)
@@ -290,6 +298,7 @@ export default function Dashboard() {
       haptic(fullPayoff ? [20, 40, 20] : 12)
       if (fullPayoff) celebrate()
     }).catch((e) => { console.error(e); toast.error(t(`${k}.paymentAddError`)) })
+      .finally(() => { savingRef.current = false; setSaving(false) })
   }
 
   // ---- Derived values ----
@@ -730,7 +739,7 @@ export default function Dashboard() {
         title={addType === 'loan' ? t('loans.addNew') : t('debts.addNew')}
         footerActions={<>
           <ActionButton onClick={() => setAddType(null)} variant="secondary">{t('common.cancel')}</ActionButton>
-          <ActionButton onClick={handleQuickAdd} variant="primary">{t('common.save')}</ActionButton>
+          <ActionButton onClick={handleQuickAdd} variant="primary" loading={saving}>{t('common.save')}</ActionButton>
         </>}
       >
         <div className="space-y-4">
@@ -764,7 +773,7 @@ export default function Dashboard() {
         title={t('reminders.addNew')}
         footerActions={<>
           <ActionButton onClick={() => setAddType(null)} variant="secondary">{t('common.cancel')}</ActionButton>
-          <ActionButton onClick={handleQuickAdd} variant="primary">{t('common.save')}</ActionButton>
+          <ActionButton onClick={handleQuickAdd} variant="primary" loading={saving}>{t('common.save')}</ActionButton>
         </>}
       >
         <div className="space-y-4">
@@ -796,7 +805,7 @@ export default function Dashboard() {
             title={payFor.kind === 'debt' ? t('debts.receivedBack') : t('loans.paidBackBtn')}
             footerActions={<>
               <ActionButton onClick={() => setPayFor(null)} variant="secondary">{t('common.cancel')}</ActionButton>
-              <ActionButton onClick={handleQuickPay} variant="primary">{t('common.save')}</ActionButton>
+              <ActionButton onClick={handleQuickPay} variant="primary" loading={saving}>{t('common.save')}</ActionButton>
             </>}
           >
             <div className="space-y-4">

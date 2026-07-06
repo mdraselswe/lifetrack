@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, useRef, type FormEvent } from 'react'
 import { getReminders, saveReminder, updateReminder, deleteReminder, subscribeToReminders } from '@/lib/storage'
 import { scheduleNotification } from '@/lib/notifications'
 import { enablePush, refreshPushIfGranted, pushSupported } from '@/lib/push'
@@ -66,6 +66,8 @@ export default function RemindersPage() {
   const [rescheduleHours, setRescheduleHours] = useState('1')
   const [pushState, setPushState] = useState<'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported'>('unknown')
   const [nowTick, setNowTick] = useState(0)
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false) // guard against double-submit
 
   // Live countdown chips — refresh every minute
   useEffect(() => {
@@ -204,7 +206,11 @@ export default function RemindersPage() {
       toast.error(t('reminders.titleTimeRequired'))
       return
     }
+    if (savingRef.current) return
+    savingRef.current = true
+    setSaving(true)
 
+    try {
     // If editing, update existing reminder
     if (editingReminder) {
       await updateReminder(editingReminder.id, {
@@ -296,6 +302,10 @@ export default function RemindersPage() {
     setEditingReminder(null)
     setShowForm(false)
     loadReminders()
+    } finally {
+      savingRef.current = false
+      setSaving(false)
+    }
   }
 
   const handleCancelEdit = () => {
@@ -682,7 +692,7 @@ export default function RemindersPage() {
         title={editingReminder ? t('reminders.editTitle') : t('reminders.newTitle')}
         footerActions={<>
           <ActionButton onClick={handleCancelEdit} variant="secondary">{t('common.cancel')}</ActionButton>
-          <ActionButton onClick={(e) => e && handleSubmit(e)} variant="primary">{editingReminder ? t('reminders.update') : t('common.save')}</ActionButton>
+          <ActionButton onClick={(e) => e && handleSubmit(e)} variant="primary" loading={saving}>{editingReminder ? t('reminders.update') : t('common.save')}</ActionButton>
         </>}
       >
         <form onSubmit={handleSubmit} className="space-y-4">

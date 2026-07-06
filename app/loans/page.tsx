@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, useRef, type FormEvent } from 'react'
 import { getLoans, saveLoan, updateLoan, deleteLoan, addLoanPayment, deleteLoanPayment, addLoanIncrease, deleteLoanIncrease, subscribeToLoans, saveReminder } from '@/lib/storage'
 import type { Loan, Payment, AmountIncrease, Reminder } from '@/lib/types'
 import { round2, toMillis } from '@/lib/format'
@@ -67,6 +67,8 @@ export default function LoansPage() {
   const [increaseReason, setIncreaseReason] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false) // synchronous guard against double-submit
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<LoanSortKey>('recent')
   const [filterBy, setFilterBy] = useState<LoanFilterKey>('all')
@@ -139,7 +141,8 @@ export default function LoansPage() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    
+    if (savingRef.current) return
+
     if (!personName || !amount) {
       toast.error(t('loans.errNameAmount'))
       return
@@ -150,6 +153,9 @@ export default function LoansPage() {
       toast.error(t('loans.errValidAmount'))
       return
     }
+
+    savingRef.current = true
+    setSaving(true)
 
     const loan: Loan = {
       id: '', // Will be set by Firebase
@@ -188,6 +194,9 @@ export default function LoansPage() {
     }).catch((error) => {
       console.error('Error saving loan:', error)
       toast.error(t('loans.addError'))
+    }).finally(() => {
+      savingRef.current = false
+      setSaving(false)
     })
   }
 
@@ -1159,7 +1168,7 @@ export default function LoansPage() {
         title={t('loans.addNew')}
         footerActions={<>
           <ActionButton onClick={() => setShowForm(false)} variant="secondary">{t('common.cancel')}</ActionButton>
-          <ActionButton onClick={(e) => e && handleSubmit(e)} variant="primary">{t('common.save')}</ActionButton>
+          <ActionButton onClick={(e) => e && handleSubmit(e)} variant="primary" loading={saving}>{t('common.save')}</ActionButton>
         </>}
       >
         <form onSubmit={handleSubmit} className="space-y-4">

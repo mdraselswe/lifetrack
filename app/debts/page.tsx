@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, useRef, type FormEvent } from 'react'
 import { getDebts, saveDebt, updateDebt, deleteDebt, addDebtPayment, deleteDebtPayment, addDebtIncrease, deleteDebtIncrease, subscribeToDebts, saveReminder } from '@/lib/storage'
 import type { Debt, Payment, AmountIncrease, Reminder } from '@/lib/types'
 import { round2, toMillis } from '@/lib/format'
@@ -63,6 +63,8 @@ export default function DebtsPage() {
   const [editIncreaseReason, setEditIncreaseReason] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+  const [saving, setSaving] = useState(false)
+  const savingRef = useRef(false) // synchronous guard against double-submit
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'amountHigh' | 'amountLow' | 'nameAz'>('recent')
   const [filterBy, setFilterBy] = useState<'all' | 'active' | 'settled' | 'overdue'>('all')
@@ -135,7 +137,8 @@ export default function DebtsPage() {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault()
-    
+    if (savingRef.current) return
+
     if (!personName || !amount) {
       toast.error(t('debts.errNameAmount'))
       return
@@ -146,6 +149,9 @@ export default function DebtsPage() {
       toast.error(t('debts.errValidAmount'))
       return
     }
+
+    savingRef.current = true
+    setSaving(true)
 
     const debt: Debt = {
       id: '', // Will be set by Firebase
@@ -185,6 +191,9 @@ export default function DebtsPage() {
     }).catch((error) => {
       console.error('Error saving debt:', error)
       toast.error(t('debts.addError'))
+    }).finally(() => {
+      savingRef.current = false
+      setSaving(false)
     })
   }
 
@@ -1168,7 +1177,7 @@ export default function DebtsPage() {
         title={t('debts.addNew')}
         footerActions={<>
           <ActionButton onClick={() => setShowForm(false)} variant="secondary">{t('common.cancel')}</ActionButton>
-          <ActionButton onClick={(e) => e && handleSubmit(e)} variant="primary">{t('common.save')}</ActionButton>
+          <ActionButton onClick={(e) => e && handleSubmit(e)} variant="primary" loading={saving}>{t('common.save')}</ActionButton>
         </>}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
