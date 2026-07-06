@@ -79,4 +79,10 @@ export const common: Dict = {
   'validation.allFields': { bn: 'সব ফিল্ড পূরণ করুন', en: 'Please fill in all fields' },
   'validation.validEmail': { bn: 'সঠিক ইমেইল ঠিকানা দিন', en: 'Enter a valid email address' },
   'validation.passwordMismatch': { bn: 'পাসওয়ার্ড মিলছে না', en: 'Passwords do not match' },
+  'due.daysLeft': { bn: 'ফেরত: {count} দিন বাকি', en: 'Due in {count} days' },
+  'due.today': { bn: 'আজ ফেরতের দিন', en: 'Due today' },
+  'due.overdue': { bn: '{count} দিন পার হয়ে গেছে', en: '{count} days overdue' },
+  'common.paidPct': { bn: '{pct}% পরিশোধিত', en: '{pct}% paid' },
+  'common.details': { bn: 'বিস্তারিত', en: 'Details' },
+  'common.showLess': { bn: 'কম দেখুন', en: 'Show less' },
 }

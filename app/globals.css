@@ -302,6 +302,55 @@
   .ill-delay-2 { animation-delay: 1.1s; }
   .ill-sway { animation: illSway 3.6s ease-in-out infinite; transform-origin: 50% 20%; }
 
+  .confetti-p { position: absolute; animation: confetti 1.35s ease-out forwards; }
+
+  /* Payment-history timeline (dot + vertical line) */
+  .timeline { position: relative; padding-left: 18px; }
+  .timeline::before {
+    content: '';
+    position: absolute;
+    left: 5px; top: 10px; bottom: 10px;
+    width: 2px;
+    background: var(--border);
+    border-radius: 1px;
+  }
+  .timeline-row { position: relative; }
+  .timeline-row::before {
+    content: '';
+    position: absolute;
+    left: -17px; top: 50%;
+    transform: translateY(-50%);
+    width: 10px; height: 10px;
+    border-radius: 9999px;
+    background: var(--positive);
+    border: 2px solid var(--surface);
+  }
+
+  /* Sticky section headers — stay visible below the app bar while scrolling */
+  .section-sticky {
+    position: sticky;
+    top: calc(3.5rem + env(safe-area-inset-top));
+    z-index: 10;
+    padding: 0.3rem 0.35rem;
+    border-radius: 0.5rem;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+
+  /* Overdue pulsing dot */
+  .pulse-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 9999px;
+    background: var(--negative);
+    animation: pulseDot 1.6s ease-out infinite;
+  }
+
+  /* Progress bar fills from 0 on mount; chart bars grow up */
+  .bar-animate { animation: fillBar 0.9s ease-out both; }
+  .chart-bar { animation: growBar 0.7s ease-out both; }
+
   /* Micro-interactions */
   .icon-btn { transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease; }
   .icon-btn:active { transform: scale(0.88); }
@@ -353,6 +402,17 @@
 @keyframes dialIn { from { opacity: 0; transform: translateY(8px) scale(0.9); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @keyframes illFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
 @keyframes illSway { 0%, 100% { transform: rotate(-2.5deg); } 50% { transform: rotate(2.5deg); } }
+@keyframes fillBar { from { width: 0; } }
+@keyframes growBar { from { height: 0; } }
+@keyframes pulseDot {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--negative) 55%, transparent); }
+  70% { box-shadow: 0 0 0 8px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+@keyframes confetti {
+  0% { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+  100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); }
+}
 @keyframes slideUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes slideDown { from { opacity: 0; transform: translateY(-24px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
@@ -387,6 +447,10 @@
   .dial-item,
   .ill-float,
   .ill-sway,
+  .bar-animate,
+  .chart-bar,
+  .pulse-dot,
+  .confetti-p,
   .slide-up, .slide-down, .scale-in, .bounce-in, .float-up,
   .slide-in-left, .slide-in-right {
     animation: none !important;

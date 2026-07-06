@@ -12,9 +12,12 @@ import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
 import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
-import { ArrowDownLeftIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, SearchIcon, SortIcon, ShareIcon } from '@/components/Icons'
+import { ArrowDownLeftIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, SearchIcon, SortIcon, ShareIcon, ChevronDownIcon } from '@/components/Icons'
 import { shareOrCopy } from '@/lib/share'
 import { MoneyIllustration, NoResultsIllustration } from '@/components/Illustrations'
+import { avatarColor } from '@/lib/avatar'
+import { celebrate } from '@/lib/celebrate'
+import { haptic } from '@/lib/haptics'
 
 type LoanSortKey = 'recent' | 'oldest' | 'amountHigh' | 'amountLow' | 'nameAz'
 type LoanFilterKey = 'all' | 'active' | 'settled' | 'overdue'
@@ -63,18 +66,40 @@ export default function LoansPage() {
   const [increaseDate, setIncreaseDate] = useState('')
   const [increaseReason, setIncreaseReason] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<LoanSortKey>('recent')
   const [filterBy, setFilterBy] = useState<LoanFilterKey>('all')
   const [viewMode, setViewMode] = useState<LoanViewMode>('list')
 
   const toggleSelect = (id: string) => {
+    haptic(8)
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
     })
+  }
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  // Due-date chip: days left / due today / overdue
+  const dueBadge = (dueDate?: string) => {
+    if (!dueDate) return null
+    const at = new Date(dueDate).getTime()
+    if (!Number.isFinite(at)) return null
+    const days = Math.ceil((at - Date.now()) / 86400000)
+    if (days < 0) return <span className="chip text-[11px] tint-neg text-negative">{t('due.overdue', { count: fmtInt(-days) })}</span>
+    if (days === 0) return <span className="chip text-[11px] tint-warn text-caution">{t('due.today')}</span>
+    return <span className="chip text-[11px] tint-warn text-caution">{t('due.daysLeft', { count: fmtInt(days) })}</span>
   }
 
   useEffect(() => {
@@ -187,6 +212,8 @@ export default function LoansPage() {
           toast.error(t('loans.toggleError'))
         }
         if (newStatus) {
+          haptic([20, 40, 20])
+          celebrate()
           const totalPaid = getTotalPaid(loan)
           if (totalPaid < totalAmount) {
             const remainingPayment: Payment = {
@@ -265,7 +292,10 @@ export default function LoansPage() {
       createdAt: new Date().toISOString(),
     }
 
+    const fullPayoff = amount >= remaining
     addLoanPayment(loanId, payment).then(() => {
+      haptic(fullPayoff ? [20, 40, 20] : 12)
+      if (fullPayoff) celebrate()
       setPaymentAmount('')
       setPaymentDate(localDatetimeValue())
       setPaymentNote('')
@@ -678,6 +708,8 @@ export default function LoansPage() {
             setSelectedIds(new Set())
             loadLoans().catch(console.error)
             toast.success(t('select.bulkPaidDone'))
+            haptic([20, 40, 20])
+            celebrate()
           })
           .catch((error) => {
             console.error('Error bulk marking loans paid:', error)
@@ -876,14 +908,17 @@ export default function LoansPage() {
         ) : viewMode === 'byPerson' ? (
           personGroups.length > 0 ? (
             <section className="space-y-3 list-stagger">
-              <h2 className="text-sm font-semibold text-muted px-1">{t('loans.sectionActive')}</h2>
+              <h2 className="text-sm font-semibold text-muted px-1 section-sticky">{t('loans.sectionActive')}</h2>
               {personGroups.map((g) => {
                 const initial = g.name.trim().charAt(0).toUpperCase()
                 return (
                   <div key={g.name} className="card bar-neg space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-full bg-surface-2 flex items-center justify-center flex-shrink-0 font-semibold text-content">{initial}</div>
+                        <div
+                          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 font-semibold"
+                          style={{ backgroundColor: avatarColor(g.name).bg, color: avatarColor(g.name).fg }}
+                        >{initial}</div>
                         <div className="min-w-0">
                           <h3 className="font-semibold text-content truncate">{g.name}</h3>
                           <p className="text-xs text-muted">{t('person.entries', { count: fmtInt(g.loans.length) })}</p>
@@ -908,7 +943,7 @@ export default function LoansPage() {
           <>
             {showActiveSection && displayActive.length > 0 && (
               <section className="space-y-3 list-stagger">
-                <h2 className="text-sm font-semibold text-muted px-1">{t('loans.sectionActive')}</h2>
+                <h2 className="text-sm font-semibold text-muted px-1 section-sticky">{t('loans.sectionActive')}</h2>
                 {displayActive.map((loan) => {
                   const remaining = calculateRemaining(loan)
                   const totalPaid = getTotalPaid(loan)
@@ -930,6 +965,7 @@ export default function LoansPage() {
                           <div className="min-w-0">
                             <h3 className="font-semibold text-content truncate">{loan.personName}</h3>
                             <p className="text-xs text-muted">{bnDate(loan.date)}</p>
+                            {dueBadge(loan.dueDate) && <div className="mt-1.5">{dueBadge(loan.dueDate)}</div>}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
@@ -945,15 +981,33 @@ export default function LoansPage() {
                         <div><p className="text-xs text-muted mb-0.5">{t('loans.remaining')}</p><p className="text-sm font-semibold text-negative">৳{bn(remaining)}</p></div>
                       </div>
 
-                      <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
-                        <div className="h-full rounded-full bg-positive transition-all" style={{ width: `${pct}%` }} />
+                      <div>
+                        <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full bar-animate transition-all ${pct < 30 ? 'bg-negative' : pct < 70 ? 'bg-caution' : 'bg-positive'}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <p className="text-[11px] text-muted text-right mt-1">{t('common.paidPct', { pct: fmtInt(pct) })}</p>
                       </div>
 
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-center gap-1 text-xs font-medium text-accent py-1"
+                        onClick={() => toggleExpand(loan.id)}
+                        aria-expanded={expandedIds.has(loan.id)}
+                      >
+                        {expandedIds.has(loan.id) ? t('common.showLess') : t('common.details')}
+                        <ChevronDownIcon className={`w-4 h-4 transition-transform ${expandedIds.has(loan.id) ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {expandedIds.has(loan.id) && (<div className="space-y-4 fade-in">
                       {loan.payments && loan.payments.length > 0 && (
                         <div className="space-y-1.5">
                           <p className="text-xs font-semibold text-positive">{t('loans.paymentHistory')}</p>
+                          <div className="timeline space-y-1.5">
                           {loan.payments.map((p) => (
-                            <div key={p.id} className="flex items-center justify-between rounded-xl tint-pos px-3 py-2">
+                            <div key={p.id} className="timeline-row flex items-center justify-between rounded-xl tint-pos px-3 py-2">
                               <div className="min-w-0">
                                 <p className="text-sm font-semibold text-positive">৳{bn(p.amount)}</p>
                                 <p className="text-xs text-muted truncate">{bnDate(p.date)}{p.note ? ` · ${p.note}` : ''}</p>
@@ -964,6 +1018,7 @@ export default function LoansPage() {
                               </div>
                             </div>
                           ))}
+                          </div>
                         </div>
                       )}
 
@@ -998,6 +1053,8 @@ export default function LoansPage() {
                         </div>
                       )}
 
+                      </div>)}
+
                       <div className="flex gap-2 pt-1">
                         <button className="btn btn-secondary flex-1" onClick={() => handleOpenIncreaseModal(loan.id)}>{t('loans.increaseBtn')}</button>
                         {remaining > 0 ? (
@@ -1018,7 +1075,7 @@ export default function LoansPage() {
 
             {showReturnedSection && displayReturned.length > 0 && (
               <section className="space-y-3 list-stagger">
-                <h2 className="text-sm font-semibold text-muted px-1">{t('loans.sectionReturned')}</h2>
+                <h2 className="text-sm font-semibold text-muted px-1 section-sticky">{t('loans.sectionReturned')}</h2>
                 {displayReturned.map((loan) => {
                   const totalPaid = getTotalPaid(loan)
                   const total = round2(loan.amount + (loan.increases?.reduce((s, i) => s + i.amount, 0) || 0))
@@ -1041,12 +1098,14 @@ export default function LoansPage() {
                       {loan.payments && loan.payments.length > 0 && (
                         <div className="space-y-1.5">
                           <p className="text-xs font-semibold text-positive">{t('loans.paymentHistory')}</p>
+                          <div className="timeline space-y-1.5">
                           {loan.payments.map((p) => (
-                            <div key={p.id} className="flex items-center justify-between rounded-xl tint-pos px-3 py-2">
+                            <div key={p.id} className="timeline-row flex items-center justify-between rounded-xl tint-pos px-3 py-2">
                               <span className="text-xs text-muted truncate">{bnDate(p.date)}{p.note ? ` · ${p.note}` : ''}</span>
                               <span className="text-sm font-semibold text-positive flex-shrink-0 ml-2">৳{bn(p.amount)}</span>
                             </div>
                           ))}
+                          </div>
                         </div>
                       )}
                     </div>

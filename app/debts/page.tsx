@@ -12,9 +12,12 @@ import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
 import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
-import { ArrowUpRightIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, SearchIcon, SortIcon, ShareIcon } from '@/components/Icons'
+import { ArrowUpRightIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, SearchIcon, SortIcon, ShareIcon, ChevronDownIcon } from '@/components/Icons'
 import { shareOrCopy } from '@/lib/share'
 import { MoneyIllustration, NoResultsIllustration } from '@/components/Illustrations'
+import { avatarColor } from '@/lib/avatar'
+import { celebrate } from '@/lib/celebrate'
+import { haptic } from '@/lib/haptics'
 
 const bn = (n: number) => fmtNum(n)
 const bnDate = (v: string) => fmtDate(v)
@@ -59,18 +62,40 @@ export default function DebtsPage() {
   const [editIncreaseDate, setEditIncreaseDate] = useState('')
   const [editIncreaseReason, setEditIncreaseReason] = useState('')
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState<'recent' | 'oldest' | 'amountHigh' | 'amountLow' | 'nameAz'>('recent')
   const [filterBy, setFilterBy] = useState<'all' | 'active' | 'settled' | 'overdue'>('all')
   const [viewMode, setViewMode] = useState<'list' | 'byPerson'>('list')
 
   const toggleSelect = (id: string) => {
+    haptic(8)
     setSelectedIds((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
       return next
     })
+  }
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  // 2) Due-date chip: days left / due today / overdue
+  const dueBadge = (dueDate?: string) => {
+    if (!dueDate) return null
+    const at = new Date(dueDate).getTime()
+    if (!Number.isFinite(at)) return null
+    const days = Math.ceil((at - Date.now()) / 86400000)
+    if (days < 0) return <span className="chip text-[11px] tint-neg text-negative">{t('due.overdue', { count: fmtInt(-days) })}</span>
+    if (days === 0) return <span className="chip text-[11px] tint-warn text-caution">{t('due.today')}</span>
+    return <span className="chip text-[11px] tint-warn text-caution">{t('due.daysLeft', { count: fmtInt(days) })}</span>
   }
 
   useEffect(() => {
@@ -183,6 +208,8 @@ export default function DebtsPage() {
           toast.error(t('debts.statusError'))
         }
         if (newStatus) {
+          haptic([20, 40, 20])
+          celebrate()
           // Mark paid: add a payment covering the balance (auto-flagged).
           const totalPaid = getTotalPaid(debt)
           if (totalPaid < totalAmount) {
@@ -258,7 +285,10 @@ export default function DebtsPage() {
       createdAt: new Date().toISOString(),
     }
 
+    const fullPayoff = amount >= remaining
     addDebtPayment(debtId, payment).then(() => {
+      haptic(fullPayoff ? [20, 40, 20] : 12)
+      if (fullPayoff) celebrate()
       setPaymentAmount('')
       setPaymentDate(localDatetimeValue())
       setPaymentNote('')
@@ -649,6 +679,8 @@ export default function DebtsPage() {
             setSelectedIds(new Set())
             loadDebts().catch(console.error)
             toast.success(t('select.bulkPaidDone'))
+            haptic([20, 40, 20])
+            celebrate()
           })
           .catch((error) => {
             console.error('Error bulk marking paid:', error)
@@ -890,12 +922,15 @@ export default function DebtsPage() {
             <div className="text-center py-12"><NoResultsIllustration className="w-48 h-28 mx-auto mb-3" /><p className="text-muted text-sm">{t('search.noResults')}</p></div>
           ) : (
             <section className="space-y-3 list-stagger">
-              <h2 className="text-sm font-semibold text-muted px-1">{t('debts.sectionActive')}</h2>
+              <h2 className="text-sm font-semibold text-muted px-1 section-sticky">{t('debts.sectionActive')}</h2>
               {personGroups.map((group) => (
                 <div key={group.name} className="card bar-pos flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-10 h-10 rounded-full bg-accent-soft text-accent flex items-center justify-center font-semibold flex-shrink-0">
-                      {group.name.trim().charAt(0) || '?'}
+                    <div
+                      className="w-10 h-10 rounded-full flex items-center justify-center font-semibold flex-shrink-0"
+                      style={{ backgroundColor: avatarColor(group.name).bg, color: avatarColor(group.name).fg }}
+                    >
+                      {(group.name.trim().charAt(0) || '?').toUpperCase()}
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-semibold text-content truncate">{group.name}</h3>
@@ -917,7 +952,7 @@ export default function DebtsPage() {
           <>
             {showActiveSection && filteredActive.length > 0 && (
               <section className="space-y-3 list-stagger">
-                <h2 className="text-sm font-semibold text-muted px-1">{t('debts.sectionActive')}</h2>
+                <h2 className="text-sm font-semibold text-muted px-1 section-sticky">{t('debts.sectionActive')}</h2>
                 {filteredActive.map((debt) => {
                   const remaining = calculateRemaining(debt)
                   const totalPaid = getTotalPaid(debt)
@@ -939,6 +974,7 @@ export default function DebtsPage() {
                           <div className="min-w-0">
                             <h3 className="font-semibold text-content truncate">{debt.personName}</h3>
                             <p className="text-xs text-muted">{bnDate(debt.date)}</p>
+                            {dueBadge(debt.dueDate) && <div className="mt-1.5">{dueBadge(debt.dueDate)}</div>}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
@@ -954,15 +990,33 @@ export default function DebtsPage() {
                         <div><p className="text-xs text-muted mb-0.5">{t('debts.remaining')}</p><p className="text-sm font-semibold text-negative">৳{bn(remaining)}</p></div>
                       </div>
 
-                      <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
-                        <div className="h-full rounded-full bg-positive transition-all" style={{ width: `${pct}%` }} />
+                      <div>
+                        <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                          <div
+                            className={`h-full rounded-full bar-animate transition-all ${pct < 30 ? 'bg-negative' : pct < 70 ? 'bg-caution' : 'bg-positive'}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                        <p className="text-[11px] text-muted text-right mt-1">{t('common.paidPct', { pct: fmtInt(pct) })}</p>
                       </div>
 
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-center gap-1 text-xs font-medium text-accent py-1"
+                        onClick={() => toggleExpand(debt.id)}
+                        aria-expanded={expandedIds.has(debt.id)}
+                      >
+                        {expandedIds.has(debt.id) ? t('common.showLess') : t('common.details')}
+                        <ChevronDownIcon className={`w-4 h-4 transition-transform ${expandedIds.has(debt.id) ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {expandedIds.has(debt.id) && (<div className="space-y-4 fade-in">
                       {debt.payments && debt.payments.length > 0 && (
                         <div className="space-y-1.5">
                           <p className="text-xs font-semibold text-positive">{t('debts.paymentHistory')}</p>
+                          <div className="timeline space-y-1.5">
                           {debt.payments.map((p) => (
-                            <div key={p.id} className="flex items-center justify-between rounded-xl tint-pos px-3 py-2">
+                            <div key={p.id} className="timeline-row flex items-center justify-between rounded-xl tint-pos px-3 py-2">
                               <div className="min-w-0">
                                 <p className="text-sm font-semibold text-positive">৳{bn(p.amount)}</p>
                                 <p className="text-xs text-muted truncate">{bnDate(p.date)}{p.note ? ` · ${p.note}` : ''}</p>
@@ -973,6 +1027,7 @@ export default function DebtsPage() {
                               </div>
                             </div>
                           ))}
+                          </div>
                         </div>
                       )}
 
@@ -1007,6 +1062,8 @@ export default function DebtsPage() {
                         </div>
                       )}
 
+                      </div>)}
+
                       <div className="flex gap-2 pt-1">
                         <button className="btn btn-secondary flex-1" onClick={() => handleOpenIncreaseModal(debt.id)}>{t('debts.increaseBtn')}</button>
                         {remaining > 0 ? (
@@ -1027,7 +1084,7 @@ export default function DebtsPage() {
 
             {showSettledSection && filteredReturned.length > 0 && (
               <section className="space-y-3 list-stagger">
-                <h2 className="text-sm font-semibold text-muted px-1">{t('debts.receivedBack')}</h2>
+                <h2 className="text-sm font-semibold text-muted px-1 section-sticky">{t('debts.receivedBack')}</h2>
                 {filteredReturned.map((debt) => {
                   const totalPaid = getTotalPaid(debt)
                   const total = round2(debt.amount + (debt.increases?.reduce((s, i) => s + i.amount, 0) || 0))
@@ -1050,12 +1107,14 @@ export default function DebtsPage() {
                       {debt.payments && debt.payments.length > 0 && (
                         <div className="space-y-1.5">
                           <p className="text-xs font-semibold text-positive">{t('debts.paymentHistory')}</p>
+                          <div className="timeline space-y-1.5">
                           {debt.payments.map((p) => (
-                            <div key={p.id} className="flex items-center justify-between rounded-xl tint-pos px-3 py-2">
+                            <div key={p.id} className="timeline-row flex items-center justify-between rounded-xl tint-pos px-3 py-2">
                               <span className="text-xs text-muted truncate">{bnDate(p.date)}{p.note ? ` · ${p.note}` : ''}</span>
                               <span className="text-sm font-semibold text-positive flex-shrink-0 ml-2">৳{bn(p.amount)}</span>
                             </div>
                           ))}
+                          </div>
                         </div>
                       )}
                     </div>

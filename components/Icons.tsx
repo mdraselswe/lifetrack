@@ -95,6 +95,10 @@ export const InfoIcon = (p: IconProps) => (
   <svg {...base(p)}><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><path d="M12 7.5v.5" /></svg>
 )
 
+export const ChevronDownIcon = (p: IconProps) => (
+  <svg {...base(p)}><path d="m6 9 6 6 6-6" /></svg>
+)
+
 export const SearchIcon = (p: IconProps) => (
   <svg {...base(p)}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
 )

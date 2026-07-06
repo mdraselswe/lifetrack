@@ -12,6 +12,9 @@ import { round2, toMillis } from '@/lib/format'
 import { t, useLang, fmtNum, fmtInt, fmtRelative } from '@/lib/i18n'
 import Modal, { ActionButton } from '@/components/Modal'
 import { MoneyIllustration } from '@/components/Illustrations'
+import { avatarColor } from '@/lib/avatar'
+import { celebrate } from '@/lib/celebrate'
+import { haptic } from '@/lib/haptics'
 import { toast } from '@/lib/toast'
 import {
   ClockIcon, ArrowUpRightIcon, ArrowDownLeftIcon, WalletIcon,
@@ -81,10 +84,25 @@ function useCountUp(target: number, duration = 700) {
 }
 
 function Avatar({ name }: { name: string }) {
+  const c = avatarColor(name)
   return (
-    <span className="flex-shrink-0 w-8 h-8 rounded-full bg-surface-2 text-content flex items-center justify-center text-xs font-semibold">
+    <span
+      className="flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center text-xs font-semibold"
+      style={{ backgroundColor: c.bg, color: c.fg }}
+    >
       {(name || '?').charAt(0).toUpperCase()}
     </span>
+  )
+}
+
+// Tiny 6-month trend line for the stat tiles.
+function Spark({ vals, color }: { vals: number[]; color: string }) {
+  const max = Math.max(1, ...vals)
+  const pts = vals.map((v, i) => `${(i / (vals.length - 1)) * 56},${17 - (v / max) * 14}`).join(' ')
+  return (
+    <svg width="56" height="20" className="opacity-60" aria-hidden="true">
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   )
 }
 
@@ -122,6 +140,7 @@ export default function Dashboard() {
   const [payAmount, setPayAmount] = useState('')
   const [payDate, setPayDate] = useState('')
   const [payNote, setPayNote] = useState('')
+  const [selMonth, setSelMonth] = useState<number | null>(null)
   const { user, loading } = useAuth()
   const router = useRouter()
   useLang() // re-render on language switch
@@ -263,10 +282,13 @@ export default function Dashboard() {
       note: payNote || undefined,
       createdAt: new Date().toISOString(),
     }
+    const fullPayoff = amount >= remaining
     const add = payFor.kind === 'debt' ? addDebtPayment(payFor.id, payment) : addLoanPayment(payFor.id, payment)
     add.then(() => {
       setPayFor(null)
       toast.success(t(`${k}.paymentAddSuccess`))
+      haptic(fullPayoff ? [20, 40, 20] : 12)
+      if (fullPayoff) celebrate()
     }).catch((e) => { console.error(e); toast.error(t(`${k}.paymentAddError`)) })
   }
 
@@ -369,7 +391,18 @@ export default function Dashboard() {
     ;(l.payments || []).forEach((p) => activity.push({ id: `lp-${p.id}`, t: ts(p.createdAt || p.date), tone: 'neg', Icon: RotateIcon, text: t('dashboard.youReturned', { name }), amount: p.amount || 0 }))
     ;(l.increases || []).forEach((i) => activity.push({ id: `li-${i.id}`, t: ts(i.createdAt || i.date), tone: 'warn', Icon: PlusCircleIcon, text: t('dashboard.increased', { name }), amount: i.amount || 0 }))
   })
-  const recent = activity.sort((a, b) => b.t - a.t).slice(0, 6)
+  const recent = activity.sort((a, b) => b.t - a.t).slice(0, 8)
+  const dayStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+  const todayStart = dayStart(new Date())
+  const groupOf = (tms: number) => {
+    if (tms >= todayStart) return 'dashboard.today'
+    if (tms >= todayStart - 86400000) return 'dashboard.yesterday'
+    if (tms >= todayStart - 6 * 86400000) return 'dashboard.thisWeek'
+    return 'dashboard.earlier'
+  }
+  const activityGroups = ['dashboard.today', 'dashboard.yesterday', 'dashboard.thisWeek', 'dashboard.earlier']
+    .map((g) => ({ g, items: recent.filter((a) => groupOf(a.t) === g) }))
+    .filter((x) => x.items.length > 0)
 
   const toneText = { pos: 'text-positive', neg: 'text-negative', warn: 'text-caution' } as const
   const toneTint = { pos: 'tint-pos', neg: 'tint-neg', warn: 'tint-warn' } as const
@@ -416,8 +449,18 @@ export default function Dashboard() {
           ) : null}
 
           {/* Net balance hero */}
-          <div className="card">
-            <p className="text-sm text-muted mb-1">{t('dashboard.netBalance')}</p>
+          <div className="card relative overflow-hidden">
+            <span
+              aria-hidden="true"
+              className="absolute -top-10 -right-10 w-44 h-44 rounded-full pointer-events-none"
+              style={{ background: 'radial-gradient(circle, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%)' }}
+            />
+            <span
+              aria-hidden="true"
+              className="absolute -bottom-14 -left-8 w-40 h-40 rounded-full pointer-events-none"
+              style={{ background: 'radial-gradient(circle, color-mix(in srgb, var(--positive) 14%, transparent), transparent 70%)' }}
+            />
+            <p className="text-sm text-muted mb-1 relative">{t('dashboard.netBalance')}</p>
             <p className={`text-4xl font-bold tracking-tight ${netBalance >= 0 ? 'text-positive' : 'text-negative'}`}>
               ৳{bn(animNet)}
             </p>
@@ -449,7 +492,8 @@ export default function Dashboard() {
 
           {/* Two-up summary */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="stat-tile tint-pos">
+            <div className="stat-tile tint-pos relative">
+              <span className="absolute right-3 top-3"><Spark vals={monthBuckets.map((b) => b.received)} color="var(--positive)" /></span>
               <div className="flex items-center gap-2 text-positive mb-2">
                 <ArrowUpRightIcon className="w-5 h-5" />
                 <span className="text-xs font-medium text-positive">{t('dashboard.willReceive')}</span>
@@ -457,7 +501,8 @@ export default function Dashboard() {
               <p className="text-2xl font-bold text-content">৳{bn(animLent)}</p>
               <p className="text-[11px] text-muted mt-0.5">{t('common.people', { count: fmtInt(debtDetails.length) })}</p>
             </div>
-            <div className="stat-tile tint-neg">
+            <div className="stat-tile tint-neg relative">
+              <span className="absolute right-3 top-3"><Spark vals={monthBuckets.map((b) => b.paid)} color="var(--negative)" /></span>
               <div className="flex items-center gap-2 text-negative mb-2">
                 <ArrowDownLeftIcon className="w-5 h-5" />
                 <span className="text-xs font-medium text-negative">{t('dashboard.willPay')}</span>
@@ -503,29 +548,40 @@ export default function Dashboard() {
               </div>
               <div className="flex items-end justify-between gap-2 h-24 border-b border-line">
                 {monthBuckets.map((b) => (
-                  <div
+                  <button
                     key={`${b.year}-${b.month}`}
-                    className="flex-1 flex items-end justify-center gap-1 h-full"
+                    type="button"
+                    onClick={() => setSelMonth(selMonth === b.month ? null : b.month)}
+                    className={`flex-1 flex items-end justify-center gap-1 h-full rounded-t-md transition-colors ${selMonth === b.month ? 'bg-surface-2' : ''}`}
                     title={`${t(`dashboard.mon.${b.month}`)} — ${t('dashboard.received')}: ৳${bn(b.received)}, ${t('dashboard.paid')}: ৳${bn(b.paid)}`}
                   >
                     <div
-                      className="w-1/2 max-w-[12px] bg-positive rounded-t-sm transition-all"
+                      className="w-1/2 max-w-[12px] bg-positive rounded-t-sm chart-bar"
                       style={{ height: `${(b.received / trendMax) * 100}%` }}
                     />
                     <div
-                      className="w-1/2 max-w-[12px] bg-negative rounded-t-sm transition-all"
+                      className="w-1/2 max-w-[12px] bg-negative rounded-t-sm chart-bar"
                       style={{ height: `${(b.paid / trendMax) * 100}%` }}
                     />
-                  </div>
+                  </button>
                 ))}
               </div>
               <div className="flex items-center justify-between gap-2 mt-2">
                 {monthBuckets.map((b) => (
-                  <span key={`${b.year}-${b.month}`} className="flex-1 text-center text-[10px] text-muted">
+                  <span key={`${b.year}-${b.month}`} className={`flex-1 text-center text-[10px] ${selMonth === b.month ? 'text-accent font-semibold' : 'text-muted'}`}>
                     {t(`dashboard.mon.${b.month}`)}
                   </span>
                 ))}
               </div>
+              {selMonth !== null && (() => {
+                const b = monthBuckets.find((x) => x.month === selMonth)
+                if (!b) return null
+                return (
+                  <p className="text-xs text-center text-muted mt-2 fade-in">
+                    {t(`dashboard.mon.${b.month}`)} · <span className="text-positive font-semibold">{t('dashboard.received')} ৳{bn(b.received)}</span> · <span className="text-negative font-semibold">{t('dashboard.paid')} ৳{bn(b.paid)}</span>
+                  </p>
+                )
+              })()}
             </div>
           )}
 
@@ -596,17 +652,24 @@ export default function Dashboard() {
           {recent.length > 0 && (
             <div className="card">
               <p className="text-sm font-semibold text-content mb-3">{t('dashboard.recentActivity')}</p>
-              <div className="divide-y divide-line">
-                {recent.map((a) => (
-                  <div key={a.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                    <span className={`w-8 h-8 rounded-full ${toneTint[a.tone]} ${toneText[a.tone]} flex items-center justify-center flex-shrink-0`}>
-                      <a.Icon className="w-4 h-4" />
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-content truncate">{a.text}</p>
-                      {a.t > 0 && <p className="text-[11px] text-muted">{fmtRelative(a.t)}</p>}
+              <div className="space-y-1">
+                {activityGroups.map(({ g, items }) => (
+                  <div key={g}>
+                    <p className="text-[11px] font-semibold text-muted uppercase tracking-wide pt-2 pb-1">{t(g)}</p>
+                    <div className="divide-y divide-line">
+                      {items.map((a) => (
+                        <div key={a.id} className="flex items-center gap-3 py-2.5">
+                          <span className={`w-8 h-8 rounded-full ${toneTint[a.tone]} ${toneText[a.tone]} flex items-center justify-center flex-shrink-0`}>
+                            <a.Icon className="w-4 h-4" />
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm text-content truncate">{a.text}</p>
+                            {a.t > 0 && <p className="text-[11px] text-muted">{fmtRelative(a.t)}</p>}
+                          </div>
+                          <span className={`text-sm font-semibold ${toneText[a.tone]}`}>৳{bn(a.amount)}</span>
+                        </div>
+                      ))}
                     </div>
-                    <span className={`text-sm font-semibold ${toneText[a.tone]}`}>৳{bn(a.amount)}</span>
                   </div>
                 ))}
               </div>

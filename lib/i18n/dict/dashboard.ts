@@ -50,4 +50,8 @@ export const dashboard: Dict = {
   'dashboard.mon.9': { bn: 'অক্টো', en: 'Oct' },
   'dashboard.mon.10': { bn: 'নভে', en: 'Nov' },
   'dashboard.mon.11': { bn: 'ডিসে', en: 'Dec' },
+  'dashboard.today': { bn: 'আজ', en: 'Today' },
+  'dashboard.yesterday': { bn: 'গতকাল', en: 'Yesterday' },
+  'dashboard.thisWeek': { bn: 'এই সপ্তাহ', en: 'This week' },
+  'dashboard.earlier': { bn: 'আগে', en: 'Earlier' },
 }

@@ -13,7 +13,8 @@ import { useRouter } from 'next/navigation'
 import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
 import { ClockIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, HistoryIcon } from '@/components/Icons'
-import { t, useLang, fmtInt, fmtDate } from '@/lib/i18n'
+import { t, useLang, fmtInt, fmtDate, fmtRelative } from '@/lib/i18n'
+import { haptic } from '@/lib/haptics'
 import { BellIllustration } from '@/components/Illustrations'
 
 // datetime-local expects a LOCAL time string; toISOString() is UTC, so we
@@ -64,6 +65,14 @@ export default function RemindersPage() {
   const [rescheduleReminderId, setRescheduleReminderId] = useState<string | null>(null)
   const [rescheduleHours, setRescheduleHours] = useState('1')
   const [pushState, setPushState] = useState<'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported'>('unknown')
+  const [nowTick, setNowTick] = useState(0)
+
+  // Live countdown chips — refresh every minute
+  useEffect(() => {
+    setNowTick(Date.now())
+    const id = setInterval(() => setNowTick(Date.now()), 60000)
+    return () => clearInterval(id)
+  }, [])
   const { user, loading } = useAuth()
   const router = useRouter()
 
@@ -355,6 +364,7 @@ export default function RemindersPage() {
     })
 
     loadReminders().catch(console.error)
+    haptic(15)
     toast.success(t('reminders.completedToast', { title: reminderToComplete.title, count: fmtInt(updatedCount) }))
 
     setShowCompleteModal(false)
@@ -379,6 +389,7 @@ export default function RemindersPage() {
       t('reminders.finishMessage', { title: reminder.title }),
       () => {
         updateReminder(reminder.id, { dismissed: true }).then(() => {
+          haptic([20, 40, 20])
           loadReminders().catch(console.error)
           toast.success(t('reminders.finished'))
         }).catch((error) => {
@@ -524,6 +535,11 @@ export default function RemindersPage() {
           <h3 className="font-semibold text-content truncate">{r.title}</h3>
           <p className="text-xs text-muted flex items-center gap-1 mt-0.5">
             <ClockIcon className="w-3.5 h-3.5" /> {fmtDate(r.scheduledTime, true)}
+            {overdue ? (
+              <span className="pulse-dot ml-1" aria-hidden="true" />
+            ) : nowTick > 0 && new Date(r.scheduledTime).getTime() - nowTick < 24 * 60 * 60 * 1000 ? (
+              <span className="chip text-[10px] tint-accent text-accent ml-1">{fmtRelative(r.scheduledTime)}</span>
+            ) : null}
           </p>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">

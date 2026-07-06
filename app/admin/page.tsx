@@ -11,6 +11,7 @@ import { t, useLang, fmtInt, fmtDate, fmtRelative } from '@/lib/i18n'
 import { toast } from '@/lib/toast'
 import { SearchIcon } from '@/components/Icons'
 import { NoResultsIllustration } from '@/components/Illustrations'
+import { avatarColor } from '@/lib/avatar'
 
 type AdminUser = {
   uid: string
@@ -100,7 +101,10 @@ export default function AdminPage() {
                 <div key={u.uid} className="card space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3 min-w-0">
-                      <span className="flex-shrink-0 w-10 h-10 rounded-full bg-accent text-accent-fg flex items-center justify-center font-semibold">
+                      <span
+                        className="flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center font-semibold"
+                        style={{ backgroundColor: avatarColor(u.name || u.email).bg, color: avatarColor(u.name || u.email).fg }}
+                      >
                         {(u.name || u.email || '?').charAt(0).toUpperCase()}
                       </span>
                       <div className="min-w-0">
