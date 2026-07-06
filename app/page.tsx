@@ -98,7 +98,8 @@ function Avatar({ name }: { name: string }) {
 // Tiny 6-month trend line for the stat tiles.
 function Spark({ vals, color }: { vals: number[]; color: string }) {
   const max = Math.max(1, ...vals)
-  const pts = vals.map((v, i) => `${(i / (vals.length - 1)) * 56},${17 - (v / max) * 14}`).join(' ')
+  const denom = Math.max(1, vals.length - 1)
+  const pts = vals.map((v, i) => `${(i / denom) * 56},${17 - (v / max) * 14}`).join(' ')
   return (
     <svg width="56" height="20" className="opacity-60" aria-hidden="true">
       <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -391,14 +392,14 @@ export default function Dashboard() {
   debts.forEach((d) => {
     const name = d.personName || t('common.unknown')
     activity.push({ id: `dc-${d.id}`, t: ts(d.createdAt || d.date), tone: 'pos', Icon: ArrowUpRightIcon, text: t('dashboard.lentTo', { name }), amount: d.amount || 0 })
-    ;(d.payments || []).forEach((p) => activity.push({ id: `dp-${p.id}`, t: ts(p.createdAt || p.date), tone: 'pos', Icon: RotateIcon, text: t('dashboard.returnedYou', { name }), amount: p.amount || 0 }))
-    ;(d.increases || []).forEach((i) => activity.push({ id: `di-${i.id}`, t: ts(i.createdAt || i.date), tone: 'warn', Icon: PlusCircleIcon, text: t('dashboard.increased', { name }), amount: i.amount || 0 }))
+    ;(d.payments || []).forEach((p, i) => activity.push({ id: `dp-${d.id}-${p.id || i}`, t: ts(p.createdAt || p.date), tone: 'pos', Icon: RotateIcon, text: t('dashboard.returnedYou', { name }), amount: p.amount || 0 }))
+    ;(d.increases || []).forEach((inc, i) => activity.push({ id: `di-${d.id}-${inc.id || i}`, t: ts(inc.createdAt || inc.date), tone: 'warn', Icon: PlusCircleIcon, text: t('dashboard.increased', { name }), amount: inc.amount || 0 }))
   })
   loans.forEach((l) => {
     const name = l.personName || t('common.unknown')
     activity.push({ id: `lc-${l.id}`, t: ts(l.createdAt || l.date), tone: 'neg', Icon: ArrowDownLeftIcon, text: t('dashboard.borrowedFrom', { name }), amount: l.amount || 0 })
-    ;(l.payments || []).forEach((p) => activity.push({ id: `lp-${p.id}`, t: ts(p.createdAt || p.date), tone: 'neg', Icon: RotateIcon, text: t('dashboard.youReturned', { name }), amount: p.amount || 0 }))
-    ;(l.increases || []).forEach((i) => activity.push({ id: `li-${i.id}`, t: ts(i.createdAt || i.date), tone: 'warn', Icon: PlusCircleIcon, text: t('dashboard.increased', { name }), amount: i.amount || 0 }))
+    ;(l.payments || []).forEach((p, i) => activity.push({ id: `lp-${l.id}-${p.id || i}`, t: ts(p.createdAt || p.date), tone: 'neg', Icon: RotateIcon, text: t('dashboard.youReturned', { name }), amount: p.amount || 0 }))
+    ;(l.increases || []).forEach((inc, i) => activity.push({ id: `li-${l.id}-${inc.id || i}`, t: ts(inc.createdAt || inc.date), tone: 'warn', Icon: PlusCircleIcon, text: t('dashboard.increased', { name }), amount: inc.amount || 0 }))
   })
   const recent = activity.sort((a, b) => b.t - a.t).slice(0, 8)
   const dayStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()

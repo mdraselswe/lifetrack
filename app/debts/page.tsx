@@ -238,7 +238,10 @@ export default function DebtsPage() {
         } else {
           // Revert to unpaid: drop the auto "full payment" so the balance is due
           // again (keep any real partial payments the user entered).
-          const kept = (debt.payments || []).filter((p) => !(p.auto === true || p.note === t('debts.fullPaymentNote')))
+          // Only drop the auto-added full payment (flagged), never a real one —
+          // matching on the note text could delete a genuine payment that happens
+          // to share the note.
+          const kept = (debt.payments || []).filter((p) => p.auto !== true)
           updateDebt(debt.id, { payments: kept, returned: false }).then(done).catch(fail)
         }
       },
@@ -417,6 +420,12 @@ export default function DebtsPage() {
     const currentTotalAmount = round2(debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))
     const newTotalAmount = round2(currentTotalAmount - increase.amount)
 
+    // Block if removing this increase would drop the total below what's already paid.
+    if (newTotalAmount < getTotalPaid(debt)) {
+      toast.error(t('debts.errLessThanPaid', { paid: bn(getTotalPaid(debt)) }))
+      return
+    }
+
     confirm.delete(
       t('debts.increaseDeleteTitle'),
       t('debts.increaseDeleteMsg', { amount: increase.amount, from: currentTotalAmount, to: newTotalAmount }),
@@ -442,7 +451,9 @@ export default function DebtsPage() {
       return round2(totalAmount)
     }
     const totalPaid = debt.payments.reduce((sum, p) => sum + p.amount, 0)
-    return round2(totalAmount - totalPaid)
+    // Clamp at 0: deleting an increase after a large payment must not show a
+    // negative balance, and keeps aggregate sums (selected total, by-person) correct.
+    return round2(Math.max(0, totalAmount - totalPaid))
   }
 
   const getTotalPaid = (debt: Debt): number => {
@@ -571,7 +582,7 @@ export default function DebtsPage() {
       return
     }
 
-    const amount = parseFloat(editPaymentAmount)
+    const amount = Number(parseFloat(editPaymentAmount).toFixed(2))
     if (isNaN(amount) || amount <= 0) {
       toast.error(t('debts.errValidAmount'))
       return

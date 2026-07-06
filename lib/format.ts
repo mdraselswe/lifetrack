@@ -5,6 +5,13 @@ export const round2 = (n: number): number => {
   return Math.round((n + Number.EPSILON) * 100) / 100
 }
 
+// Coerce any stored amount (number, numeric string, or garbage) to a finite
+// number — defends money math against strings/NaN slipping in from old data.
+export const num = (v: unknown): number => {
+  const n = typeof v === 'number' ? v : parseFloat(String(v ?? ''))
+  return Number.isFinite(n) ? n : 0
+}
+
 // Milliseconds from a value that may be an ISO string, a Firestore Timestamp
 // object ({seconds,nanoseconds} or one with .toDate()), or already a number.
 // createdAt is written with serverTimestamp(), so on read it is a Timestamp —

@@ -17,14 +17,15 @@ import {
   subscribeToReminders
 } from './firebase-db'
 import { auth } from './firebase-app'
-import { round2 } from './format'
+import { round2, num } from './format'
 
 // Re-export realtime listeners so pages can subscribe for cross-device sync
 export { subscribeToDebts, subscribeToLoans, subscribeToReminders } from './firebase-db'
 
-// Sum the `amount` field across a list of payments/increases (null-safe).
+// Sum the `amount` field across a list of payments/increases (null-safe,
+// coerces each amount so a stray string/NaN can't collapse the total).
 const sumAmounts = (items?: { amount: number }[]): number =>
-  (items || []).reduce((sum, i) => sum + i.amount, 0)
+  (items || []).reduce((sum, i) => sum + num(i?.amount), 0)
 
 // Helper to check if we're in browser
 const isBrowser = typeof window !== 'undefined'
@@ -290,7 +291,7 @@ export const addDebtPayment = async (debtId: string, payment: Payment): Promise<
     const updatedPayments = [...(debt.payments || []), paymentWithNumberAmount]
 
     // Auto-mark as returned if fully paid (total = initial amount + all increases)
-    const total = debt.amount + sumAmounts(debt.increases)
+    const total = num(debt.amount) + sumAmounts(debt.increases)
     const totalPaid = sumAmounts(updatedPayments)
     const shouldBeReturned = round2(totalPaid) >= round2(total)
 
@@ -324,7 +325,7 @@ export const deleteDebtPayment = async (debtId: string, paymentId: string): Prom
     const updatedPayments = (debt.payments || []).filter(p => p.id !== paymentId)
 
     // Update returned status based on remaining payments (total = initial amount + all increases)
-    const total = debt.amount + sumAmounts(debt.increases)
+    const total = num(debt.amount) + sumAmounts(debt.increases)
     const totalPaid = sumAmounts(updatedPayments)
     const shouldBeReturned = round2(totalPaid) >= round2(total)
 
@@ -365,7 +366,7 @@ export const addLoanPayment = async (loanId: string, payment: Payment): Promise<
     const updatedPayments = [...(loan.payments || []), paymentWithNumberAmount]
 
     // Auto-mark as returned if fully paid (total = initial amount + all increases)
-    const total = loan.amount + sumAmounts(loan.increases)
+    const total = num(loan.amount) + sumAmounts(loan.increases)
     const totalPaid = sumAmounts(updatedPayments)
     const shouldBeReturned = round2(totalPaid) >= round2(total)
 
@@ -399,7 +400,7 @@ export const deleteLoanPayment = async (loanId: string, paymentId: string): Prom
     const updatedPayments = (loan.payments || []).filter(p => p.id !== paymentId)
 
     // Update returned status based on remaining payments (total = initial amount + all increases)
-    const total = loan.amount + sumAmounts(loan.increases)
+    const total = num(loan.amount) + sumAmounts(loan.increases)
     const totalPaid = sumAmounts(updatedPayments)
     const shouldBeReturned = round2(totalPaid) >= round2(total)
 
@@ -440,7 +441,7 @@ export const addLoanIncrease = async (loanId: string, increase: AmountIncrease):
     const updatedIncreases = [...(loan.increases || []), increaseWithNumberAmount]
 
     // Recompute returned status (total = initial amount + all increases)
-    const total = loan.amount + sumAmounts(updatedIncreases)
+    const total = num(loan.amount) + sumAmounts(updatedIncreases)
     const totalPaid = sumAmounts(loan.payments)
     const shouldBeReturned = round2(totalPaid) >= round2(total)
 
@@ -474,7 +475,7 @@ export const deleteLoanIncrease = async (loanId: string, increaseId: string): Pr
     const updatedIncreases = (loan.increases || []).filter(i => i.id !== increaseId)
 
     // Recompute returned status (total = initial amount + all increases)
-    const total = loan.amount + sumAmounts(updatedIncreases)
+    const total = num(loan.amount) + sumAmounts(updatedIncreases)
     const totalPaid = sumAmounts(loan.payments)
     const shouldBeReturned = round2(totalPaid) >= round2(total)
 
@@ -515,7 +516,7 @@ export const addDebtIncrease = async (debtId: string, increase: AmountIncrease):
     const updatedIncreases = [...(debt.increases || []), increaseWithNumberAmount]
 
     // Recompute returned status (total = initial amount + all increases)
-    const total = debt.amount + sumAmounts(updatedIncreases)
+    const total = num(debt.amount) + sumAmounts(updatedIncreases)
     const totalPaid = sumAmounts(debt.payments)
     const shouldBeReturned = round2(totalPaid) >= round2(total)
 
@@ -549,7 +550,7 @@ export const deleteDebtIncrease = async (debtId: string, increaseId: string): Pr
     const updatedIncreases = (debt.increases || []).filter(i => i.id !== increaseId)
 
     // Recompute returned status (total = initial amount + all increases)
-    const total = debt.amount + sumAmounts(updatedIncreases)
+    const total = num(debt.amount) + sumAmounts(updatedIncreases)
     const totalPaid = sumAmounts(debt.payments)
     const shouldBeReturned = round2(totalPaid) >= round2(total)
 

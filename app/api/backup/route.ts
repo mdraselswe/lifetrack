@@ -100,13 +100,16 @@ async function runBackup() {
     const reminderDocs = remindersSnap.docs.map((d) => ({ uid: uidOf(d.ref), data: d.data() as Reminder }))
     const uids = Array.from(new Set([...debtDocs, ...loanDocs, ...reminderDocs].map((x) => x.uid).filter(Boolean)))
 
+    const r2 = (n: number) => Math.round(n * 100) / 100
     const moneyRow = (uid: string, m: Debt | Loan) => {
-      const total = (typeof m.amount === 'number' ? m.amount : 0) + sumAmounts(m.increases)
-      const totalPaid = sumAmounts(m.payments)
-      const remaining = Math.max(0, Math.round((total - totalPaid) * 100) / 100)
-      return [uid, '', m.id ?? '', m.personName ?? '', m.amount ?? '', m.reason ?? '', m.date ?? '', m.returned ? 'হ্যাঁ' : 'না', totalPaid, remaining, m.createdAt ?? '', JSON.stringify((m.payments as Payment[]) || []), JSON.stringify((m.increases as AmountIncrease[]) || [])]
+      const initial = typeof m.amount === 'number' ? m.amount : 0
+      const total = r2(initial + sumAmounts(m.increases))
+      const totalPaid = r2(sumAmounts(m.payments))
+      const remaining = Math.max(0, r2(total - totalPaid))
+      return [uid, '', m.id ?? '', m.personName ?? '', initial, total, m.reason ?? '', m.date ?? '', m.returned ? 'হ্যাঁ' : 'না', totalPaid, remaining, m.createdAt ?? '', JSON.stringify((m.payments as Payment[]) || []), JSON.stringify((m.increases as AmountIncrease[]) || [])]
     }
-    const moneyHeader = ['uid', 'email', 'id', 'personName', 'amount', 'reason', 'date', 'returned', 'totalPaid', 'remaining', 'createdAt', 'payments', 'increases']
+    // `amount` = initial, `total` = initial + increases (so total = totalPaid + remaining).
+    const moneyHeader = ['uid', 'email', 'id', 'personName', 'amount', 'total', 'reason', 'date', 'returned', 'totalPaid', 'remaining', 'createdAt', 'payments', 'increases']
     const debtRows = [moneyHeader, ...debtDocs.map((x) => moneyRow(x.uid, x.data))]
     const loanRows = [moneyHeader, ...loanDocs.map((x) => moneyRow(x.uid, x.data))]
     const reminderHeader = ['uid', 'email', 'id', 'title', 'description', 'scheduledTime', 'dismissed', 'isRepetitive', 'repeatInterval', 'repeatType', 'completionCount', 'createdAt', 'occurrences']

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { round2, toBnDigits, toBnNumber } from './format'
+import { round2, toBnDigits, toBnNumber, num } from './format'
 
 describe('round2', () => {
   it('fixes floating-point artifacts from summation', () => {
@@ -59,5 +59,28 @@ describe('toBnNumber', () => {
   it('renders non-finite input as ০', () => {
     expect(toBnNumber(NaN)).toBe('০')
     expect(toBnNumber(Infinity)).toBe('০')
+  })
+})
+
+describe('num (amount coercion)', () => {
+  it('passes finite numbers through', () => {
+    expect(num(1000)).toBe(1000)
+    expect(num(0)).toBe(0)
+    expect(num(12.5)).toBe(12.5)
+  })
+  it('coerces numeric strings', () => {
+    expect(num('1000')).toBe(1000)
+    expect(num('12.50')).toBe(12.5)
+  })
+  it('returns 0 for garbage / non-finite / nullish', () => {
+    expect(num('')).toBe(0)
+    expect(num('abc')).toBe(0)
+    expect(num(undefined)).toBe(0)
+    expect(num(null)).toBe(0)
+    expect(num(NaN)).toBe(0)
+    expect(num(Infinity)).toBe(0)
+  })
+  it('parses leading-numeric strings like parseFloat', () => {
+    expect(num('100abc')).toBe(100)
   })
 })

@@ -241,7 +241,8 @@ export default function LoansPage() {
         } else {
           // Revert to unpaid: drop the auto "full payment" so the balance is due
           // again (keep any real partial payments).
-          const kept = (loan.payments || []).filter((p) => !(p.auto === true || p.note === t('loans.fullPaymentNote')))
+          // Only drop the auto-added full payment (flagged), never a real one.
+          const kept = (loan.payments || []).filter((p) => p.auto !== true)
           updateLoan(loan.id, { payments: kept, returned: false }).then(done).catch(fail)
         }
       },
@@ -424,6 +425,12 @@ export default function LoansPage() {
     const currentTotalAmount = round2(loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))
     const newTotalAmount = round2(currentTotalAmount - increase.amount)
 
+    // Block if removing this increase would drop the total below what's already paid.
+    if (newTotalAmount < getTotalPaid(loan)) {
+      toast.error(t('loans.errAmountBelowPaid', { paid: fmtNum(getTotalPaid(loan)) }))
+      return
+    }
+
     confirm.delete(
       t('loans.increaseDeleteTitle'),
       t('loans.increaseDeleteMessage', { amount: fmtNum(increase.amount), from: fmtNum(currentTotalAmount), to: fmtNum(newTotalAmount) }),
@@ -450,7 +457,9 @@ export default function LoansPage() {
       return round2(totalAmount)
     }
     const totalPaid = loan.payments.reduce((sum, p) => sum + p.amount, 0)
-    return round2(totalAmount - totalPaid)
+    // Clamp at 0 so deleting an increase after a large payment never shows a
+    // negative balance and aggregate sums stay correct.
+    return round2(Math.max(0, totalAmount - totalPaid))
   }
 
   const getTotalPaid = (loan: Loan): number => {
@@ -578,7 +587,7 @@ export default function LoansPage() {
       return
     }
 
-    const amount = parseFloat(editPaymentAmount)
+    const amount = Number(parseFloat(editPaymentAmount).toFixed(2))
     if (isNaN(amount) || amount <= 0) {
       toast.error(t('loans.errValidAmount'))
       return
