@@ -133,6 +133,17 @@ export const deleteReminder = async (id: string): Promise<void> => {
   }
 }
 
+// Reminders auto-created for a given debt/loan (matched by sourceId).
+export const getRemindersForSource = async (sourceId: string): Promise<Reminder[]> => {
+  if (!isBrowser || !sourceId) return []
+  try {
+    return (await getReminders()).filter((r) => r.sourceId === sourceId)
+  } catch (error) {
+    console.error('Error reading linked reminders:', error)
+    return []
+  }
+}
+
 // Delete any auto-created reminders linked to a deleted debt/loan.
 export const deleteRemindersForSource = async (sourceId: string): Promise<void> => {
   if (!isBrowser || !sourceId) return

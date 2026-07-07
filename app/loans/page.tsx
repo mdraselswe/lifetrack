@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, type FormEvent } from 'react'
-import { getLoans, saveLoan, updateLoan, deleteLoan, deleteRemindersForSource, addLoanPayment, deleteLoanPayment, addLoanIncrease, deleteLoanIncrease, subscribeToLoans, saveReminder } from '@/lib/storage'
+import { getLoans, saveLoan, updateLoan, deleteLoan, deleteRemindersForSource, getRemindersForSource, updateReminder, deleteReminder, addLoanPayment, deleteLoanPayment, addLoanIncrease, deleteLoanIncrease, subscribeToLoans, saveReminder } from '@/lib/storage'
 import type { Loan, Payment, AmountIncrease, Reminder } from '@/lib/types'
 import { round2, toMillis } from '@/lib/format'
 import { t, useLang, fmtNum, fmtDate, fmtInt } from '@/lib/i18n'
@@ -532,8 +532,12 @@ export default function LoansPage() {
         const increasesTotal = editingLoan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0
         const shouldBeReturned = round2(totalPaid) >= round2(newAmount + increasesTotal)
 
-        const dueNewlySet = !editingLoan.dueDate && !!editDueDate
-        updateLoan(editingLoan.id, {
+        const sourceId = editingLoan.id
+        const dueName = editPersonName
+        const dueAmt = newAmount
+        const dueVal = editDueDate
+        const dueLead = editReminderLead
+        updateLoan(sourceId, {
           personName: editPersonName,
           amount: newAmount,
           reason: editReason,
@@ -541,18 +545,27 @@ export default function LoansPage() {
           dueDate: editDueDate || '',
           returned: shouldBeReturned,
         }).then(() => {
-          if (dueNewlySet) {
-            saveReminder({
-              id: crypto.randomUUID(),
-              title: t('loans.dueReminderTitle', { name: editPersonName }),
-              description: t('loans.dueReminderDesc', { name: editPersonName, amount: bn(newAmount), date: bnDate(editDueDate) }),
-              scheduledTime: dueReminderTime(editDueDate, editReminderLead),
-              dismissed: false,
-              createdAt: new Date().toISOString(),
-              sourceId: editingLoan.id,
-              sourceType: 'loan',
-            }).then(() => toast.info(t('loans.dueReminderCreated'))).catch(console.error)
-          }
+          // Keep the linked due-date reminder in sync (update / create / delete).
+          getRemindersForSource(sourceId).then((linked) => {
+            if (dueVal) {
+              const patch = {
+                title: t('loans.dueReminderTitle', { name: dueName }),
+                description: t('loans.dueReminderDesc', { name: dueName, amount: bn(dueAmt), date: bnDate(dueVal) }),
+                scheduledTime: dueReminderTime(dueVal, dueLead),
+              }
+              if (linked.length) {
+                linked.forEach((r) => updateReminder(r.id, patch).catch(console.error))
+              } else {
+                saveReminder({
+                  id: crypto.randomUUID(), ...patch,
+                  dismissed: false, createdAt: new Date().toISOString(),
+                  sourceId, sourceType: 'loan',
+                }).then(() => toast.info(t('loans.dueReminderCreated'))).catch(console.error)
+              }
+            } else if (linked.length) {
+              linked.forEach((r) => deleteReminder(r.id).catch(console.error))
+            }
+          }).catch(console.error)
           setEditingLoan(null)
           setEditPersonName('')
           setEditAmount('')

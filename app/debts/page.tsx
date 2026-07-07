@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, type FormEvent } from 'react'
-import { getDebts, saveDebt, updateDebt, deleteDebt, deleteRemindersForSource, addDebtPayment, deleteDebtPayment, addDebtIncrease, deleteDebtIncrease, subscribeToDebts, saveReminder } from '@/lib/storage'
+import { getDebts, saveDebt, updateDebt, deleteDebt, deleteRemindersForSource, getRemindersForSource, updateReminder, deleteReminder, addDebtPayment, deleteDebtPayment, addDebtIncrease, deleteDebtIncrease, subscribeToDebts, saveReminder } from '@/lib/storage'
 import type { Debt, Payment, AmountIncrease, Reminder } from '@/lib/types'
 import { round2, toMillis } from '@/lib/format'
 import { t, useLang, fmtNum, fmtDate, fmtInt } from '@/lib/i18n'
@@ -528,8 +528,12 @@ export default function DebtsPage() {
         const increasesTotal = editingDebt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0
         const shouldBeReturned = round2(totalPaid) >= round2(newAmount + increasesTotal)
 
-        const dueNewlySet = !editingDebt.dueDate && !!editDueDate
-        updateDebt(editingDebt.id, {
+        const sourceId = editingDebt.id
+        const dueName = editPersonName
+        const dueAmt = newAmount
+        const dueVal = editDueDate
+        const dueLead = editReminderLead
+        updateDebt(sourceId, {
           personName: editPersonName,
           amount: newAmount,
           reason: editReason,
@@ -537,20 +541,29 @@ export default function DebtsPage() {
           dueDate: editDueDate || '',
           returned: shouldBeReturned,
         }).then(() => {
-          // A due date added during edit spawns a reminder (mirrors the add flow);
-          // only when it was previously empty, to avoid duplicates.
-          if (dueNewlySet) {
-            saveReminder({
-              id: crypto.randomUUID(),
-              title: t('debts.dueReminderTitle', { name: editPersonName }),
-              description: t('debts.dueReminderDesc', { name: editPersonName, amount: bn(newAmount), date: bnDate(editDueDate) }),
-              scheduledTime: dueReminderTime(editDueDate, editReminderLead),
-              dismissed: false,
-              createdAt: new Date().toISOString(),
-              sourceId: editingDebt.id,
-              sourceType: 'debt',
-            }).then(() => toast.info(t('debts.dueReminderCreated'))).catch(console.error)
-          }
+          // Keep the linked due-date reminder in sync with the edited debt:
+          // update it in place if it exists, create it if a due date was added,
+          // delete it if the due date was removed.
+          getRemindersForSource(sourceId).then((linked) => {
+            if (dueVal) {
+              const patch = {
+                title: t('debts.dueReminderTitle', { name: dueName }),
+                description: t('debts.dueReminderDesc', { name: dueName, amount: bn(dueAmt), date: bnDate(dueVal) }),
+                scheduledTime: dueReminderTime(dueVal, dueLead),
+              }
+              if (linked.length) {
+                linked.forEach((r) => updateReminder(r.id, patch).catch(console.error))
+              } else {
+                saveReminder({
+                  id: crypto.randomUUID(), ...patch,
+                  dismissed: false, createdAt: new Date().toISOString(),
+                  sourceId, sourceType: 'debt',
+                }).then(() => toast.info(t('debts.dueReminderCreated'))).catch(console.error)
+              }
+            } else if (linked.length) {
+              linked.forEach((r) => deleteReminder(r.id).catch(console.error))
+            }
+          }).catch(console.error)
           setEditingDebt(null)
           setEditPersonName('')
           setEditAmount('')
