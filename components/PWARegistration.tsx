@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from '@/lib/toast'
-import { t, useLang } from '@/lib/i18n'
+import { t, useLang, fmtInt } from '@/lib/i18n'
+import { ShareIcon } from '@/components/Icons'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -36,6 +37,7 @@ export default function PWARegistration() {
   useLang() // re-render on language switch
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
+  const [showIosGuide, setShowIosGuide] = useState(false)
 
   useEffect(() => {
     // Check if already installed
@@ -133,8 +135,13 @@ export default function PWARegistration() {
   }, [deferredPrompt])
 
   const handleInstallClick = async () => {
+    // iOS has no programmatic install — show the Share → Add to Home Screen steps inline.
+    if (isIOS()) {
+      setShowIosGuide(true)
+      return
+    }
     if (!deferredPrompt) {
-      // Fallback for browsers that don't support beforeinstallprompt
+      // Fallback for other browsers that don't support beforeinstallprompt
       toast.info(t('pwa.manualHint'))
       return
     }
@@ -184,20 +191,37 @@ export default function PWARegistration() {
                 onClick={() => {
                   setShowInstallPrompt(false)
                   setDeferredPrompt(null)
+                  setShowIosGuide(false)
                 }}
                 className="btn btn-secondary"
               >
                 {t('pwa.later')}
               </button>
             </div>
-            <details className="mt-3 text-xs text-muted">
-              <summary className="cursor-pointer">{t('pwa.manualInstructionsTitle')}</summary>
-              <div className="mt-2 space-y-1 text-muted">
-                <p><strong>Desktop:</strong> {t('pwa.manualDesktop')}</p>
-                <p><strong>Mobile Chrome:</strong> Menu → "Add to Home Screen"</p>
-                <p><strong>Mobile Safari:</strong> Share → "Add to Home Screen"</p>
+
+            {showIosGuide ? (
+              // iOS step-by-step: no programmatic install exists on Safari/iOS.
+              <div className="mt-3 rounded-xl bg-surface-2 p-3 text-sm text-content space-y-2">
+                <p className="font-semibold">{t('pwa.iosGuideTitle')}</p>
+                <div className="flex items-center gap-2">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold">{fmtInt(1)}</span>
+                  <span className="flex items-center gap-1.5">{t('pwa.iosStep1')} <ShareIcon className="w-4 h-4 inline text-accent" /></span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-accent-soft text-accent flex items-center justify-center text-xs font-bold">{fmtInt(2)}</span>
+                  <span>{t('pwa.iosStep2')}</span>
+                </div>
               </div>
-            </details>
+            ) : (
+              <details className="mt-3 text-xs text-muted">
+                <summary className="cursor-pointer">{t('pwa.manualInstructionsTitle')}</summary>
+                <div className="mt-2 space-y-1 text-muted">
+                  <p><strong>Desktop:</strong> {t('pwa.manualDesktop')}</p>
+                  <p><strong>Mobile Chrome:</strong> Menu → "Add to Home Screen"</p>
+                  <p><strong>Mobile Safari:</strong> Share → "Add to Home Screen"</p>
+                </div>
+              </details>
+            )}
           </div>
         </div>
       </div>
