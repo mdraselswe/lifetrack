@@ -166,4 +166,9 @@ export const auth: Dict = {
   'admin.loadError': { bn: 'তালিকা লোড করতে সমস্যা হয়েছে', en: 'Failed to load the list' },
   'admin.googleProvider': { bn: 'গুগল', en: 'Google' },
   'admin.emailProvider': { bn: 'ইমেইল', en: 'Email' },
+  'admin.filterAll': { bn: 'সব', en: 'All' },
+  'admin.filterVerified': { bn: 'যাচাইকৃত', en: 'Verified' },
+  'admin.filterUnverified': { bn: 'অযাচাইকৃত', en: 'Unverified' },
+  'admin.filterGoogle': { bn: 'গুগল', en: 'Google' },
+  'admin.filterEmail': { bn: 'ইমেইল', en: 'Email' },
 }

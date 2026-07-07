@@ -201,6 +201,10 @@
   }
   .chip-accent { background-color: var(--accent-soft); color: var(--accent); border-color: transparent; }
 
+  /* Hide horizontal scrollbar (filter chip rows) while keeping scroll */
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+
   /* -------- Semantic tints (soft bg + border), light & dark safe -------- */
   .tint-pos {
     background-color: color-mix(in srgb, var(--positive) 10%, var(--surface));

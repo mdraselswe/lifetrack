@@ -31,6 +31,7 @@ export default function AdminPage() {
   const router = useRouter()
   const [users, setUsers] = useState<AdminUser[] | null>(null)
   const [search, setSearch] = useState('')
+  const [filter, setFilter] = useState<'all' | 'verified' | 'unverified' | 'google' | 'email'>('all')
 
   const isAdmin = !!user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()
 
@@ -59,7 +60,26 @@ export default function AdminPage() {
   const now = Date.now()
   const active7d = (users || []).filter((u) => u.lastLoginAt > now - 7 * 24 * 60 * 60 * 1000).length
   const q = search.trim().toLowerCase()
-  const shown = (users || []).filter((u) => !q || u.email.toLowerCase().includes(q) || u.name.toLowerCase().includes(q))
+  const matchesFilter = (u: AdminUser) => {
+    switch (filter) {
+      case 'verified': return u.verified
+      case 'unverified': return !u.verified
+      case 'google': return u.provider === 'google.com'
+      case 'email': return u.provider !== 'google.com'
+      default: return true
+    }
+  }
+  const shown = (users || [])
+    .filter(matchesFilter)
+    .filter((u) => !q || u.email.toLowerCase().includes(q) || u.name.toLowerCase().includes(q))
+
+  const FILTERS: { key: typeof filter; label: string }[] = [
+    { key: 'all', label: t('admin.filterAll') },
+    { key: 'verified', label: t('admin.filterVerified') },
+    { key: 'unverified', label: t('admin.filterUnverified') },
+    { key: 'google', label: t('admin.filterGoogle') },
+    { key: 'email', label: t('admin.filterEmail') },
+  ]
 
   return (
     <div className="min-h-full">
@@ -92,11 +112,23 @@ export default function AdminPage() {
               />
             </div>
 
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 no-scrollbar">
+              {FILTERS.map((f) => (
+                <button
+                  key={f.key}
+                  onClick={() => setFilter(f.key)}
+                  className={`chip flex-shrink-0 whitespace-nowrap transition-colors ${filter === f.key ? 'chip-accent' : ''}`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+
             {shown.length === 0 && (
               <div className="text-center py-10"><NoResultsIllustration className="w-44 h-26 mx-auto mb-3" /><p className="text-muted text-sm">{t('search.noResults')}</p></div>
             )}
 
-            <div className="space-y-3 list-stagger" key={q}>
+            <div className="space-y-3 list-stagger" key={q + filter}>
               {shown.map((u) => (
                 <div key={u.uid} className="card space-y-3">
                   <div className="flex items-start justify-between gap-3">
