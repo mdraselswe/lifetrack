@@ -1,6 +1,6 @@
 // Service Worker for LifeTrack PWA - Next.js 16 Optimized
 
-const CACHE_VERSION = 'v7'
+const CACHE_VERSION = 'v8'
 const STATIC_CACHE = `lifetrack-static-${CACHE_VERSION}`
 const DYNAMIC_CACHE = `lifetrack-dynamic-${CACHE_VERSION}`
 const RUNTIME_CACHE = `lifetrack-runtime-${CACHE_VERSION}`
@@ -95,6 +95,13 @@ self.addEventListener('fetch', (event) => {
 
   // Skip chrome-extension and other non-http requests
   if (!url.protocol.startsWith('http')) {
+    return
+  }
+
+  // API routes are dynamic — always hit the network, never serve a cached
+  // response (otherwise e.g. /api/admin/users returns a stale user list).
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(fetch(request))
     return
   }
 
