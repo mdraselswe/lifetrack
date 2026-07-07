@@ -5,6 +5,7 @@
 একটি আধুনিক Progressive Web App (PWA) — মোবাইলে app-এর মতো install করুন, offline-এও চলে, আর রিমাইন্ডারের notification পান app বন্ধ থাকলেও। বাংলা ও English দুই ভাষাতেই।
 
 🔗 **Live:** https://lifetrack-site.vercel.app
+📥 **Android APK:** [Download](https://drive.google.com/file/d/1V470VuBgjShNZ6KIWS1xbStOsnDqpQpr/view?usp=sharing)
 
 ---
 
@@ -131,6 +132,8 @@ npm test             # vitest (21 tests)
 ## 🤖 Android app (TWA)
 
 Android app-টি একটি **Trusted Web Activity** — live PWA-কেই wrap করে, আলাদা native code নেই।
+
+📥 **সরাসরি install:** [APK download](https://drive.google.com/file/d/1V470VuBgjShNZ6KIWS1xbStOsnDqpQpr/view?usp=sharing) → phone-এ খুলে "unknown source" allow করে install করুন।
 
 1. [PWABuilder](https://www.pwabuilder.com)-এ live URL দিন → **Package For Stores → Android → Google Play (`.aab`)**
 2. package id `com.lifetrack.app`, signing key auto-generate — **keystore + password নিরাপদে সংরক্ষণ করুন** (হারালে আর update দেওয়া যাবে না)
