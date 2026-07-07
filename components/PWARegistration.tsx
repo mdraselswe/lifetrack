@@ -9,6 +9,29 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
+// Show the install banner at most once per calendar day. Dismissing ("পরে")
+// snoozes it for the rest of the day; it reappears the next day.
+const SNOOZE_KEY = 'pwa-install-last-shown'
+const todayStr = () => {
+  const d = new Date()
+  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`
+}
+const shownToday = () => {
+  try { return localStorage.getItem(SNOOZE_KEY) === todayStr() } catch { return false }
+}
+const markShownToday = () => {
+  try { localStorage.setItem(SNOOZE_KEY, todayStr()) } catch { /* ignore */ }
+}
+
+// iOS Safari never fires beforeinstallprompt; per product decision we show no
+// banner there at all (users add via Share → Add to Home Screen manually).
+const isIOS = () => {
+  if (typeof navigator === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  return /iphone|ipad|ipod/i.test(ua) ||
+    (navigator.platform === 'MacIntel' && (navigator as any).maxTouchPoints > 1)
+}
+
 export default function PWARegistration() {
   useLang() // re-render on language switch
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
@@ -81,8 +104,11 @@ export default function PWARegistration() {
       e.preventDefault()
       const promptEvent = e as BeforeInstallPromptEvent
       console.log('beforeinstallprompt event fired!')
-      setDeferredPrompt(promptEvent)
+      setDeferredPrompt(promptEvent) // keep it so the button can prompt later today
+      // No banner on iOS, when already installed, or if we already showed it today.
+      if (isIOS() || checkInstalled() || shownToday()) return
       setShowInstallPrompt(true)
+      markShownToday()
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
