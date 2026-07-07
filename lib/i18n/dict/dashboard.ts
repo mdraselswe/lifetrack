@@ -1,6 +1,7 @@
 import type { Dict } from './types'
 
 export const dashboard: Dict = {
+  'greeting.night': { bn: 'শুভ রাত', en: 'Good night' },
   'greeting.morning': { bn: 'শুভ সকাল', en: 'Good morning' },
   'greeting.noon': { bn: 'শুভ দুপুর', en: 'Good afternoon' },
   'greeting.afternoon': { bn: 'শুভ বিকাল', en: 'Good afternoon' },

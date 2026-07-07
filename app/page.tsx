@@ -31,10 +31,12 @@ const bnInt = (n: number) => fmtNum(Math.round(n))
 
 const greeting = () => {
   const h = new Date().getHours()
+  if (h < 5) return t('greeting.night')     // late night
   if (h < 12) return t('greeting.morning')
   if (h < 16) return t('greeting.noon')
   if (h < 19) return t('greeting.afternoon')
-  return t('greeting.evening')
+  if (h < 23) return t('greeting.evening')
+  return t('greeting.night')                // 11pm–midnight
 }
 
 // Handles ISO strings AND Firestore Timestamp objects (doc createdAt is written
