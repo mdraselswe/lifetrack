@@ -174,37 +174,37 @@ export default function LoansPage() {
       increases: [],
     }
 
+    const capturedDueDate = dueDate
+    const capturedLead = reminderLead
     saveLoan(loan).then((newId) => {
-      if (dueDate) {
-        const reminder: Reminder = {
+      if (capturedDueDate) {
+        saveReminder({
           id: crypto.randomUUID(),
-          title: t('loans.dueReminderTitle', { name: personName }),
-          description: t('loans.dueReminderDesc', { name: personName, amount: bn(parsedAmount), date: bnDate(dueDate) }),
-          scheduledTime: dueReminderTime(dueDate, reminderLead),
+          title: t('loans.dueReminderTitle', { name: loan.personName }),
+          description: t('loans.dueReminderDesc', { name: loan.personName, amount: bn(parsedAmount), date: bnDate(capturedDueDate) }),
+          scheduledTime: dueReminderTime(capturedDueDate, capturedLead),
           dismissed: false,
           createdAt: new Date().toISOString(),
           sourceId: newId,
           sourceType: 'loan',
-        }
-        saveReminder(reminder).then(() => {
-          toast.info(t('loans.dueReminderCreated'))
-        }).catch(console.error)
+        }).then(() => toast.info(t('loans.dueReminderCreated'))).catch(console.error)
       }
-      setPersonName('')
-      setAmount('')
-      setReason('')
-      setDate(localDatetimeValue())
-      setDueDate('')
-      setReminderLead('onTime')
-      setShowForm(false)
-      toast.success(t('loans.addSuccess'))
     }).catch((error) => {
       console.error('Error saving loan:', error)
       toast.error(t('loans.addError'))
-    }).finally(() => {
-      savingRef.current = false
-      setSaving(false)
     })
+
+    // Optimistic close — Firestore applies locally now, syncs when online.
+    setPersonName('')
+    setAmount('')
+    setReason('')
+    setDate(localDatetimeValue())
+    setDueDate('')
+    setReminderLead('onTime')
+    setShowForm(false)
+    savingRef.current = false
+    setSaving(false)
+    toast.success(t('loans.addSuccess'))
   }
 
   const handleToggleReturned = (loan: Loan) => {

@@ -170,38 +170,41 @@ export default function DebtsPage() {
       increases: [],
     }
 
+    // Fire the write; the linked reminder is created once we get the real id.
+    // Offline, Firestore resolves this only after a later sync — so we do NOT
+    // await it to close the modal (below), we just handle id/errors when it settles.
+    const capturedDueDate = dueDate
+    const capturedLead = reminderLead
     saveDebt(debt).then((newId) => {
-      if (dueDate) {
-        const reminder: Reminder = {
+      if (capturedDueDate) {
+        saveReminder({
           id: crypto.randomUUID(),
-          title: t('debts.dueReminderTitle', { name: personName }),
-          description: t('debts.dueReminderDesc', { name: personName, amount: bn(parsedAmount), date: bnDate(dueDate) }),
-          scheduledTime: dueReminderTime(dueDate, reminderLead),
+          title: t('debts.dueReminderTitle', { name: debt.personName }),
+          description: t('debts.dueReminderDesc', { name: debt.personName, amount: bn(parsedAmount), date: bnDate(capturedDueDate) }),
+          scheduledTime: dueReminderTime(capturedDueDate, capturedLead),
           dismissed: false,
           createdAt: new Date().toISOString(),
           sourceId: newId,
           sourceType: 'debt',
-        }
-        saveReminder(reminder).then(() => {
-          toast.info(t('debts.dueReminderCreated'))
-        }).catch(console.error)
+        }).then(() => toast.info(t('debts.dueReminderCreated'))).catch(console.error)
       }
-      setPersonName('')
-      setAmount('')
-      setReason('')
-      setDate(localDatetimeValue())
-      setDueDate('')
-      setReminderLead('onTime')
-      setShowForm(false)
-      loadDebts().catch(console.error)
-      toast.success(t('debts.addSuccess'))
     }).catch((error) => {
       console.error('Error saving debt:', error)
       toast.error(t('debts.addError'))
-    }).finally(() => {
-      savingRef.current = false
-      setSaving(false)
     })
+
+    // Optimistic close: the write is applied to the local cache immediately and
+    // syncs when online, so don't hang the modal on the server ack.
+    setPersonName('')
+    setAmount('')
+    setReason('')
+    setDate(localDatetimeValue())
+    setDueDate('')
+    setReminderLead('onTime')
+    setShowForm(false)
+    savingRef.current = false
+    setSaving(false)
+    toast.success(t('debts.addSuccess'))
   }
 
   const handleToggleReturned = (debt: Debt) => {

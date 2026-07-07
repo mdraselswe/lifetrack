@@ -224,11 +224,11 @@ export default function Dashboard() {
         completionCount: 0,
         occurrences: [],
       }
-      saveReminder(reminder).then(() => {
-        setAddType(null)
-        toast.success(t('reminders.created'))
-      }).catch((e) => { console.error(e); toast.error(t('reminders.saveError')) })
-        .finally(() => { savingRef.current = false; setSaving(false) })
+      saveReminder(reminder).catch((e) => { console.error(e); toast.error(t('reminders.saveError')) })
+      // Optimistic close — write applies locally, syncs when online.
+      setAddType(null)
+      savingRef.current = false; setSaving(false)
+      toast.success(t('reminders.created'))
       return
     }
     const isDebt = addType === 'debt'
@@ -249,26 +249,27 @@ export default function Dashboard() {
       payments: [],
       increases: [],
     }
+    const capturedDue = fDueDate
+    const capturedLead = fReminderLead
     const save = isDebt ? saveDebt(item as Debt) : saveLoan(item as Loan)
     save.then((newId) => {
-      if (fDueDate) {
-        // Same pattern as the debts/loans pages: a due date spawns a reminder,
-        // linked to the new record so deleting it removes the reminder too.
+      if (capturedDue) {
         saveReminder({
           id: crypto.randomUUID(),
-          title: t(`${k}.dueReminderTitle`, { name: fName }),
-          description: t(`${k}.dueReminderDesc`, { name: fName, amount: bn(parsedAmount), date: fmtDate(fDueDate) }),
-          scheduledTime: dueReminderTime(fDueDate, fReminderLead),
+          title: t(`${k}.dueReminderTitle`, { name: item.personName }),
+          description: t(`${k}.dueReminderDesc`, { name: item.personName, amount: bn(parsedAmount), date: fmtDate(capturedDue) }),
+          scheduledTime: dueReminderTime(capturedDue, capturedLead),
           dismissed: false,
           createdAt: new Date().toISOString(),
           sourceId: newId,
           sourceType: isDebt ? 'debt' : 'loan',
         }).then(() => toast.info(t(`${k}.dueReminderCreated`))).catch(console.error)
       }
-      setAddType(null)
-      toast.success(t(`${k}.addSuccess`))
     }).catch((e) => { console.error(e); toast.error(t(`${k}.addError`)) })
-      .finally(() => { savingRef.current = false; setSaving(false) })
+    // Optimistic close — write applies locally, syncs when online.
+    setAddType(null)
+    savingRef.current = false; setSaving(false)
+    toast.success(t(`${k}.addSuccess`))
   }
 
   const openPay = (kind: 'debt' | 'loan', id: string, remaining: number) => {
