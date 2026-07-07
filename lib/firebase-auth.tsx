@@ -8,6 +8,7 @@ import {
   onAuthStateChanged,
   sendEmailVerification,
   sendPasswordResetEmail,
+  updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
   User
@@ -107,12 +108,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password)
 
-      // Send a verification email, then sign out so the account cannot be
-      // used until the address is confirmed. Guarantees a real, reachable email.
+      // Store the display name, send a verification email, then sign out so the
+      // account can't be used until the address is confirmed.
+      if (name) {
+        try { await updateProfile(userCredential.user, { displayName: name }) } catch { /* non-fatal */ }
+      }
       await sendEmailVerification(userCredential.user)
       await signOut(auth)
 
     } catch (error: any) {
+      // Recovery path: the email is already registered. If it belongs to an
+      // UNVERIFIED account (e.g. the first verification email never arrived),
+      // re-send the link so the user isn't stuck. If it's verified, tell them
+      // to log in. Requires the same password to prove ownership.
+      if (error.code === 'auth/email-already-in-use') {
+        try {
+          const existing = await signInWithEmailAndPassword(auth, email, password)
+          if (!existing.user.emailVerified) {
+            try { await sendEmailVerification(existing.user) } catch { /* rate limit */ }
+            await signOut(auth)
+            return // treat as success — the register page shows "check your email"
+          }
+          await signOut(auth) // verified account → fall through to "already in use"
+        } catch {
+          // wrong password / cannot prove ownership → generic already-in-use below
+        }
+      }
+
       // Suppress Firebase console error by not logging it
       // Handle specific Firebase auth errors
       let errorMessage = t('auth.error.register')
