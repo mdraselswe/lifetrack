@@ -83,7 +83,7 @@ export async function GET() {
   return new NextResponse(JSON.stringify(manifest), {
     headers: {
       'Content-Type': 'application/manifest+json',
-      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Cache-Control': 'public, max-age=0, must-revalidate',
     },
   })
 }
