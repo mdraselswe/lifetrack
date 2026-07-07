@@ -1044,7 +1044,12 @@ export default function DebtsPage() {
                           <div className="min-w-0">
                             <h3 className="font-semibold text-content truncate">{debt.personName}</h3>
                             <p className="text-xs text-muted">{bnDate(debt.date)}</p>
-                            {dueBadge(debt.dueDate) && <div className="mt-1.5">{dueBadge(debt.dueDate)}</div>}
+                            {debt.dueDate && (
+                              <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                                {dueBadge(debt.dueDate)}
+                                <span className="text-xs text-muted">{t('due.on', { date: bnDate(debt.dueDate) })}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">

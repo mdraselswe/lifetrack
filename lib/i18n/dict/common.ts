@@ -82,6 +82,7 @@ export const common: Dict = {
   'due.daysLeft': { bn: 'ফেরত: {count} দিন বাকি', en: 'Due in {count} days' },
   'due.today': { bn: 'আজ ফেরতের দিন', en: 'Due today' },
   'due.overdue': { bn: '{count} দিন পার হয়ে গেছে', en: '{count} days overdue' },
+  'due.on': { bn: 'ফেরতের তারিখ: {date}', en: 'Due: {date}' },
   'common.paidPct': { bn: '{pct}% পরিশোধিত', en: '{pct}% paid' },
   'common.details': { bn: 'বিস্তারিত', en: 'Details' },
   'common.showLess': { bn: 'কম দেখুন', en: 'Show less' },

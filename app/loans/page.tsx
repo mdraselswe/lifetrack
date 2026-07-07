@@ -1028,7 +1028,12 @@ export default function LoansPage() {
                           <div className="min-w-0">
                             <h3 className="font-semibold text-content truncate">{loan.personName}</h3>
                             <p className="text-xs text-muted">{bnDate(loan.date)}</p>
-                            {dueBadge(loan.dueDate) && <div className="mt-1.5">{dueBadge(loan.dueDate)}</div>}
+                            {loan.dueDate && (
+                              <div className="mt-1.5 flex items-center gap-2 flex-wrap">
+                                {dueBadge(loan.dueDate)}
+                                <span className="text-xs text-muted">{t('due.on', { date: bnDate(loan.dueDate) })}</span>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
