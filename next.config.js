@@ -71,6 +71,10 @@ const nextConfig = {
         source: '/manifest.json',
         destination: '/api/manifest',
       },
+      {
+        source: '/.well-known/assetlinks.json',
+        destination: '/api/assetlinks',
+      },
     ]
   },
 }
