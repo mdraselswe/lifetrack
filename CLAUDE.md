@@ -49,9 +49,15 @@ Call these from anywhere; no context/provider needed.
 
 ## PWA & notifications
 
-- Manifest is served **dynamically** from [app/api/manifest/route.ts](app/api/manifest/route.ts); `/manifest.json` is rewritten to it in [next.config.js](next.config.js). Edit the route, not a static file.
+- Manifest is served **dynamically** from [app/api/manifest/route.ts](app/api/manifest/route.ts); `/manifest.json` is rewritten to it in [next.config.js](next.config.js). Edit the route, not a static file. There must be **no** `public/manifest.json` — a static file under `public/` wins over the `afterFiles` rewrite and silently shadows the route (this bit us once). The manifest carries `id`, `display_override`, split `any`/`maskable` icons, `shortcuts`, and `screenshots` (`public/screenshot-{mobile,desktop}.png`) — these fields are what PWABuilder scores and what the Play Store install UI shows, so keep them populated.
 - Service worker: [public/sw.js](public/sw.js) (registered by [components/PWARegistration.tsx](components/PWARegistration.tsx)), served with no-cache headers via next.config.
 - [lib/notifications.ts](lib/notifications.ts) schedules reminders by `postMessage(SCHEDULE_NOTIFICATION|CANCEL_NOTIFICATION)` to the SW **plus** an in-page `setTimeout` fallback. Notifications only fire while a browser tab is open — this is a known limitation, not a bug.
+
+## Android app (TWA)
+
+- The Android app is a **Trusted Web Activity** wrapping the live PWA — packaged with [PWABuilder](https://www.pwabuilder.com) (Bubblewrap under the hood), package id `com.lifetrack.app`. No native source lives in this repo; rebuild by re-running PWABuilder against the deployed URL.
+- **Digital Asset Links** verify the TWA against the domain (no Chrome address bar). Served at `/.well-known/assetlinks.json` from [app/api/assetlinks/route.ts](app/api/assetlinks/route.ts), rewritten in next.config — Next.js does **not** serve dotfile folders under `public/`, so this must be a route, not a static file. The `sha256_cert_fingerprints` there must match the PWABuilder signing key exactly.
+- The `.aab` upload key / keystore + passwords are **not** in the repo (kept in the maintainer's password manager). Losing them means no more Play Store updates for `com.lifetrack.app` — Google offers no recovery.
 
 ## Config notes
 

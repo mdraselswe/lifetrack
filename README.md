@@ -66,6 +66,7 @@
 
 ### 📱 PWA ও Offline
 - **Install করুন** home screen-এ — native app-এর মতো (standalone)
+- **Android app** — একই PWA থেকে Trusted Web Activity (TWA) হিসেবে packaged, Play Store-এ দেওয়া যায়
 - **Offline-এও চলে** — data দেখা ও লেখা যায়, সংযোগ ফিরলে auto-sync
 - **Offline indicator** — সংযোগ গেলে banner দেখায়
 - **Realtime sync** — এক device-এ পরিবর্তন, সব device-এ সাথে সাথে update
@@ -126,6 +127,15 @@ npm run build        # production build
 npm run type-check   # tsc --noEmit
 npm test             # vitest (21 tests)
 ```
+
+## 🤖 Android app (TWA)
+
+Android app-টি একটি **Trusted Web Activity** — live PWA-কেই wrap করে, আলাদা native code নেই।
+
+1. [PWABuilder](https://www.pwabuilder.com)-এ live URL দিন → **Package For Stores → Android → Google Play (`.aab`)**
+2. package id `com.lifetrack.app`, signing key auto-generate — **keystore + password নিরাপদে সংরক্ষণ করুন** (হারালে আর update দেওয়া যাবে না)
+3. Digital Asset Links আগে থেকেই serve হয় `/.well-known/assetlinks.json`-এ ([app/api/assetlinks/route.ts](app/api/assetlinks/route.ts)) — নতুন signing key হলে সেখানকার fingerprint আপডেট করুন
+4. `.aab` [Play Console](https://play.google.com/console)-এ upload করে publish করুন
 
 ## 📄 লাইসেন্স
 
