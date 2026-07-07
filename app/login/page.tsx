@@ -86,13 +86,13 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen full-vh flex flex-col items-center justify-center p-4 safe-area-top safe-area-bottom">
+    <div className="min-h-screen full-vh flex flex-col items-center p-4 safe-area-top safe-area-bottom overflow-y-auto">
       <div className="absolute top-4 right-4 flex items-center gap-2">
         <LanguageToggle />
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-sm fade-in">
+      <div className="w-full max-w-sm fade-in my-auto">
         <div className="flex flex-col items-center mb-6">
           <FinanceHeroIllustration className="w-64 h-44 mb-1" />
           <h1 className="text-2xl font-bold text-content">{t('auth.login.title')}</h1>
