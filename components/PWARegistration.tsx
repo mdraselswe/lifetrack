@@ -113,19 +113,22 @@ export default function PWARegistration() {
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
 
-    // Alternative: Show manual install instructions after a delay
-    setTimeout(() => {
-      if (!deferredPrompt && !checkInstalled()) {
-        // Don't auto-show, but log for debugging
-        console.log('PWA install instructions:')
-        console.log('- Desktop Chrome/Edge: Address bar install icon')
-        console.log('- Mobile Chrome: Menu → "Add to Home Screen"')
-        console.log('- Mobile Safari: Share → "Add to Home Screen"')
-      }
-    }, 5000)
+    // iOS Safari never fires beforeinstallprompt, so show the banner ourselves:
+    // same daily-once rule, until it's installed. The banner points users to
+    // Share → Add to Home Screen (there's no programmatic install on iOS).
+    let iosTimer: ReturnType<typeof setTimeout> | undefined
+    if (isIOS() && !checkInstalled() && !shownToday()) {
+      iosTimer = setTimeout(() => {
+        if (!checkInstalled()) {
+          setShowInstallPrompt(true)
+          markShownToday()
+        }
+      }, 3000)
+    }
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+      if (iosTimer) clearTimeout(iosTimer)
     }
   }, [deferredPrompt])
 
