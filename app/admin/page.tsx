@@ -9,6 +9,7 @@ import AppBar from '@/components/AppBar'
 import { ListSkeleton } from '@/components/SkeletonLoader'
 import { t, useLang, fmtInt, fmtDate, fmtRelative } from '@/lib/i18n'
 import { toast } from '@/lib/toast'
+import { confirm } from '@/lib/confirm'
 import { SearchIcon } from '@/components/Icons'
 import { NoResultsIllustration } from '@/components/Illustrations'
 import { avatarColor } from '@/lib/avatar'
@@ -32,6 +33,45 @@ export default function AdminPage() {
   const [users, setUsers] = useState<AdminUser[] | null>(null)
   const [search, setSearch] = useState('')
   const [filter, setFilter] = useState<'all' | 'verified' | 'unverified' | 'google' | 'email'>('all')
+
+  // Push broadcast composer
+  const [pushTitle, setPushTitle] = useState('')
+  const [pushBody, setPushBody] = useState('')
+  const [pushUrl, setPushUrl] = useState('')
+  const [pushTarget, setPushTarget] = useState<'all' | 'verified' | 'unverified'>('all')
+  const [pushSending, setPushSending] = useState(false)
+
+  const sendBroadcast = async () => {
+    const title = pushTitle.trim()
+    const body = pushBody.trim()
+    if (!title || !body) { toast.error(t('admin.pushEmpty')); return }
+    setPushSending(true)
+    try {
+      const token = await auth.currentUser?.getIdToken()
+      const res = await fetch('/api/admin/broadcast', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-firebase-token': token || '' },
+        body: JSON.stringify({ title, body, url: pushUrl.trim(), target: pushTarget }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) throw new Error(data.error || 'failed')
+      toast.success(`${t('admin.pushResult')}: ${fmtInt(data.sent)}`)
+      setPushTitle(''); setPushBody(''); setPushUrl('')
+    } catch (e) {
+      console.error('broadcast failed:', e)
+      toast.error(t('admin.pushError'))
+    } finally {
+      setPushSending(false)
+    }
+  }
+
+  const confirmSend = () => {
+    if (!pushTitle.trim() || !pushBody.trim()) { toast.error(t('admin.pushEmpty')); return }
+    confirm.custom(t('admin.pushTitle'), t('admin.pushConfirm'), sendBroadcast, {
+      confirmText: t('admin.pushSend'),
+      type: 'info',
+    })
+  }
 
   const isAdmin = !!user?.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()
 
@@ -100,6 +140,42 @@ export default function AdminPage() {
                 <p className="text-2xl font-bold text-content">{fmtInt(active7d)}</p>
               </div>
             </div>
+
+            <details className="card">
+              <summary className="cursor-pointer font-semibold text-content">{t('admin.pushTitle')}</summary>
+              <div className="mt-4 space-y-3">
+                <div>
+                  <label className="label">{t('admin.pushHeading')}</label>
+                  <input type="text" value={pushTitle} onChange={(e) => setPushTitle(e.target.value)} className="input" placeholder={t('admin.pushHeadingPlaceholder')} maxLength={80} />
+                </div>
+                <div>
+                  <label className="label">{t('admin.pushMessage')}</label>
+                  <textarea value={pushBody} onChange={(e) => setPushBody(e.target.value)} className="input min-h-[80px] resize-y" placeholder={t('admin.pushMessagePlaceholder')} maxLength={300} />
+                </div>
+                <div>
+                  <label className="label">{t('admin.pushLink')}</label>
+                  <input type="text" value={pushUrl} onChange={(e) => setPushUrl(e.target.value)} className="input" placeholder="/debts" />
+                </div>
+                <div>
+                  <label className="label">{t('admin.pushTarget')}</label>
+                  <div className="flex gap-2">
+                    {([
+                      { k: 'all', l: t('admin.targetAll') },
+                      { k: 'verified', l: t('admin.targetVerified') },
+                      { k: 'unverified', l: t('admin.targetUnverified') },
+                    ] as const).map((o) => (
+                      <button key={o.k} type="button" onClick={() => setPushTarget(o.k)}
+                        className={`chip flex-shrink-0 ${pushTarget === o.k ? 'chip-accent' : ''}`}>
+                        {o.l}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <button type="button" onClick={confirmSend} disabled={pushSending} className="btn btn-primary w-full">
+                  {pushSending ? t('admin.pushSending') : t('admin.pushSend')}
+                </button>
+              </div>
+            </details>
 
             <div className="relative">
               <SearchIcon className="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />

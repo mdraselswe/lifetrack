@@ -1,6 +1,6 @@
 // Service Worker for LifeTrack PWA - Next.js 16 Optimized
 
-const CACHE_VERSION = 'v8'
+const CACHE_VERSION = 'v9'
 const STATIC_CACHE = `lifetrack-static-${CACHE_VERSION}`
 const DYNAMIC_CACHE = `lifetrack-dynamic-${CACHE_VERSION}`
 const RUNTIME_CACHE = `lifetrack-runtime-${CACHE_VERSION}`
@@ -264,11 +264,15 @@ self.addEventListener('notificationclick', (event) => {
         }
         notification.close()
       } else {
-        // Default click - open the app
+        // Default click (incl. the "view" action / broadcasts) — open the URL
+        // the push carried, else fall back to the reminders page.
+        const target = (notification.data && notification.data.url) || '/reminders'
         if (clientList.length > 0) {
-          clientList[0].focus()
+          const client = clientList[0]
+          client.focus()
+          if ('navigate' in client && target) client.navigate(target).catch(() => {})
         } else {
-          clients.openWindow('/reminders')
+          clients.openWindow(target)
         }
         notification.close()
       }
