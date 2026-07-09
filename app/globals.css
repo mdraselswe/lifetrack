@@ -12,7 +12,9 @@
   --surface-2: #f7f8fa;
   --border: #e7e9ee;
   --text: #101828;
-  --muted: #667085;
+  /* #667085 was ~4.6:1 on --bg — over 4.5 in theory but dips under Lighthouse's
+     exact sRGB math. #5e6879 gives ~5.2:1, clearing AA with margin. */
+  --muted: #5e6879;
   --accent: #4f46e5;
   /* Accent-as-text — split from --accent so link text can meet 4.5:1 without
      lightening the button background (which needs white text at 4.5:1). Light
