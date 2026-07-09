@@ -35,9 +35,11 @@
   --border: #262c3a;
   --text: #e7eaf0;
   --muted: #98a2b3;
-  --accent: #6366f1;
-  /* Lighter than --accent (#6366f1 hits only ~4.1:1 as text on dark surfaces).
-     #818cf8 gives ~5.5:1 on the lightest dark surface — WCAG AA for link text. */
+  /* #6366f1 gave only 4.49:1 for white button text (just under AA). #5457e5 is
+     visually near-identical but lifts white-on-accent to ~5.4:1. Text links use
+     --accent-text below, so this darkening doesn't affect link contrast. */
+  --accent: #5457e5;
+  /* Lighter than --accent so link text hits ~5.5:1 on dark surfaces (AA). */
   --accent-text: #818cf8;
   --accent-fg: #ffffff;
   --accent-soft: #1c2030;

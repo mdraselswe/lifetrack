@@ -68,13 +68,16 @@ const nextConfig = {
             key: 'Content-Security-Policy',
             value: [
               "default-src 'self'",
-              // Dev (React/Turbopack) needs eval(); production never does — so it
-              // is scoped to dev only, keeping the prod policy tight.
-              `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ''}`,
+              // apis.google.com serves the gapi script Firebase Auth uses for
+              // Google sign-in. Dev (React/Turbopack) also needs eval().
+              `script-src 'self' 'unsafe-inline' https://apis.google.com${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ''}`,
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
               "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com",
+              // Google sign-in opens iframes on these hosts (gapi + Firebase auth
+              // handler + the Google accounts chooser).
+              "frame-src 'self' https://apis.google.com https://accounts.google.com https://*.firebaseapp.com",
               "worker-src 'self'",
               "manifest-src 'self'",
               "frame-ancestors 'none'",
