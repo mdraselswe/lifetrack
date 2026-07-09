@@ -1044,12 +1044,6 @@ export default function DebtsPage() {
                           <div className="min-w-0">
                             <h3 className="font-semibold text-content truncate">{debt.personName}</h3>
                             <p className="text-xs text-muted">{bnDate(debt.date)}</p>
-                            {debt.dueDate && (
-                              <div className="mt-1.5 flex items-center gap-2 flex-wrap">
-                                {dueBadge(debt.dueDate)}
-                                <span className="text-xs text-muted">{t('due.on', { date: bnDate(debt.dueDate) })}</span>
-                              </div>
-                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
@@ -1058,6 +1052,13 @@ export default function DebtsPage() {
                           <button className="icon-btn" onClick={() => handleDelete(debt.id)} title={t('common.delete')}><TrashIcon className="w-5 h-5" /></button>
                         </div>
                       </div>
+
+                      {debt.dueDate && (
+                        <div className="flex items-center gap-2 flex-wrap -mt-2">
+                          {dueBadge(debt.dueDate)}
+                          <span className="text-xs text-muted whitespace-nowrap">{t('due.on', { date: bnDate(debt.dueDate) })}</span>
+                        </div>
+                      )}
 
                       <div className="grid grid-cols-3 gap-2 text-center">
                         <div><p className="text-xs text-muted mb-0.5">{t('debts.total')}</p><p className="text-sm font-semibold text-content">৳{bn(total)}</p></div>
