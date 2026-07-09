@@ -92,7 +92,9 @@ export default function LoginPage() {
         <ThemeToggle />
       </div>
 
-      <div className="w-full max-w-sm fade-in my-auto">
+      {/* No fade-in here: this wrapper holds the LCP element (hero + heading),
+          and an opacity-0 start delays Largest Contentful Paint by ~320ms. */}
+      <div className="w-full max-w-sm my-auto">
         <div className="flex flex-col items-center mb-6">
           <FinanceHeroIllustration className="w-64 h-44 mb-1" />
           <h1 className="text-2xl font-bold text-content">{t('auth.login.title')}</h1>
