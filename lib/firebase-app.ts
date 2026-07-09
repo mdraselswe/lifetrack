@@ -14,7 +14,11 @@ import {
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  // authDomain is the app's OWN origin (not the *.firebaseapp.com default) so
+  // the OAuth handler runs same-origin — otherwise browsers that partition
+  // third-party storage (Android Chrome, iOS PWA) drop the sign-in result.
+  // next.config.js reverse-proxies /__/auth/* to the real Firebase handler.
+  authDomain: 'lifetrack-site.vercel.app',
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,

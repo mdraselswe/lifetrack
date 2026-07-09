@@ -103,6 +103,9 @@ const nextConfig = {
   
   // PWA manifest configuration
   async rewrites() {
+    // Reverse-proxy Firebase Auth's handler onto our own origin so Google
+    // sign-in runs same-origin (see authDomain in lib/firebase-app.ts).
+    const authHandler = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
     return [
       {
         source: '/manifest.json',
@@ -111,6 +114,14 @@ const nextConfig = {
       {
         source: '/.well-known/assetlinks.json',
         destination: '/api/assetlinks',
+      },
+      {
+        source: '/__/auth/:path*',
+        destination: `https://${authHandler}/__/auth/:path*`,
+      },
+      {
+        source: '/__/firebase/:path*',
+        destination: `https://${authHandler}/__/firebase/:path*`,
       },
     ]
   },

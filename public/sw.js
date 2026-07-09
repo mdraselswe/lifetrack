@@ -1,6 +1,6 @@
 // Service Worker for LifeTrack PWA - Next.js 16 Optimized
 
-const CACHE_VERSION = 'v9'
+const CACHE_VERSION = 'v10'
 const STATIC_CACHE = `lifetrack-static-${CACHE_VERSION}`
 const DYNAMIC_CACHE = `lifetrack-dynamic-${CACHE_VERSION}`
 const RUNTIME_CACHE = `lifetrack-runtime-${CACHE_VERSION}`
@@ -95,6 +95,13 @@ self.addEventListener('fetch', (event) => {
 
   // Skip chrome-extension and other non-http requests
   if (!url.protocol.startsWith('http')) {
+    return
+  }
+
+  // Firebase Auth reverse-proxied handler / iframe (/__/auth/*, /__/firebase/*).
+  // Must always hit the network so the Vercel rewrite reaches the real handler —
+  // if the SW served the cached app shell here, Google sign-in would break.
+  if (url.pathname.startsWith('/__/')) {
     return
   }
 
