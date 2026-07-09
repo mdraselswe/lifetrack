@@ -50,6 +50,38 @@ const nextConfig = {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin',
           },
+          // Force HTTPS for 2 years incl. subdomains (Lighthouse Best-Practices audit).
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=63072000; includeSubDomains; preload',
+          },
+          // Origin isolation. Safe here — auth is email/password, no OAuth popups.
+          {
+            key: 'Cross-Origin-Opener-Policy',
+            value: 'same-origin',
+          },
+          // CSP scoped for Firebase (Firestore/Auth/Installations/FCM over *.googleapis.com),
+          // the inline theme-flash script + Next.js inline bootstrap ('unsafe-inline'),
+          // the service worker (worker-src), and dynamic manifest. Tighten script-src with a
+          // nonce later if you move off static rendering.
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              // Dev (React/Turbopack) needs eval(); production never does — so it
+              // is scoped to dev only, keeping the prod policy tight.
+              `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ''}`,
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: blob: https:",
+              "font-src 'self' data:",
+              "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com",
+              "worker-src 'self'",
+              "manifest-src 'self'",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'",
+            ].join('; '),
+          },
         ],
       },
       {

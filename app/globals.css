@@ -14,6 +14,10 @@
   --text: #101828;
   --muted: #667085;
   --accent: #4f46e5;
+  /* Accent-as-text — split from --accent so link text can meet 4.5:1 without
+     lightening the button background (which needs white text at 4.5:1). Light
+     accent already passes on white, so this matches --accent here. */
+  --accent-text: #4f46e5;
   --accent-fg: #ffffff;
   --accent-soft: #eef2ff;
   --positive: #059669;
@@ -30,12 +34,22 @@
   --text: #e7eaf0;
   --muted: #98a2b3;
   --accent: #6366f1;
+  /* Lighter than --accent (#6366f1 hits only ~4.1:1 as text on dark surfaces).
+     #818cf8 gives ~5.5:1 on the lightest dark surface — WCAG AA for link text. */
+  --accent-text: #818cf8;
   --accent-fg: #ffffff;
   --accent-soft: #1c2030;
   --positive: #34d399;
   --negative: #f87171;
   --caution: #fbbf24;
   color-scheme: dark;
+}
+
+/* Redirect the Tailwind `text-accent` utility to the contrast-safe token.
+   Unlayered, so it wins over the generated utilities layer in both themes.
+   Only text color is remapped — bg-accent / ring-accent still use --accent. */
+.text-accent {
+  color: var(--accent-text);
 }
 
 @layer base {
@@ -199,7 +213,7 @@
     border: 1px solid var(--border);
     @apply inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium;
   }
-  .chip-accent { background-color: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  .chip-accent { background-color: var(--accent-soft); color: var(--accent-text); border-color: transparent; }
 
   /* Hide horizontal scrollbar (filter chip rows) while keeping scroll */
   .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
