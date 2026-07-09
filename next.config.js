@@ -55,10 +55,12 @@ const nextConfig = {
             key: 'Strict-Transport-Security',
             value: 'max-age=63072000; includeSubDomains; preload',
           },
-          // Origin isolation. Safe here — auth is email/password, no OAuth popups.
+          // Origin isolation, but allow-popups so Google sign-in (signInWithPopup)
+          // keeps its window.opener link — plain 'same-origin' severs it and
+          // breaks the popup. Lighthouse's origin-isolation audit still passes.
           {
             key: 'Cross-Origin-Opener-Policy',
-            value: 'same-origin',
+            value: 'same-origin-allow-popups',
           },
           // CSP scoped for Firebase (Firestore/Auth/Installations/FCM over *.googleapis.com),
           // the inline theme-flash script + Next.js inline bootstrap ('unsafe-inline'),

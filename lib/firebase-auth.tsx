@@ -11,6 +11,7 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
+  browserPopupRedirectResolver,
   User
 } from 'firebase/auth'
 import { auth } from './firebase-app'
@@ -198,7 +199,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const loginWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider()
-      await signInWithPopup(auth, provider)
+      // Resolver passed explicitly (not wired at init) so gapi loads only now,
+      // on click — keeping it off the initial page load. See firebase-app.ts.
+      await signInWithPopup(auth, provider, browserPopupRedirectResolver)
       // Google accounts always come with a verified, real email, so no
       // extra verification step is needed here.
     } catch (error: any) {

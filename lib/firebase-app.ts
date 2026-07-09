@@ -1,5 +1,11 @@
 import { initializeApp, getApps } from 'firebase/app'
-import { getAuth } from 'firebase/auth'
+import {
+  initializeAuth,
+  getAuth,
+  indexedDBLocalPersistence,
+  browserLocalPersistence,
+  type Auth,
+} from 'firebase/auth'
 
 // App + Auth only — deliberately NO firestore import. Everything in the root
 // layout graph (AuthProvider, Navigation, ProfileMenu…) pulls from here, so
@@ -16,4 +22,20 @@ const firebaseConfig = {
 }
 
 export const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig)
-export const auth = getAuth(app)
+
+// Initialize Auth WITHOUT a popupRedirectResolver. The default getAuth() wires
+// up the resolver eagerly, which loads the gapi iframe (apis.google.com/js/api.js)
+// on every page load — that script hurt LCP/TBT and tripped the CSP. Google
+// sign-in still works because signInWithPopup is passed the resolver explicitly
+// (see firebase-auth.tsx), so gapi only loads on the button click, not on mount.
+// Persistence array mirrors the default (IndexedDB, falling back to localStorage)
+// so existing sessions stay logged in. getAuth() fallback guards double-init (HMR).
+let _auth: Auth
+try {
+  _auth = initializeAuth(app, {
+    persistence: [indexedDBLocalPersistence, browserLocalPersistence],
+  })
+} catch {
+  _auth = getAuth(app)
+}
+export const auth = _auth
