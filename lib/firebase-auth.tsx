@@ -10,8 +10,7 @@ import {
   sendPasswordResetEmail,
   updateProfile,
   GoogleAuthProvider,
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   browserPopupRedirectResolver,
   User
 } from 'firebase/auth'
@@ -23,7 +22,6 @@ interface AuthContextType {
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   loginWithGoogle: () => Promise<void>
-  completeGoogleRedirect: () => Promise<boolean>
   register: (name: string, email: string, password: string) => Promise<void>
   resetPassword: (email: string) => Promise<void>
   logout: () => Promise<void>
@@ -198,54 +196,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  // Redirect, NOT popup. Popups fail on Android Chrome and in-app/TWA browsers:
-  // under third-party storage partitioning the cross-domain auth handler can't
-  // return its result, so the sign-in silently errors. Redirect runs the whole
-  // flow as same-tab top-level navigations, which works everywhere. The result
-  // is picked up by completeGoogleRedirect() when the browser returns.
   const loginWithGoogle = async () => {
     try {
       const provider = new GoogleAuthProvider()
-      // Resolver passed explicitly (not wired at init) so gapi loads only for
-      // the Google flow, not on every page. See firebase-app.ts.
-      await signInWithRedirect(auth, provider, browserPopupRedirectResolver)
-      // Navigates away; nothing after this runs until the browser returns.
+      // Resolver passed explicitly (not wired at init) so gapi loads only now,
+      // on click — keeping it off the initial page load. See firebase-app.ts.
+      await signInWithPopup(auth, provider, browserPopupRedirectResolver)
+      // Google accounts always come with a verified, real email, so no
+      // extra verification step is needed here.
     } catch (error: any) {
       let errorMessage = t('auth.error.google')
-      if (error.code === 'auth/network-request-failed') errorMessage = t('auth.error.network')
-      else if (error.code === 'auth/unauthorized-domain') errorMessage = t('auth.error.unauthorizedDomain')
-      else if (error.code === 'auth/operation-not-allowed') errorMessage = t('auth.error.googleDisabled')
-      const userError = new Error(errorMessage)
-      userError.name = 'UserError'
-      throw userError
-    }
-  }
 
-  // Called on the auth pages when the browser returns from the Google redirect.
-  // Resolves true if a sign-in completed, false if there was no pending redirect
-  // (a normal page visit). Google emails are always verified, so no extra step.
-  const completeGoogleRedirect = async (): Promise<boolean> => {
-    try {
-      const result = await getRedirectResult(auth, browserPopupRedirectResolver)
-      return !!result?.user
-    } catch (error: any) {
-      let errorMessage = t('auth.error.google')
       switch (error.code) {
+        case 'auth/popup-closed-by-user':
+          errorMessage = t('auth.error.popupClosed')
+          break
+        case 'auth/cancelled-popup-request':
+          errorMessage = t('auth.error.cancelledPopup')
+          break
+        case 'auth/popup-blocked':
+          errorMessage = t('auth.error.popupBlocked')
+          break
         case 'auth/account-exists-with-different-credential':
           errorMessage = t('auth.error.accountExists')
           break
         case 'auth/network-request-failed':
           errorMessage = t('auth.error.network')
           break
-        case 'auth/unauthorized-domain':
-          errorMessage = t('auth.error.unauthorizedDomain')
-          break
         case 'auth/operation-not-allowed':
           errorMessage = t('auth.error.googleDisabled')
+          break
+        case 'auth/unauthorized-domain':
+          errorMessage = t('auth.error.unauthorizedDomain')
           break
         default:
           errorMessage = t('auth.error.google')
       }
+
       const userError = new Error(errorMessage)
       userError.name = 'UserError'
       throw userError
@@ -265,7 +252,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     login,
     loginWithGoogle,
-    completeGoogleRedirect,
     register,
     resetPassword,
     logout

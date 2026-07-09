@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/firebase-auth'
 import { toast } from '@/lib/toast'
@@ -20,24 +20,8 @@ export default function RegisterPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
-  const { register, loginWithGoogle, completeGoogleRedirect } = useAuth()
+  const { register, loginWithGoogle } = useAuth()
   const router = useRouter()
-
-  // Finish a Google sign-in when the browser returns from the redirect flow.
-  useEffect(() => {
-    let active = true
-    completeGoogleRedirect()
-      .then((signedIn) => {
-        if (active && signedIn) {
-          toast.success(t('auth.login.success'))
-          router.push('/')
-        }
-      })
-      .catch((error: any) => {
-        if (active) toast.error(error.message || t('auth.error.google'))
-      })
-    return () => { active = false }
-  }, [completeGoogleRedirect, router])
 
   const validateName = (value: string) => {
     const v = isValidName(value)
@@ -57,10 +41,12 @@ export default function RegisterPage() {
   const handleGoogleLogin = async () => {
     setLoading(true)
     try {
-      // Redirects away to Google; result handled on return by the effect above.
       await loginWithGoogle()
+      toast.success(t('auth.login.success'))
+      router.push('/')
     } catch (error: any) {
       toast.error(error.message || t('auth.error.google'))
+    } finally {
       setLoading(false)
     }
   }
