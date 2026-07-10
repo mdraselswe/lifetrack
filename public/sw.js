@@ -1,6 +1,6 @@
 // Service Worker for LifeTrack PWA - Next.js 16 Optimized
 
-const CACHE_VERSION = 'v10'
+const CACHE_VERSION = 'v11'
 const STATIC_CACHE = `lifetrack-static-${CACHE_VERSION}`
 const DYNAMIC_CACHE = `lifetrack-dynamic-${CACHE_VERSION}`
 const RUNTIME_CACHE = `lifetrack-runtime-${CACHE_VERSION}`
@@ -95,13 +95,6 @@ self.addEventListener('fetch', (event) => {
 
   // Skip chrome-extension and other non-http requests
   if (!url.protocol.startsWith('http')) {
-    return
-  }
-
-  // Firebase Auth reverse-proxied handler / iframe (/__/auth/*, /__/firebase/*).
-  // Must always hit the network so the Vercel rewrite reaches the real handler —
-  // if the SW served the cached app shell here, Google sign-in would break.
-  if (url.pathname.startsWith('/__/')) {
     return
   }
 
@@ -271,15 +264,11 @@ self.addEventListener('notificationclick', (event) => {
         }
         notification.close()
       } else {
-        // Default click (incl. the "view" action / broadcasts) — open the URL
-        // the push carried, else fall back to the reminders page.
-        const target = (notification.data && notification.data.url) || '/reminders'
+        // Default click - open the app
         if (clientList.length > 0) {
-          const client = clientList[0]
-          client.focus()
-          if ('navigate' in client && target) client.navigate(target).catch(() => {})
+          clientList[0].focus()
         } else {
-          clients.openWindow(target)
+          clients.openWindow('/reminders')
         }
         notification.close()
       }

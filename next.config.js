@@ -36,11 +36,7 @@ const nextConfig = {
   async headers() {
     return [
       {
-        // Everything EXCEPT the reverse-proxied Firebase auth handler (/__/*).
-        // That handler is Firebase's own code; our strict CSP/COOP/X-Frame would
-        // break its scripts and its popup-to-opener messaging, leaving the
-        // Google sign-in popup stuck on a blank page. Let it run unrestricted.
-        source: '/((?!__/).*)',
+        source: '/(.*)',
         headers: [
           {
             key: 'X-Frame-Options',
@@ -53,43 +49,6 @@ const nextConfig = {
           {
             key: 'Referrer-Policy',
             value: 'origin-when-cross-origin',
-          },
-          // Force HTTPS for 2 years incl. subdomains (Lighthouse Best-Practices audit).
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload',
-          },
-          // Origin isolation, but allow-popups so Google sign-in (signInWithPopup)
-          // keeps its window.opener link — plain 'same-origin' severs it and
-          // breaks the popup. Lighthouse's origin-isolation audit still passes.
-          {
-            key: 'Cross-Origin-Opener-Policy',
-            value: 'same-origin-allow-popups',
-          },
-          // CSP scoped for Firebase (Firestore/Auth/Installations/FCM over *.googleapis.com),
-          // the inline theme-flash script + Next.js inline bootstrap ('unsafe-inline'),
-          // the service worker (worker-src), and dynamic manifest. Tighten script-src with a
-          // nonce later if you move off static rendering.
-          {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              // apis.google.com serves the gapi script Firebase Auth uses for
-              // Google sign-in. Dev (React/Turbopack) also needs eval().
-              `script-src 'self' 'unsafe-inline' https://apis.google.com${process.env.NODE_ENV !== 'production' ? " 'unsafe-eval'" : ''}`,
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: blob: https:",
-              "font-src 'self' data:",
-              "connect-src 'self' https://*.googleapis.com https://*.firebaseio.com wss://*.firebaseio.com",
-              // Google sign-in opens iframes on these hosts (gapi + Firebase auth
-              // handler + the Google accounts chooser).
-              "frame-src 'self' https://apis.google.com https://accounts.google.com https://*.firebaseapp.com",
-              "worker-src 'self'",
-              "manifest-src 'self'",
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self'",
-            ].join('; '),
           },
         ],
       },
@@ -107,9 +66,6 @@ const nextConfig = {
   
   // PWA manifest configuration
   async rewrites() {
-    // Reverse-proxy Firebase Auth's handler onto our own origin so Google
-    // sign-in runs same-origin (see authDomain in lib/firebase-app.ts).
-    const authHandler = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
     return [
       {
         source: '/manifest.json',
@@ -118,14 +74,6 @@ const nextConfig = {
       {
         source: '/.well-known/assetlinks.json',
         destination: '/api/assetlinks',
-      },
-      {
-        source: '/__/auth/:path*',
-        destination: `https://${authHandler}/__/auth/:path*`,
-      },
-      {
-        source: '/__/firebase/:path*',
-        destination: `https://${authHandler}/__/firebase/:path*`,
       },
     ]
   },

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, type FormEvent } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/firebase-auth'
 import { toast } from '@/lib/toast'
@@ -19,24 +19,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
-  const { login, loginWithGoogle, completeGoogleRedirect, resetPassword } = useAuth()
+  const { login, loginWithGoogle, resetPassword } = useAuth()
   const router = useRouter()
-
-  // Finish a Google sign-in when a mobile browser returns from the redirect flow.
-  useEffect(() => {
-    let active = true
-    completeGoogleRedirect()
-      .then((signedIn) => {
-        if (active && signedIn) {
-          toast.success(t('auth.login.success'))
-          router.push('/')
-        }
-      })
-      .catch((error: any) => {
-        if (active) toast.error(error.message || t('auth.error.google'))
-      })
-    return () => { active = false }
-  }, [completeGoogleRedirect, router])
 
   // Password reset modal
   const [resetOpen, setResetOpen] = useState(false)
@@ -108,9 +92,7 @@ export default function LoginPage() {
         <ThemeToggle />
       </div>
 
-      {/* No fade-in here: this wrapper holds the LCP element (hero + heading),
-          and an opacity-0 start delays Largest Contentful Paint by ~320ms. */}
-      <div className="w-full max-w-sm my-auto">
+      <div className="w-full max-w-sm fade-in my-auto">
         <div className="flex flex-col items-center mb-6">
           <FinanceHeroIllustration className="w-64 h-44 mb-1" />
           <h1 className="text-2xl font-bold text-content">{t('auth.login.title')}</h1>
