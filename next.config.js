@@ -36,7 +36,11 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/(.*)',
+        // Everything EXCEPT the reverse-proxied Firebase auth handler (/__/*).
+        // That handler is Firebase's own code; our strict CSP/COOP/X-Frame would
+        // break its scripts and its popup-to-opener messaging, leaving the
+        // Google sign-in popup stuck on a blank page. Let it run unrestricted.
+        source: '/((?!__/).*)',
         headers: [
           {
             key: 'X-Frame-Options',
