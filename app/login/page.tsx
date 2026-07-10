@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/firebase-auth'
 import { toast } from '@/lib/toast'
@@ -19,8 +19,24 @@ export default function LoginPage() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<{ [key: string]: string }>({})
-  const { login, loginWithGoogle, resetPassword } = useAuth()
+  const { login, loginWithGoogle, completeGoogleRedirect, resetPassword } = useAuth()
   const router = useRouter()
+
+  // Finish a Google sign-in when a mobile browser returns from the redirect flow.
+  useEffect(() => {
+    let active = true
+    completeGoogleRedirect()
+      .then((signedIn) => {
+        if (active && signedIn) {
+          toast.success(t('auth.login.success'))
+          router.push('/')
+        }
+      })
+      .catch((error: any) => {
+        if (active) toast.error(error.message || t('auth.error.google'))
+      })
+    return () => { active = false }
+  }, [completeGoogleRedirect, router])
 
   // Password reset modal
   const [resetOpen, setResetOpen] = useState(false)

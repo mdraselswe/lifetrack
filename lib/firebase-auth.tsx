@@ -11,6 +11,8 @@ import {
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   browserPopupRedirectResolver,
   User
 } from 'firebase/auth'
@@ -22,6 +24,7 @@ interface AuthContextType {
   loading: boolean
   login: (email: string, password: string) => Promise<void>
   loginWithGoogle: () => Promise<void>
+  completeGoogleRedirect: () => Promise<boolean>
   register: (name: string, email: string, password: string) => Promise<void>
   resetPassword: (email: string) => Promise<void>
   logout: () => Promise<void>
@@ -197,10 +200,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider()
+    // Popups are unreliable on mobile browsers (iOS Safari ITP, Android Chrome
+    // storage partitioning) — they open but can't hand the result back. On
+    // mobile use redirect instead (same-origin authDomain makes getRedirectResult
+    // work); keep the nicer popup on desktop. Resolver passed explicitly so gapi
+    // loads only for the Google flow.
+    const isMobile = typeof navigator !== 'undefined' &&
+      /Mobi|Android|iP(hone|ad|od)/i.test(navigator.userAgent)
+
+    if (isMobile) {
+      // Navigates away; the result is picked up by completeGoogleRedirect() on
+      // the auth page when the browser returns.
+      await signInWithRedirect(auth, provider, browserPopupRedirectResolver)
+      return
+    }
+
     try {
-      const provider = new GoogleAuthProvider()
-      // Resolver passed explicitly (not wired at init) so gapi loads only now,
-      // on click — keeping it off the initial page load. See firebase-app.ts.
       await signInWithPopup(auth, provider, browserPopupRedirectResolver)
       // Google accounts always come with a verified, real email, so no
       // extra verification step is needed here.
@@ -239,6 +255,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }
 
+  // Picks up the result when the browser returns from the mobile redirect flow.
+  // Resolves true if a sign-in completed, false on a normal page visit. Google
+  // emails are always verified, so no extra verification step is needed.
+  const completeGoogleRedirect = async (): Promise<boolean> => {
+    try {
+      const result = await getRedirectResult(auth, browserPopupRedirectResolver)
+      return !!result?.user
+    } catch (error: any) {
+      let errorMessage = t('auth.error.google')
+      switch (error.code) {
+        case 'auth/account-exists-with-different-credential':
+          errorMessage = t('auth.error.accountExists')
+          break
+        case 'auth/network-request-failed':
+          errorMessage = t('auth.error.network')
+          break
+        case 'auth/unauthorized-domain':
+          errorMessage = t('auth.error.unauthorizedDomain')
+          break
+        case 'auth/operation-not-allowed':
+          errorMessage = t('auth.error.googleDisabled')
+          break
+        default:
+          errorMessage = t('auth.error.google')
+      }
+      const userError = new Error(errorMessage)
+      userError.name = 'UserError'
+      throw userError
+    }
+  }
+
   const logout = async () => {
     try {
       await signOut(auth)
@@ -252,6 +299,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     loading,
     login,
     loginWithGoogle,
+    completeGoogleRedirect,
     register,
     resetPassword,
     logout
