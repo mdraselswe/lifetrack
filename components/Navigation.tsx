@@ -29,7 +29,7 @@ export default function Navigation() {
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
-      <div className="flex items-stretch justify-around h-16 max-w-2xl mx-auto px-1">
+      <div className="flex items-stretch justify-around h-16 max-w-2xl mx-auto px-2">
         {navItems.map(({ href, labelKey, Icon }) => {
           const isActive = pathname === href
           return (
@@ -37,13 +37,18 @@ export default function Navigation() {
               key={href}
               href={href}
               aria-current={isActive ? 'page' : undefined}
-              className={`relative flex flex-col items-center justify-center flex-1 gap-1 transition-colors duration-200 ${
+              className={`group flex flex-col items-center justify-center flex-1 gap-1 pt-2 pb-1 transition-colors duration-200 ${
                 isActive ? 'text-accent' : 'text-muted'
               }`}
             >
-              {isActive && <span className="absolute top-0 h-0.5 w-8 rounded-full bg-accent" />}
-              <Icon className="w-6 h-6" />
-              <span className="text-[11px] font-medium leading-none">{t(labelKey)}</span>
+              {/* Material-3 style pill behind the active icon */}
+              <span
+                className="flex items-center justify-center h-8 w-16 rounded-full transition-colors duration-200"
+                style={isActive ? { backgroundColor: 'color-mix(in srgb, var(--accent) 15%, transparent)' } : undefined}
+              >
+                <Icon className="w-6 h-6" />
+              </span>
+              <span className={`text-[11px] leading-none ${isActive ? 'font-semibold' : 'font-medium'}`}>{t(labelKey)}</span>
             </Link>
           )
         })}

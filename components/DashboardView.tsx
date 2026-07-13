@@ -31,12 +31,13 @@ const bnInt = (n: number) => fmtNum(Math.round(n))
 
 const greeting = () => {
   const h = new Date().getHours()
-  if (h < 5) return t('greeting.night')     // late night
+  // No late-night greeting: "Good night" is a farewell in English (and শুভ রাত in
+  // Bengali), never an opening. Late-night and evening both use "Good evening".
+  if (h < 5) return t('greeting.evening')   // late night → evening
   if (h < 12) return t('greeting.morning')
   if (h < 16) return t('greeting.noon')
   if (h < 19) return t('greeting.afternoon')
-  if (h < 23) return t('greeting.evening')
-  return t('greeting.night')                // 11pm–midnight
+  return t('greeting.evening')              // 7pm–midnight
 }
 
 // Handles ISO strings AND Firestore Timestamp objects (doc createdAt is written

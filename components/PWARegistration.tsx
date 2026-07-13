@@ -62,10 +62,28 @@ export default function PWARegistration() {
       return
     }
 
+    // In development, never run the service worker. SW caching fights Turbopack
+    // HMR and an aggressive skipWaiting/claim cycle caused a full reload loop
+    // that OOM-crashed the tab. Proactively unregister any SW left over from a
+    // previous session and wipe its caches so dev pages load cleanly.
+    if (process.env.NODE_ENV !== 'production') {
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then((regs) => regs.forEach((r) => r.unregister())).catch(() => {})
+        if ('caches' in window) caches.keys().then((keys) => keys.forEach((k) => caches.delete(k))).catch(() => {})
+      }
+      return
+    }
+
     // Service Worker registration
     if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
       const registerSW = async () => {
         try {
+          // Was the page already under SW control at load time? On a first-ever
+          // visit this is false: the SW installs, calls skipWaiting + clients.claim,
+          // and fires controllerchange — reloading on THAT would loop forever
+          // (reload → uncontrolled again → install → claim → reload → …).
+          const hadController = !!navigator.serviceWorker.controller
+
           const registration = await navigator.serviceWorker.register('/sw.js', {
             scope: '/',
             updateViaCache: 'none',
@@ -83,8 +101,13 @@ export default function PWARegistration() {
             }
           })
 
-          // Handle controller change
+          // Reload once when a NEW service worker takes over an already-controlled
+          // page (a genuine update). Guarded so it never fires on the first-visit
+          // claim, and only reloads a single time.
+          let refreshing = false
           navigator.serviceWorker.addEventListener('controllerchange', () => {
+            if (!hadController || refreshing) return
+            refreshing = true
             window.location.reload()
           })
 

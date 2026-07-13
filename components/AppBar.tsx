@@ -18,10 +18,12 @@ export default function AppBar({ title, subtitle, action }: AppBarProps) {
         <h1 className="text-lg font-semibold text-content truncate leading-tight">{title}</h1>
         {subtitle && <p className="text-xs text-muted truncate">{subtitle}</p>}
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1.5">
         {action}
         <LanguageToggle />
         <ThemeToggle />
+        {/* Hairline separates utility toggles from the identity/avatar cluster */}
+        <span className="w-px h-5 bg-line mx-0.5" aria-hidden="true" />
         <ProfileMenu />
       </div>
     </header>
