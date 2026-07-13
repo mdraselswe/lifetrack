@@ -1,13 +1,23 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
-import { Noto_Sans_Bengali } from 'next/font/google'
+import { Inter, Noto_Sans_Bengali } from 'next/font/google'
 import './globals.css'
 
+// Bengali UI font — drives --font-bengali. Used when the app language is bn.
 // Variable font: one file covers every weight (400–700) — smaller total
 // payload than the four static weight files it replaces, zero visual change.
 const notoSansBengali = Noto_Sans_Bengali({
   subsets: ['bengali', 'latin'],
-  variable: '--font-sans',
+  variable: '--font-bengali',
+  display: 'swap',
+})
+
+// Standard Google Latin UI font (Inter) — drives --font-en. Used when the app
+// language is en, so English text renders with proper Latin glyphs instead of
+// Noto Sans Bengali's fallback Latin shapes.
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-en',
   display: 'swap',
 })
 import PWARegistration from '@/components/PWARegistration'
@@ -96,7 +106,7 @@ export default function RootLayout({
   children: ReactNode
 }) {
   return (
-    <html lang="bn" className={notoSansBengali.variable} suppressHydrationWarning>
+    <html lang="bn" className={`${notoSansBengali.variable} ${inter.variable} lang-bn`} suppressHydrationWarning>
       <head>
         {/* Open Firebase connections early — removes the TLS handshake from the first data fetch */}
         <link rel="preconnect" href="https://firestore.googleapis.com" />
@@ -112,10 +122,10 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="LifeTrack" />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
-        {/* Apply saved / system theme before paint to avoid a flash */}
+        {/* Apply saved / system theme and language before paint to avoid a flash */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');var l=localStorage.getItem('lifetrack-lang');if(l==='en'){document.documentElement.classList.add('lang-en');document.documentElement.classList.remove('lang-bn');}else{document.documentElement.classList.add('lang-bn');document.documentElement.classList.remove('lang-en');}}catch(e){}})();`,
           }}
         />
       </head>

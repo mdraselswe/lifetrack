@@ -26,6 +26,9 @@
   --negative: #dc2626;
   --caution: #d97706;
   color-scheme: light;
+  /* Font applied to <html> via lang class (set by i18n + pre-paint script).
+     bn → Noto Sans Bengali, en → Inter (standard Google Latin UI font). */
+  --font-sans: var(--font-bengali);
 }
 
 .dark {
@@ -55,6 +58,13 @@
 .text-accent {
   color: var(--accent-text);
 }
+
+/* Language-driven font: Bengali uses Noto Sans Bengali, English uses Inter
+   (standard Google Latin UI font). The <html> element carries a lang-bn /
+   lang-en class, set by the i18n store and the pre-paint script in layout.tsx
+   so the correct font is active before first paint (no flash). */
+.lang-bn { --font-sans: var(--font-bengali); }
+.lang-en { --font-sans: var(--font-en); }
 
 @layer base {
   html {

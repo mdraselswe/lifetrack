@@ -31,7 +31,11 @@ export const setLang = (l: Lang): void => {
   } catch {
     // storage unavailable (private mode) — language still switches for the session
   }
-  if (typeof document !== 'undefined') document.documentElement.lang = l
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = l
+    document.documentElement.classList.toggle('lang-en', l === 'en')
+    document.documentElement.classList.toggle('lang-bn', l === 'bn')
+  }
   listeners.forEach((fn) => fn())
 }
 

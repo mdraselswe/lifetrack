@@ -2,7 +2,7 @@ import type { Dict } from './types'
 
 export const loans: Dict = {
   // AppBar
-  'loans.title': { bn: 'ধার নিয়েছি', en: 'Money Borrowed' },
+  'loans.title': { bn: 'ধার নিয়েছি', en: 'Borrowed' },
   'loans.subtitle': { bn: 'আপনার ঋণ', en: 'Your loans' },
 
   // Stats

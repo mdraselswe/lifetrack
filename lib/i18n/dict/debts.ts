@@ -2,7 +2,7 @@ import type { Dict } from './types'
 
 export const debts: Dict = {
   // Page chrome
-  'debts.title': { bn: 'ধার দিয়েছি', en: 'Money Given' },
+  'debts.title': { bn: 'ধার দিয়েছি', en: 'Lent' },
   'debts.subtitle': { bn: 'আপনার পাওনা', en: 'What you are owed' },
   'debts.statOutstanding': { bn: 'বাকি পাওনা', en: 'Outstanding' },
   'debts.receivedBack': { bn: 'ফেরত পেয়েছি', en: 'Received back' },
@@ -71,14 +71,14 @@ export const debts: Dict = {
 
   // Delete debt
   'debts.deleteTitle': { bn: 'ধার মুছুন', en: 'Delete debt' },
-  'debts.deleteMsg': { bn: '{name} এর {amount} টাকার ধার মুছে ফেলবেন?', en: "Delete {name}'s debt of {amount} taka?" },
+  'debts.deleteMsg': { bn: '{name} এর {amount} টাকার ধার মুছে ফেলবেন?', en: "Delete {name}'s debt of ৳{amount}?" },
   'debts.deleteSuccess': { bn: 'ধার সফলভাবে মুছে ফেলা হয়েছে', en: 'Debt deleted successfully' },
   'debts.deleteError': { bn: 'ধার মুছতে সমস্যা হয়েছে', en: 'Failed to delete debt' },
 
   // Toggle returned status
   'debts.statusTitle': { bn: 'ধারের অবস্থা পরিবর্তন করুন', en: 'Change debt status' },
-  'debts.statusConfirmReceived': { bn: '{name} এর {amount} টাকার ধার ফেরত পেয়েছেন হিসেবে চিহ্নিত করবেন?', en: "Mark {name}'s debt of {amount} taka as returned?" },
-  'debts.statusConfirmNotReceived': { bn: '{name} এর {amount} টাকার ধার ফেরত পাননি হিসেবে চিহ্নিত করবেন?', en: "Mark {name}'s debt of {amount} taka as not returned?" },
+  'debts.statusConfirmReceived': { bn: '{name} এর {amount} টাকার ধার ফেরত পেয়েছেন হিসেবে চিহ্নিত করবেন?', en: "Mark {name}'s debt of ৳{amount} as returned?" },
+  'debts.statusConfirmNotReceived': { bn: '{name} এর {amount} টাকার ধার ফেরত পাননি হিসেবে চিহ্নিত করবেন?', en: "Mark {name}'s debt of ৳{amount} as not returned?" },
   'debts.statusMarkedReceived': { bn: 'ধার ফেরত পেয়েছেন হিসেবে চিহ্নিত করা হয়েছে', en: 'Debt marked as returned' },
   'debts.statusMarkedNotReceived': { bn: 'ধার ফেরত পাননি হিসেবে চিহ্নিত করা হয়েছে', en: 'Debt marked as not returned' },
   'debts.statusError': { bn: 'ধারের অবস্থা পরিবর্তন করতে সমস্যা হয়েছে', en: 'Failed to change debt status' },
@@ -93,11 +93,11 @@ export const debts: Dict = {
   'debts.paymentAddSuccess': { bn: 'পেমেন্ট সফলভাবে যোগ করা হয়েছে', en: 'Payment added successfully' },
   'debts.paymentAddError': { bn: 'পেমেন্ট যোগ করতে সমস্যা হয়েছে', en: 'Failed to add payment' },
   'debts.paymentDeleteTitle': { bn: 'পেমেন্ট মুছুন', en: 'Delete payment' },
-  'debts.paymentDeleteMsg': { bn: '{amount} টাকার পেমেন্ট মুছে ফেলবেন?', en: 'Delete the payment of {amount} taka?' },
+  'debts.paymentDeleteMsg': { bn: '{amount} টাকার পেমেন্ট মুছে ফেলবেন?', en: 'Delete the payment of ৳{amount}?' },
   'debts.paymentDeleteSuccess': { bn: 'পেমেন্ট সফলভাবে মুছে ফেলা হয়েছে', en: 'Payment deleted successfully' },
   'debts.paymentDeleteError': { bn: 'পেমেন্ট মুছতে সমস্যা হয়েছে', en: 'Failed to delete payment' },
   'debts.paymentUpdateTitle': { bn: 'পেমেন্ট আপডেট করুন', en: 'Update payment' },
-  'debts.paymentUpdateMsg': { bn: '{amount} টাকার পেমেন্ট আপডেট করবেন?', en: 'Update the payment of {amount} taka?' },
+  'debts.paymentUpdateMsg': { bn: '{amount} টাকার পেমেন্ট আপডেট করবেন?', en: 'Update the payment of ৳{amount}?' },
   'debts.paymentUpdateSuccess': { bn: 'পেমেন্ট সফলভাবে আপডেট করা হয়েছে', en: 'Payment updated successfully' },
   'debts.paymentUpdateError': { bn: 'পেমেন্ট আপডেট করতে সমস্যা হয়েছে', en: 'Failed to update payment' },
 
@@ -107,11 +107,11 @@ export const debts: Dict = {
   'debts.increaseSuccess': { bn: 'ধারের পরিমাণ বৃদ্ধি করা হয়েছে', en: 'Debt amount increased' },
   'debts.increaseError': { bn: 'ধারের পরিমাণ বৃদ্ধি করতে সমস্যা হয়েছে', en: 'Failed to increase debt amount' },
   'debts.increaseDeleteTitle': { bn: 'পরিমাণ বৃদ্ধি মুছুন', en: 'Delete amount increase' },
-  'debts.increaseDeleteMsg': { bn: '{amount} টাকার পরিমাণ বৃদ্ধি মুছে ফেলবেন? ধারের পরিমাণ ৳{from} থেকে ৳{to} হবে।', en: 'Delete the amount increase of {amount} taka? The debt amount will change from ৳{from} to ৳{to}.' },
+  'debts.increaseDeleteMsg': { bn: '{amount} টাকার পরিমাণ বৃদ্ধি মুছে ফেলবেন? ধারের পরিমাণ ৳{from} থেকে ৳{to} হবে।', en: 'Delete the amount increase of ৳{amount}? The debt amount will change from ৳{from} to ৳{to}.' },
   'debts.increaseDeleteSuccess': { bn: 'পরিমাণ বৃদ্ধি সফলভাবে মুছে ফেলা হয়েছে', en: 'Amount increase deleted successfully' },
   'debts.increaseDeleteError': { bn: 'পরিমাণ বৃদ্ধি মুছতে সমস্যা হয়েছে', en: 'Failed to delete amount increase' },
   'debts.increaseUpdateTitle': { bn: 'পরিমাণ বৃদ্ধি আপডেট করুন', en: 'Update amount increase' },
-  'debts.increaseUpdateMsg': { bn: '{amount} টাকার পরিমাণ বৃদ্ধি আপডেট করবেন?', en: 'Update the amount increase of {amount} taka?' },
+  'debts.increaseUpdateMsg': { bn: '{amount} টাকার পরিমাণ বৃদ্ধি আপডেট করবেন?', en: 'Update the amount increase of ৳{amount}?' },
   'debts.increaseUpdateSuccess': { bn: 'পরিমাণ বৃদ্ধি সফলভাবে আপডেট করা হয়েছে', en: 'Amount increase updated successfully' },
   'debts.increaseUpdateError': { bn: 'পরিমাণ বৃদ্ধি আপডেট করতে সমস্যা হয়েছে', en: 'Failed to update amount increase' },
   'debts.errOverpay': { bn: 'বাকির চেয়ে বেশি দেওয়া যাবে না (বাকি ৳{remaining})', en: 'Cannot exceed the remaining amount (৳{remaining} due)' },
