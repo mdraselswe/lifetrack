@@ -1,6 +1,6 @@
 // Service Worker for LifeTrack PWA - Next.js 16 Optimized
 
-const CACHE_VERSION = 'v11'
+const CACHE_VERSION = 'v12'
 const STATIC_CACHE = `lifetrack-static-${CACHE_VERSION}`
 const DYNAMIC_CACHE = `lifetrack-dynamic-${CACHE_VERSION}`
 const RUNTIME_CACHE = `lifetrack-runtime-${CACHE_VERSION}`
@@ -135,28 +135,27 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Navigations: cache-first (stale-while-revalidate). Serving the cached shell
-  // instantly — instead of waiting on the network — is far more reliable offline
-  // on iOS Safari, where a cold, offline navigation often errors before a
-  // network-first SW can fall back. The cache is refreshed in the background.
+  // Navigations: NETWORK-FIRST, fall back to cache offline. A cache-first shell
+  // goes stale after a deploy: the old HTML references content-hashed JS chunks
+  // whose hashes have changed, those 404, hydration breaks, and the whole UI
+  // (including the footer nav <Link>s) stops responding until a hard reload.
+  // Fetching fresh HTML online keeps the shell in sync with the deployed chunks;
+  // the cached copy is only used when the network is unavailable.
+  // (Client-side Link navigations are not mode:'navigate', so offline in-app
+  // navigation still works from the runtime cache below.)
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
-        const cached = (await caches.match(request)) || (await caches.match('/'))
-        const network = fetch(request).then((response) => {
+        try {
+          const response = await fetch(request)
           if (response && response.status === 200) {
             const copy = response.clone()
             caches.open(DYNAMIC_CACHE).then((cache) => cache.put(request, copy))
           }
           return response
-        }).catch(() => null)
-        // If we have a cached shell, return it immediately and update in background.
-        if (cached) {
-          network.catch(() => {})
-          return cached
+        } catch {
+          return (await caches.match(request)) || (await caches.match('/')) || (await fallbackNav(request))
         }
-        // Nothing cached yet → wait for the network, with a safe fallback.
-        return (await network) || (await fallbackNav(request))
       })()
     )
     return
