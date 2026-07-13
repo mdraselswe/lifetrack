@@ -495,3 +495,53 @@
     transition: none !important;
   }
 }
+
+/* -------- Print (Save as PDF) --------
+   The statement page marks its printable area .print-area and its controls
+   .no-print. When printing we hide the whole app (header, nav, FAB, controls)
+   and flow only the statement onto a clean white page. Bengali renders with
+   the real system/web font — proper conjunct shaping, unlike JS PDF libs. */
+@media print {
+  .app-bar,
+  nav,
+  .fab,
+  .no-print {
+    display: none !important;
+  }
+  html, body {
+    background: #ffffff !important;
+  }
+  main {
+    padding: 0 !important;
+  }
+  .print-area {
+    display: block !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #000000 !important;
+  }
+  /* Force light, ink-friendly colors regardless of app theme */
+  .print-area * {
+    color: #000000 !important;
+    box-shadow: none !important;
+  }
+  .print-area .print-pos { color: #15803d !important; }
+  .print-area .print-neg { color: #b91c1c !important; }
+  .print-area table { width: 100%; border-collapse: collapse; }
+  .print-area th,
+  .print-area td {
+    border: 1px solid #d1d5db !important;
+    padding: 6px 8px !important;
+    font-size: 12px !important;
+  }
+  .print-area thead th {
+    background: #f3f4f6 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print-header { display: block !important; }
+}
+
+/* The print-only header block is hidden on screen, shown when printing. */
+.print-header { display: none; }
