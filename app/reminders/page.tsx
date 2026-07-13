@@ -543,12 +543,14 @@ export default function RemindersPage() {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="font-semibold text-content truncate">{r.title}</h3>
-          <p className="text-xs text-muted flex items-center gap-1 mt-0.5">
-            <ClockIcon className="w-3.5 h-3.5" /> {fmtDate(r.scheduledTime, true)}
+          <p className="text-xs text-muted flex flex-wrap items-center gap-x-1 gap-y-1 mt-0.5">
+            <span className="flex items-center gap-1 whitespace-nowrap">
+              <ClockIcon className="w-3.5 h-3.5 flex-shrink-0" /> {fmtDate(r.scheduledTime, true)}
+            </span>
             {overdue ? (
-              <span className="pulse-dot ml-1" aria-hidden="true" />
+              <span className="pulse-dot" aria-hidden="true" />
             ) : nowTick > 0 && new Date(r.scheduledTime).getTime() - nowTick < 24 * 60 * 60 * 1000 ? (
-              <span className="chip text-[10px] tint-accent text-accent ml-1">{fmtRelative(r.scheduledTime)}</span>
+              <span className="chip text-[10px] tint-accent text-accent whitespace-nowrap">{fmtRelative(r.scheduledTime)}</span>
             ) : null}
           </p>
         </div>

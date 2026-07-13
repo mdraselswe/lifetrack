@@ -98,18 +98,6 @@ function Avatar({ name }: { name: string }) {
   )
 }
 
-// Tiny 6-month trend line for the stat tiles.
-function Spark({ vals, color }: { vals: number[]; color: string }) {
-  const max = Math.max(1, ...vals)
-  const denom = Math.max(1, vals.length - 1)
-  const pts = vals.map((v, i) => `${(i / denom) * 56},${17 - (v / max) * 14}`).join(' ')
-  return (
-    <svg width="56" height="20" className="opacity-60" aria-hidden="true">
-      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  )
-}
-
 type Activity = {
   id: string
   t: number
@@ -513,22 +501,20 @@ export default function Dashboard() {
 
           {/* Two-up summary */}
           <div className="grid grid-cols-2 gap-3">
-            <div className="stat-tile tint-pos relative">
-              <span className="absolute right-3 top-3"><Spark vals={monthBuckets.map((b) => b.received)} color="var(--positive)" /></span>
+            <div className="stat-tile tint-pos">
               <div className="flex items-center gap-2 text-positive mb-2">
                 <ArrowUpRightIcon className="w-5 h-5" />
                 <span className="text-xs font-medium text-positive">{t('dashboard.willReceive')}</span>
               </div>
-              <p className="text-2xl font-bold text-content">৳{bn(animLent)}</p>
+              <p className="text-[clamp(0.85rem,4.2vw,1.375rem)] font-bold text-content tracking-tight tabular-nums leading-tight">৳{bn(animLent)}</p>
               <p className="text-[11px] text-muted mt-0.5">{t('common.people', { count: fmtInt(debtDetails.length) })}</p>
             </div>
-            <div className="stat-tile tint-neg relative">
-              <span className="absolute right-3 top-3"><Spark vals={monthBuckets.map((b) => b.paid)} color="var(--negative)" /></span>
+            <div className="stat-tile tint-neg">
               <div className="flex items-center gap-2 text-negative mb-2">
                 <ArrowDownLeftIcon className="w-5 h-5" />
                 <span className="text-xs font-medium text-negative">{t('dashboard.willPay')}</span>
               </div>
-              <p className="text-2xl font-bold text-content">৳{bn(animBorrowed)}</p>
+              <p className="text-[clamp(0.85rem,4.2vw,1.375rem)] font-bold text-content tracking-tight tabular-nums leading-tight">৳{bn(animBorrowed)}</p>
               <p className="text-[11px] text-muted mt-0.5">{t('common.people', { count: fmtInt(loanDetails.length) })}</p>
             </div>
           </div>

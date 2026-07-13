@@ -905,14 +905,14 @@ export default function DebtsPage() {
               <ArrowUpRightIcon className="w-5 h-5" />
               <span className="text-xs font-medium text-positive">{t('debts.statOutstanding')}</span>
             </div>
-            <p className="text-2xl font-bold text-content">৳{bn(totalActive)}</p>
+            <p className="text-[clamp(0.85rem,4.2vw,1.5rem)] font-bold text-content tracking-tight tabular-nums leading-tight">৳{bn(totalActive)}</p>
           </div>
           <div className="stat-tile tint-accent">
             <div className="flex items-center gap-2 mb-2 text-accent">
               <WalletIcon className="w-5 h-5" />
               <span className="text-xs font-medium text-accent">{t('debts.receivedBack')}</span>
             </div>
-            <p className="text-2xl font-bold text-content">৳{bn(totalReturned)}</p>
+            <p className="text-[clamp(0.85rem,4.2vw,1.5rem)] font-bold text-content tracking-tight tabular-nums leading-tight">৳{bn(totalReturned)}</p>
           </div>
         </div>
 

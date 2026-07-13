@@ -217,7 +217,7 @@
   .stat-tile {
     background-color: var(--surface);
     border: 1px solid var(--border);
-    @apply rounded-2xl p-4 shadow-card;
+    @apply rounded-2xl p-4 shadow-card overflow-hidden;
   }
 
   /* -------- Chip / badge -------- */
