@@ -32,6 +32,8 @@ export const statement: Dict = {
   // Empty / actions
   'statement.empty': { bn: 'এই সময়সীমায় কোনো লেনদেন নেই', en: 'No transactions in this range' },
   'statement.download': { bn: 'পিডিএফ ডাউনলোড', en: 'Download PDF' },
+  'statement.generating': { bn: 'তৈরি হচ্ছে…', en: 'Generating…' },
+  'statement.pdfError': { bn: 'পিডিএফ তৈরি করতে সমস্যা হয়েছে', en: 'Failed to generate PDF' },
   'statement.generatedAt': { bn: 'তৈরি হয়েছে', en: 'Generated' },
   'statement.account': { bn: 'অ্যাকাউন্ট', en: 'Account' },
   'statement.period': { bn: 'সময়সীমা', en: 'Period' },

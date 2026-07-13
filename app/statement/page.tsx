@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/firebase-auth'
 import AppBar from '@/components/AppBar'
@@ -10,6 +10,7 @@ import { round2 } from '@/lib/format'
 import { haptic } from '@/lib/haptics'
 import { toast } from '@/lib/toast'
 import { buildStatement, type Statement } from '@/lib/statement'
+import { exportNodeToPdf } from '@/lib/pdf'
 
 const bn = (n: number) => fmtNum(round2(n))
 const money = (n: number) => `৳${bn(n)}`
@@ -46,7 +47,10 @@ export default function StatementPage() {
   const [range, setRange] = useState<{ from: string; to: string } | null>(null)
   const [data, setData] = useState<Statement | null>(null)
   const [busy, setBusy] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [generatedAt, setGeneratedAt] = useState<Date | null>(null)
+  // Hidden, inline-styled light template captured for the PDF (see below).
+  const pdfRef = useRef<HTMLDivElement>(null)
 
   const rangeValid = !!range && range.from <= range.to
 
@@ -91,9 +95,21 @@ export default function StatementPage() {
     return null
   }, [range])
 
-  const handlePrint = () => {
+  const handleDownload = async () => {
+    const node = pdfRef.current
+    if (!node || !range || exporting) return
     haptic()
-    window.print()
+    setExporting(true)
+    try {
+      const filename = `lifetrack-statement-${range.from}_${range.to}.pdf`
+      // Captures the hidden template below — every color there is a hardcoded
+      // light hex, so the PDF is light no matter what theme the app is in.
+      await exportNodeToPdf(node, filename, t('statement.title'))
+    } catch {
+      toast.error(t('statement.pdfError'))
+    } finally {
+      setExporting(false)
+    }
   }
 
   if (!user || !range) return null
@@ -146,11 +162,11 @@ export default function StatementPage() {
           {!rangeValid && <p className="text-xs text-negative">{t('statement.rangeError')}</p>}
 
           <button
-            onClick={handlePrint}
-            disabled={!s || s.persons.length === 0}
+            onClick={handleDownload}
+            disabled={!s || s.persons.length === 0 || exporting}
             className="btn btn-primary w-full disabled:opacity-50"
           >
-            <FileTextIcon className="w-5 h-5" /> {t('statement.download')}
+            <FileTextIcon className="w-5 h-5" /> {exporting ? t('statement.generating') : t('statement.download')}
           </button>
         </div>
 
@@ -253,6 +269,95 @@ export default function StatementPage() {
           )}
         </div>
       </div>
+
+      {/* Hidden PDF template. Rendered off-screen (NOT display:none — html-to-image
+          needs layout) with ONLY hardcoded light inline styles: no theme classes,
+          no CSS variables, so the exported PDF is always light regardless of the
+          app theme. This is the node handleDownload captures. */}
+      {s && s.persons.length > 0 && (
+        // Off-screen positioning lives on this WRAPPER, not on the captured node:
+        // html-to-image clones the node with its inline styles, so a fixed
+        // left:-10000px on the node itself would render off-canvas → blank PDF.
+        <div aria-hidden="true" style={{ position: 'fixed', left: '-10000px', top: 0 }}>
+        <div
+          ref={pdfRef}
+          style={{
+            width: 794, // ~A4 width @96dpi
+            background: '#ffffff',
+            color: '#101828',
+            padding: 32,
+            fontFamily: 'inherit',
+          }}
+        >
+          <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0 }}>LifeTrack — {t('statement.title')}</h1>
+          <div style={{ fontSize: 12, color: '#5e6879', marginTop: 6, lineHeight: 1.6 }}>
+            <div>{t('statement.period')}: {periodLabel}</div>
+            {user.email && <div>{t('statement.account')}: {user.email}</div>}
+            {generatedAt && <div>{t('statement.generatedAt')}: {fmtDate(generatedAt, true)}</div>}
+          </div>
+
+          {/* Summary strip */}
+          <div style={{ display: 'flex', gap: 24, marginTop: 20, padding: '14px 16px', border: '1px solid #e7e9ee', borderRadius: 10, background: '#f7f8fa' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: '#5e6879' }}>{t('statement.moneyIn')}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#15803d' }}>{money(s.summary.moneyIn)}</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: '#5e6879' }}>{t('statement.moneyOut')}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: '#b91c1c' }}>{money(s.summary.moneyOut)}</div>
+            </div>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 11, color: '#5e6879' }}>{t('statement.net')}</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: s.summary.net >= 0 ? '#15803d' : '#b91c1c' }}>{money(s.summary.net)}</div>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 24, marginTop: 10, fontSize: 12 }}>
+            <div style={{ flex: 1 }}>{t('statement.lent')}: <b>{money(s.summary.lent)}</b></div>
+            <div style={{ flex: 1 }}>{t('statement.received')}: <b>{money(s.summary.received)}</b></div>
+            <div style={{ flex: 1 }}>{t('statement.borrowed')}: <b>{money(s.summary.borrowed)}</b></div>
+            <div style={{ flex: 1 }}>{t('statement.repaid')}: <b>{money(s.summary.repaid)}</b></div>
+          </div>
+
+          {/* Per-person table */}
+          <div style={{ fontSize: 14, fontWeight: 700, marginTop: 24, marginBottom: 8 }}>
+            {t('statement.perPersonTitle')} · {fmtNum(s.summary.personCount)}
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <thead>
+              <tr>
+                {[t('statement.person'), t('statement.lent'), t('statement.received'), t('statement.borrowed'), t('statement.repaid'), t('statement.net')].map((h, i) => (
+                  <th key={h} style={{ border: '1px solid #d1d5db', background: '#f3f4f6', padding: '6px 8px', textAlign: i === 0 ? 'left' : 'right', fontWeight: 600 }}>
+                    {h}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {s.persons.map((p) => (
+                <tr key={p.person}>
+                  <td style={{ border: '1px solid #d1d5db', padding: '6px 8px', fontWeight: 600 }}>{p.person}</td>
+                  <td style={{ border: '1px solid #d1d5db', padding: '6px 8px', textAlign: 'right' }}>{p.lent ? money(p.lent) : '—'}</td>
+                  <td style={{ border: '1px solid #d1d5db', padding: '6px 8px', textAlign: 'right' }}>{p.received ? money(p.received) : '—'}</td>
+                  <td style={{ border: '1px solid #d1d5db', padding: '6px 8px', textAlign: 'right' }}>{p.borrowed ? money(p.borrowed) : '—'}</td>
+                  <td style={{ border: '1px solid #d1d5db', padding: '6px 8px', textAlign: 'right' }}>{p.repaid ? money(p.repaid) : '—'}</td>
+                  <td style={{ border: '1px solid #d1d5db', padding: '6px 8px', textAlign: 'right', fontWeight: 700, color: p.net >= 0 ? '#15803d' : '#b91c1c' }}>{money(p.net)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td style={{ border: '1px solid #d1d5db', padding: '6px 8px', fontWeight: 700, background: '#f7f8fa' }}>{t('statement.net')}</td>
+                <td style={{ border: '1px solid #d1d5db', padding: '6px 8px', textAlign: 'right', fontWeight: 700, background: '#f7f8fa' }}>{money(s.summary.lent)}</td>
+                <td style={{ border: '1px solid #d1d5db', padding: '6px 8px', textAlign: 'right', fontWeight: 700, background: '#f7f8fa' }}>{money(s.summary.received)}</td>
+                <td style={{ border: '1px solid #d1d5db', padding: '6px 8px', textAlign: 'right', fontWeight: 700, background: '#f7f8fa' }}>{money(s.summary.borrowed)}</td>
+                <td style={{ border: '1px solid #d1d5db', padding: '6px 8px', textAlign: 'right', fontWeight: 700, background: '#f7f8fa' }}>{money(s.summary.repaid)}</td>
+                <td style={{ border: '1px solid #d1d5db', padding: '6px 8px', textAlign: 'right', fontWeight: 700, background: '#f7f8fa', color: s.summary.net >= 0 ? '#15803d' : '#b91c1c' }}>{money(s.summary.net)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+        </div>
+      )}
     </div>
   )
 }

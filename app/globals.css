@@ -557,3 +557,8 @@
 
 /* The print-only header block is hidden on screen, shown when printing. */
 .print-header { display: none; }
+
+/* PDF export note: the downloaded statement PDF is NOT captured from the themed
+   on-screen DOM. app/statement/page.tsx renders a hidden template with only
+   hardcoded light inline styles and html-to-image captures that node, so the
+   PDF is always light regardless of the active theme. */
