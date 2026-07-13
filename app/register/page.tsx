@@ -11,6 +11,7 @@ import ThemeToggle from '@/components/ThemeToggle'
 import LanguageToggle from '@/components/LanguageToggle'
 import { t, useLang } from '@/lib/i18n'
 import { FinanceHeroIllustration } from '@/components/Illustrations'
+import Wordmark from '@/components/Wordmark'
 
 export default function RegisterPage() {
   useLang() // re-render on language switch
@@ -80,6 +81,7 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm fade-in my-auto">
         <div className="flex flex-col items-center mb-6">
           <FinanceHeroIllustration className="w-64 h-44 mb-1" />
+          <Wordmark size="lg" className="mb-3" />
           <h1 className="text-2xl font-bold text-content">{t('auth.register.title')}</h1>
           <p className="text-sm text-muted mt-1">{t('auth.register.subtitle')}</p>
         </div>

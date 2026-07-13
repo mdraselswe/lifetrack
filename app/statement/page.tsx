@@ -41,11 +41,19 @@ export default function StatementPage() {
   const router = useRouter()
   useLang()
 
-  const [range, setRange] = useState(() => presetRange('thisMonth'))
+  // range stays null until mounted: computing it needs `new Date()`, which is
+  // disallowed during the prerender of a Client Component (Cache Components).
+  const [range, setRange] = useState<{ from: string; to: string } | null>(null)
   const [data, setData] = useState<Statement | null>(null)
   const [busy, setBusy] = useState(false)
+  const [generatedAt, setGeneratedAt] = useState<Date | null>(null)
 
-  const rangeValid = range.from <= range.to
+  const rangeValid = !!range && range.from <= range.to
+
+  // Client-only: seed the default range after mount.
+  useEffect(() => {
+    setRange(presetRange('thisMonth'))
+  }, [])
 
   useEffect(() => {
     if (loading) return
@@ -55,15 +63,15 @@ export default function StatementPage() {
   }, [user, loading, router])
 
   useEffect(() => {
-    if (!user || !rangeValid) return
+    if (!user || !range || !rangeValid) return
     let cancelled = false
     setBusy(true)
     buildStatement(range.from, range.to)
-      .then((s) => { if (!cancelled) setData(s) })
+      .then((s) => { if (!cancelled) { setData(s); setGeneratedAt(new Date()) } })
       .catch(() => { if (!cancelled) toast.error(t('statement.loadError')) })
       .finally(() => { if (!cancelled) setBusy(false) })
     return () => { cancelled = true }
-  }, [user, range.from, range.to, rangeValid])
+  }, [user, range, rangeValid])
 
   // Recomputed each render so labels track the active language.
   const presets: { key: PresetKey; label: string }[] = [
@@ -74,6 +82,7 @@ export default function StatementPage() {
   ]
 
   const activePreset = useMemo<PresetKey | null>(() => {
+    if (!range) return null
     const keys: PresetKey[] = ['thisMonth', 'lastMonth', 'thisYear', 'all']
     for (const key of keys) {
       const r = presetRange(key)
@@ -87,7 +96,7 @@ export default function StatementPage() {
     window.print()
   }
 
-  if (!user) return null
+  if (!user || !range) return null
 
   const s = data
   const periodLabel = `${fmtDate(range.from)} — ${fmtDate(range.to)}`
@@ -118,7 +127,7 @@ export default function StatementPage() {
                 type="date"
                 value={range.from}
                 max={range.to}
-                onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))}
+                onChange={(e) => setRange((r) => (r ? { ...r, from: e.target.value } : r))}
                 className="input"
               />
             </label>
@@ -128,7 +137,7 @@ export default function StatementPage() {
                 type="date"
                 value={range.to}
                 min={range.from}
-                onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))}
+                onChange={(e) => setRange((r) => (r ? { ...r, to: e.target.value } : r))}
                 className="input"
               />
             </label>
@@ -152,7 +161,7 @@ export default function StatementPage() {
             <h1 style={{ fontSize: 20, fontWeight: 700 }}>LifeTrack — {t('statement.title')}</h1>
             <p style={{ fontSize: 12 }}>{t('statement.period')}: {periodLabel}</p>
             {user.email && <p style={{ fontSize: 12 }}>{t('statement.account')}: {user.email}</p>}
-            <p style={{ fontSize: 12 }}>{t('statement.generatedAt')}: {fmtDate(new Date(), true)}</p>
+            {generatedAt && <p style={{ fontSize: 12 }}>{t('statement.generatedAt')}: {fmtDate(generatedAt, true)}</p>}
           </div>
 
           {busy && !s && <div className="card text-center text-muted text-sm">…</div>}

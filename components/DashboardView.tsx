@@ -12,6 +12,7 @@ import { round2, toMillis } from '@/lib/format'
 import { t, useLang, fmtNum, fmtInt, fmtRelative, fmtDate } from '@/lib/i18n'
 import Modal, { ActionButton } from '@/components/Modal'
 import { MoneyIllustration } from '@/components/Illustrations'
+import Wordmark from '@/components/Wordmark'
 import { avatarColor } from '@/lib/avatar'
 import { LEAD_OPTIONS, dueReminderTime, type LeadKey } from '@/lib/reminder-lead'
 import { celebrate } from '@/lib/celebrate'
@@ -419,7 +420,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-full">
-      <AppBar title="LifeTrack" subtitle={`${greeting()}, ${firstName}`} />
+      <AppBar title={<Wordmark size="sm" />} subtitle={`${greeting()}, ${firstName}`} />
 
       {/* Pull-to-refresh indicator */}
       <div
