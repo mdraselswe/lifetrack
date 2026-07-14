@@ -102,4 +102,72 @@ export const reminders: Dict = {
   'reminders.finishConfirm': { bn: 'শেষ করুন', en: 'Finish' },
   'reminders.finished': { bn: 'রিমাইন্ডার শেষ করা হয়েছে', en: 'Reminder finished' },
   'reminders.finishError': { bn: 'শেষ করতে সমস্যা হয়েছে', en: 'Could not finish reminder' },
+
+  // Quick add
+  'reminders.quickAddPlaceholder': { bn: 'দ্রুত লিখুন: "কাল সকাল ৯টায় ওষুধ"', en: 'Quick add: "tomorrow 9am medicine"' },
+  'reminders.quickAddHint': { bn: 'সময় বুঝে নেওয়া হয়েছে: {time}', en: 'Time understood: {time}' },
+
+  // Templates
+  'reminders.tplMedicine': { bn: 'ওষুধ', en: 'Medicine' },
+  'reminders.tplBill': { bn: 'বিল পরিশোধ', en: 'Pay bill' },
+  'reminders.tplRent': { bn: 'ভাড়া', en: 'Rent' },
+  'reminders.tplInstallment': { bn: 'কিস্তি', en: 'Installment' },
+  'reminders.tplVaccine': { bn: 'টিকা', en: 'Vaccine' },
+
+  // Time presets
+  'reminders.presetMorning': { bn: 'সকাল ৯টা', en: '9 AM' },
+  'reminders.presetNoon': { bn: 'দুপুর ২টা', en: '2 PM' },
+  'reminders.presetEvening': { bn: 'সন্ধ্যা ৭টা', en: '7 PM' },
+  'reminders.presetNight': { bn: 'রাত ৯টা', en: '9 PM' },
+
+  // Categories
+  'reminders.categoryLabel': { bn: 'ক্যাটাগরি (ঐচ্ছিক)', en: 'Category (optional)' },
+  'reminders.catMedicine': { bn: 'ওষুধ', en: 'Medicine' },
+  'reminders.catMoney': { bn: 'টাকা', en: 'Money' },
+  'reminders.catPersonal': { bn: 'ব্যক্তিগত', en: 'Personal' },
+  'reminders.catWork': { bn: 'কাজ', en: 'Work' },
+  'reminders.filterAll': { bn: 'সব', en: 'All' },
+
+  // Repeat controls
+  'reminders.repeatEvery': { bn: 'প্রতি', en: 'Every' },
+  'reminders.repeatWeekdaysUnit': { bn: 'নির্দিষ্ট বার', en: 'Weekdays' },
+  'reminders.repeatWeekdaysPick': { bn: 'কোন কোন বার?', en: 'Which days?' },
+  'reminders.repeatUntilLabel': { bn: 'শেষ তারিখ (ঐচ্ছিক)', en: 'End date (optional)' },
+  'reminders.weekdayNeeded': { bn: 'অন্তত একটি বার নির্বাচন করুন', en: 'Pick at least one weekday' },
+
+  // Lead-time notification
+  'reminders.leadLabel': { bn: 'আগে থেকে জানান (ঐচ্ছিক)', en: 'Notify before (optional)' },
+  'reminders.leadNone': { bn: 'না', en: 'No' },
+  'reminders.lead10m': { bn: '১০ মিনিট আগে', en: '10 min before' },
+  'reminders.lead1h': { bn: '১ ঘণ্টা আগে', en: '1 hour before' },
+  'reminders.lead1d': { bn: '১ দিন আগে', en: '1 day before' },
+
+  // Checklist
+  'reminders.checklistLabel': { bn: 'চেকলিস্ট (ঐচ্ছিক)', en: 'Checklist (optional)' },
+  'reminders.checklistPlaceholder': { bn: 'আইটেম লিখে Enter চাপুন', en: 'Type an item and press Enter' },
+
+  // Snooze
+  'reminders.snooze1h': { bn: '+১ ঘণ্টা', en: '+1 hr' },
+  'reminders.snoozeTonight': { bn: 'আজ রাতে', en: 'Tonight' },
+  'reminders.snoozeTomorrow': { bn: 'আগামীকাল', en: 'Tomorrow' },
+  'reminders.snoozeNextWeek': { bn: 'পরের সপ্তাহে', en: 'Next week' },
+  'reminders.snoozed': { bn: 'রিমাইন্ডার পিছানো হয়েছে: {time}', en: 'Snoozed to {time}' },
+
+  // Card extras
+  'reminders.duplicate': { bn: 'কপি', en: 'Duplicate' },
+  'reminders.share': { bn: 'শেয়ার', en: 'Share' },
+  'reminders.sourceDebt': { bn: 'ধার', en: 'Debt' },
+  'reminders.sourceLoan': { bn: 'ঋণ', en: 'Loan' },
+  'reminders.streak': { bn: '🔥 টানা {count} দিন', en: '🔥 {count}-day streak' },
+
+  // Calendar view
+  'reminders.viewList': { bn: 'তালিকা', en: 'List' },
+  'reminders.viewCalendar': { bn: 'ক্যালেন্ডার', en: 'Calendar' },
+  'reminders.calEmpty': { bn: 'এই দিনে কোনো রিমাইন্ডার নেই', en: 'No reminders on this day' },
+
+  // Notification status / test
+  'reminders.statusOn': { bn: 'নোটিফিকেশন চালু আছে', en: 'Notifications are on' },
+  'reminders.testNotif': { bn: 'টেস্ট', en: 'Test' },
+  'reminders.testSent': { bn: 'টেস্ট নোটিফিকেশন পাঠানো হয়েছে', en: 'Test notification sent' },
+  'reminders.testBody': { bn: 'নোটিফিকেশন ঠিকঠাক কাজ করছে ✓', en: 'Notifications are working ✓' },
 }

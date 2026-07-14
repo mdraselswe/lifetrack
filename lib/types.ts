@@ -1,3 +1,11 @@
+export type ReminderCategory = 'medicine' | 'money' | 'personal' | 'work'
+
+export interface ChecklistItem {
+  id: string
+  text: string
+  done: boolean
+}
+
 export interface Reminder {
   id: string
   title: string
@@ -12,10 +20,16 @@ export interface Reminder {
   // Repetitive reminder fields
   isRepetitive?: boolean
   repeatInterval?: number // number of days/weeks/months
-  repeatType?: 'days' | 'weeks' | 'months'
+  repeatType?: 'days' | 'weeks' | 'months' | 'weekdays'
+  repeatWeekdays?: number[] // for repeatType 'weekdays': 0=Sun … 6=Sat
+  repeatUntil?: string // 'YYYY-MM-DD' — stop repeating after this date
   completionCount?: number // how many times completed
   occurrences?: ReminderOccurrence[] // history of completions
   originalReminderId?: string // reference to original reminder if this is a repetition
+  // Optional extras
+  category?: ReminderCategory
+  checklist?: ChecklistItem[]
+  leadMinutes?: number // also notify this many minutes BEFORE scheduledTime
 }
 
 export interface ReminderOccurrence {

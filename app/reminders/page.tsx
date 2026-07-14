@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState, useRef, type FormEvent } from 'react'
+import Link from 'next/link'
 import { getReminders, saveReminder, updateReminder, deleteReminder, subscribeToReminders } from '@/lib/storage'
 import { scheduleNotification } from '@/lib/notifications'
 import { enablePush, refreshPushIfGranted, pushSupported } from '@/lib/push'
-import type { Reminder, ReminderOccurrence } from '@/lib/types'
+import type { Reminder, ReminderOccurrence, ReminderCategory, ChecklistItem } from '@/lib/types'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
 import Modal, { ActionButton } from '@/components/Modal'
@@ -12,39 +13,46 @@ import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
 import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
-import { ClockIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, HistoryIcon } from '@/components/Icons'
+import { ClockIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, HistoryIcon, ShareIcon, CheckCircleIcon } from '@/components/Icons'
 import { t, useLang, fmtInt, fmtDate, fmtRelative } from '@/lib/i18n'
 import { haptic } from '@/lib/haptics'
 import { BellIllustration } from '@/components/Illustrations'
+import { toLocalDateTimeValue, advanceReminder, completionStreakDays } from '@/lib/recurrence'
+import { parseQuickAdd } from '@/lib/quickadd'
 
-// datetime-local expects a LOCAL time string; toISOString() is UTC, so we
-// shift by the timezone offset before slicing to avoid an off-by-hours default.
-const toLocalDateTimeValue = (date: Date = new Date()) => {
-  const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-  return local.toISOString().slice(0, 16)
-}
+// Category → dot color + i18n key. Colors are fixed brand-ish hues, not theme vars.
+const CATEGORIES: { key: ReminderCategory; labelKey: string; color: string }[] = [
+  { key: 'medicine', labelKey: 'reminders.catMedicine', color: '#059669' },
+  { key: 'money', labelKey: 'reminders.catMoney', color: '#d97706' },
+  { key: 'personal', labelKey: 'reminders.catPersonal', color: '#4f46e5' },
+  { key: 'work', labelKey: 'reminders.catWork', color: '#0284c7' },
+]
+const catColor = (c?: ReminderCategory) => CATEGORIES.find((x) => x.key === c)?.color
 
-// Advance a repetitive reminder to its next future occurrence (local wall clock).
-const nextOccurrenceLocal = (
-  scheduledTime: string,
-  interval: number,
-  type: 'days' | 'weeks' | 'months'
-): string => {
-  const step = Math.max(1, interval || 1)
-  const d = new Date(scheduledTime)
-  if (isNaN(d.getTime())) return toLocalDateTimeValue()
-  let guard = 0
-  while (d.getTime() <= Date.now() && guard < 500) {
-    if (type === 'days') d.setDate(d.getDate() + step)
-    else if (type === 'weeks') d.setDate(d.getDate() + step * 7)
-    else d.setMonth(d.getMonth() + step)
-    guard++
-  }
-  return toLocalDateTimeValue(d)
+// Quick templates for common Bengali life reminders: title + category + repeat.
+const TEMPLATES: { labelKey: string; category: ReminderCategory; repeat?: { interval: number; type: 'days' | 'weeks' | 'months' } }[] = [
+  { labelKey: 'reminders.tplMedicine', category: 'medicine', repeat: { interval: 1, type: 'days' } },
+  { labelKey: 'reminders.tplBill', category: 'money', repeat: { interval: 1, type: 'months' } },
+  { labelKey: 'reminders.tplRent', category: 'money', repeat: { interval: 1, type: 'months' } },
+  { labelKey: 'reminders.tplInstallment', category: 'money', repeat: { interval: 1, type: 'months' } },
+  { labelKey: 'reminders.tplVaccine', category: 'medicine' },
+]
+
+// Hour presets for the form's time chips.
+const TIME_PRESETS: { labelKey: string; hour: number }[] = [
+  { labelKey: 'reminders.presetMorning', hour: 9 },
+  { labelKey: 'reminders.presetNoon', hour: 14 },
+  { labelKey: 'reminders.presetEvening', hour: 19 },
+  { labelKey: 'reminders.presetNight', hour: 21 },
+]
+
+const WEEKDAY_LABELS: Record<'bn' | 'en', string[]> = {
+  bn: ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহ', 'শুক্র', 'শনি'],
+  en: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'],
 }
 
 export default function RemindersPage() {
-  useLang() // re-render on language switch
+  const lang = useLang() // re-render on language switch
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [showForm, setShowForm] = useState(false)
   const [dataLoading, setDataLoading] = useState(true)
@@ -53,7 +61,19 @@ export default function RemindersPage() {
   const [scheduledTime, setScheduledTime] = useState('')
   const [isRepetitive, setIsRepetitive] = useState(false)
   const [repeatInterval, setRepeatInterval] = useState(1)
-  const [repeatType, setRepeatType] = useState<'days' | 'weeks' | 'months'>('weeks')
+  const [repeatType, setRepeatType] = useState<'days' | 'weeks' | 'months' | 'weekdays'>('weeks')
+  const [repeatWeekdays, setRepeatWeekdays] = useState<number[]>([])
+  const [repeatUntil, setRepeatUntil] = useState('')
+  const [category, setCategory] = useState<ReminderCategory | ''>('')
+  const [leadMinutes, setLeadMinutes] = useState(0)
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([])
+  const [checklistInput, setChecklistInput] = useState('')
+  const [quickAdd, setQuickAdd] = useState('')
+  const [quickAddWhen, setQuickAddWhen] = useState<Date | null>(null)
+  const [filterCat, setFilterCat] = useState<ReminderCategory | 'all'>('all')
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list')
+  const [calMonth, setCalMonth] = useState<{ y: number; m: number } | null>(null)
+  const [selectedDay, setSelectedDay] = useState<string | null>(null)
   const [mounted, setMounted] = useState(false)
   const [selectedReminderForHistory, setSelectedReminderForHistory] = useState<Reminder | null>(null)
   const [showCompleteModal, setShowCompleteModal] = useState(false)
@@ -188,6 +208,23 @@ export default function RemindersPage() {
     }
   }
 
+  const resetFormFields = () => {
+    setTitle('')
+    setDescription('')
+    setScheduledTime(toLocalDateTimeValue())
+    setIsRepetitive(false)
+    setRepeatInterval(1)
+    setRepeatType('weeks')
+    setRepeatWeekdays([])
+    setRepeatUntil('')
+    setCategory('')
+    setLeadMinutes(0)
+    setChecklist([])
+    setChecklistInput('')
+    setQuickAdd('')
+    setQuickAddWhen(null)
+  }
+
   const handleEdit = (reminder: Reminder) => {
     setEditingReminder(reminder)
     setTitle(reminder.title)
@@ -196,7 +233,105 @@ export default function RemindersPage() {
     setIsRepetitive(reminder.isRepetitive || false)
     setRepeatInterval(reminder.repeatInterval || 1)
     setRepeatType(reminder.repeatType || 'weeks')
+    setRepeatWeekdays(reminder.repeatWeekdays || [])
+    setRepeatUntil(reminder.repeatUntil || '')
+    setCategory(reminder.category || '')
+    setLeadMinutes(reminder.leadMinutes || 0)
+    setChecklist(reminder.checklist || [])
+    setChecklistInput('')
+    setQuickAdd('')
+    setQuickAddWhen(null)
     setShowForm(true)
+  }
+
+  // Open the form prefilled from an existing reminder, as a NEW reminder.
+  const handleDuplicate = (reminder: Reminder) => {
+    handleEdit(reminder)
+    setEditingReminder(null)
+    // Duplicates start from the next sensible time, not the original's past time.
+    setScheduledTime(toLocalDateTimeValue())
+  }
+
+  const handleShare = async (reminder: Reminder) => {
+    const text = `${reminder.title} — ${fmtDate(reminder.scheduledTime, true)}${reminder.description ? `\n${reminder.description}` : ''}`
+    try {
+      if (navigator.share) {
+        await navigator.share({ text, title: reminder.title })
+      } else {
+        await navigator.clipboard.writeText(text)
+        toast.success(t('share.copied'))
+      }
+    } catch {
+      // dismissed the share sheet — not an error
+    }
+  }
+
+  // One-tap snooze from the card. Each option maps to a concrete local time.
+  const handleSnooze = async (reminder: Reminder, kind: '1h' | 'tonight' | 'tomorrow' | 'nextweek') => {
+    const now = new Date()
+    let next: Date
+    if (kind === '1h') next = new Date(now.getTime() + 60 * 60 * 1000)
+    else if (kind === 'tonight') {
+      next = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 20, 0)
+      if (next.getTime() <= now.getTime()) next = new Date(now.getTime() + 60 * 60 * 1000)
+    } else if (kind === 'tomorrow') next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 9, 0)
+    else next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7, 9, 0)
+
+    const local = toLocalDateTimeValue(next)
+    await updateReminder(reminder.id, { scheduledTime: local })
+    scheduleNotification(reminder.id, reminder.title, reminder.description || '', next)
+    haptic()
+    loadReminders().catch(console.error)
+    toast.success(t('reminders.snoozed', { time: fmtDate(next, true) }))
+  }
+
+  // Tick/untick a checklist item directly on the card.
+  const handleToggleChecklistItem = async (reminder: Reminder, itemId: string) => {
+    const updated = (reminder.checklist || []).map((c) => (c.id === itemId ? { ...c, done: !c.done } : c))
+    await updateReminder(reminder.id, { checklist: updated })
+    haptic()
+    loadReminders().catch(console.error)
+  }
+
+  const handleTestNotification = async () => {
+    try {
+      const reg = await navigator.serviceWorker?.ready
+      if (reg?.showNotification) {
+        await reg.showNotification('LifeTrack', { body: t('reminders.testBody'), icon: '/icon-192x192.png', tag: 'test' })
+      } else {
+        new Notification('LifeTrack', { body: t('reminders.testBody'), icon: '/icon-192x192.png', tag: 'test' })
+      }
+      toast.success(t('reminders.testSent'))
+    } catch {
+      toast.error(t('reminders.pushError'))
+    }
+  }
+
+  const applyTemplate = (tpl: (typeof TEMPLATES)[number]) => {
+    setTitle(t(tpl.labelKey))
+    setCategory(tpl.category)
+    if (tpl.repeat) {
+      setIsRepetitive(true)
+      setRepeatInterval(tpl.repeat.interval)
+      setRepeatType(tpl.repeat.type)
+    }
+  }
+
+  // Keep the date part of scheduledTime, set the hour from the preset.
+  const applyTimePreset = (hour: number) => {
+    const base = scheduledTime ? new Date(scheduledTime) : new Date()
+    const d = isNaN(base.getTime()) ? new Date() : base
+    d.setHours(hour, 0, 0, 0)
+    if (d.getTime() <= Date.now()) d.setDate(d.getDate() + 1) // past → same time tomorrow
+    setScheduledTime(toLocalDateTimeValue(d))
+  }
+
+  const handleQuickAddChange = (value: string) => {
+    setQuickAdd(value)
+    const parsed = parseQuickAdd(value)
+    setQuickAddWhen(parsed.when)
+    if (parsed.title) setTitle(parsed.title)
+    if (parsed.when) setScheduledTime(toLocalDateTimeValue(parsed.when))
   }
 
   const handleSubmit = async (e: FormEvent) => {
@@ -206,9 +341,25 @@ export default function RemindersPage() {
       toast.error(t('reminders.titleTimeRequired'))
       return
     }
+    if (isRepetitive && repeatType === 'weekdays' && repeatWeekdays.length === 0) {
+      toast.error(t('reminders.weekdayNeeded'))
+      return
+    }
     if (savingRef.current) return
     savingRef.current = true
     setSaving(true)
+
+    // Shared optional fields for create + update.
+    const extras = {
+      isRepetitive: isRepetitive || undefined,
+      repeatInterval: isRepetitive ? repeatInterval : undefined,
+      repeatType: isRepetitive ? repeatType : undefined,
+      repeatWeekdays: isRepetitive && repeatType === 'weekdays' ? repeatWeekdays : undefined,
+      repeatUntil: isRepetitive && repeatUntil ? repeatUntil : undefined,
+      category: category || undefined,
+      leadMinutes: leadMinutes > 0 ? leadMinutes : undefined,
+      checklist: checklist.length > 0 ? checklist : undefined,
+    }
 
     try {
     // If editing, update existing reminder
@@ -217,9 +368,7 @@ export default function RemindersPage() {
         title,
         description,
         scheduledTime,
-        isRepetitive: isRepetitive || undefined,
-        repeatInterval: isRepetitive ? repeatInterval : undefined,
-        repeatType: isRepetitive ? repeatType : undefined,
+        ...extras,
       })
       
       // Reschedule notification if time changed
@@ -246,9 +395,7 @@ export default function RemindersPage() {
         scheduledTime,
         dismissed: false,
         createdAt: new Date().toISOString(),
-        isRepetitive: isRepetitive || undefined,
-        repeatInterval: isRepetitive ? repeatInterval : undefined,
-        repeatType: isRepetitive ? repeatType : undefined,
+        ...extras,
         completionCount: isRepetitive ? 1 : 0, // If repetitive, start with count 1
         occurrences: isRepetitive ? [
           {
@@ -293,12 +440,7 @@ export default function RemindersPage() {
     }
 
     // Reset form
-    setTitle('')
-    setDescription('')
-    setScheduledTime(toLocalDateTimeValue())
-    setIsRepetitive(false)
-    setRepeatInterval(1)
-    setRepeatType('weeks')
+    resetFormFields()
     setEditingReminder(null)
     setShowForm(false)
     loadReminders()
@@ -309,12 +451,7 @@ export default function RemindersPage() {
   }
 
   const handleCancelEdit = () => {
-    setTitle('')
-    setDescription('')
-    setScheduledTime(toLocalDateTimeValue())
-    setIsRepetitive(false)
-    setRepeatInterval(1)
-    setRepeatType('weeks')
+    resetFormFields()
     setEditingReminder(null)
     setShowForm(false)
   }
@@ -359,18 +496,15 @@ export default function RemindersPage() {
 
     // Update reminder with new occurrence AND move it to the next occurrence,
     // so the card leaves the overdue state instead of staying due forever.
-    const advanced =
-      reminderToComplete.isRepetitive && reminderToComplete.repeatType
-        ? nextOccurrenceLocal(
-            reminderToComplete.scheduledTime,
-            reminderToComplete.repeatInterval || 1,
-            reminderToComplete.repeatType
-          )
-        : undefined
+    // advanceReminder returns null when the repeat's end date has passed —
+    // the reminder is then finished (dismissed) instead of rescheduled.
+    const advanced = advanceReminder(reminderToComplete)
+    const repeatEnded = reminderToComplete.isRepetitive && !!reminderToComplete.repeatType && advanced === null
     await updateReminder(reminderToComplete.id, {
       completionCount: updatedCount,
       occurrences: updatedOccurrences,
       ...(advanced ? { scheduledTime: advanced } : {}),
+      ...(repeatEnded ? { dismissed: true } : {}),
     })
 
     loadReminders().catch(console.error)
@@ -496,7 +630,9 @@ export default function RemindersPage() {
     return null
   }
 
-  const activeReminders = reminders.filter(r => !r.dismissed)
+  const allActiveReminders = reminders.filter(r => !r.dismissed)
+  const hasCategories = allActiveReminders.some(r => r.category)
+  const activeReminders = filterCat === 'all' ? allActiveReminders : allActiveReminders.filter(r => r.category === filterCat)
   const dismissedReminders = reminders.filter(r => r.dismissed)
 
   // Group active reminders into time sections: Overdue / Today / Tomorrow / Upcoming.
@@ -537,12 +673,37 @@ export default function RemindersPage() {
     { key: 'reminders.groupUpcoming', items: [...upcomingReminders, ...invalidTimeReminders] },
   ]
 
+  // ---- Calendar view data ----
+  const cal = calMonth ?? { y: now.getFullYear(), m: now.getMonth() }
+  const dayKey = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  const remindersByDay = new Map<string, Reminder[]>()
+  for (const r of activeReminders) {
+    const d = new Date(r.scheduledTime)
+    if (isNaN(d.getTime())) continue
+    const k = dayKey(d)
+    remindersByDay.set(k, [...(remindersByDay.get(k) || []), r])
+  }
+  const firstOfMonth = new Date(cal.y, cal.m, 1)
+  const daysInMonth = new Date(cal.y, cal.m + 1, 0).getDate()
+  const leadingBlanks = firstOfMonth.getDay() // 0=Sun grid
+  const calCells: (number | null)[] = [
+    ...Array.from({ length: leadingBlanks }, () => null),
+    ...Array.from({ length: daysInMonth }, (_, i) => i + 1),
+  ]
+  const monthLabel = fmtDate(firstOfMonth).replace(/[০-৯\d]+,?\s*/, '') // "MMMM d, yyyy" → month + year-ish; fallback fine
+  const selectedDayReminders = selectedDay ? (remindersByDay.get(selectedDay) || []).sort(byTimeAsc) : []
 
-  const renderActiveReminderCard = (r: Reminder, overdue = false) => (
+
+  const renderActiveReminderCard = (r: Reminder, overdue = false) => {
+    const streak = r.isRepetitive ? completionStreakDays(r) : 0
+    return (
     <div key={r.id} className={overdue ? 'card bar-neg space-y-3' : 'card space-y-3'}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-semibold text-content truncate">{r.title}</h3>
+          <h3 className="font-semibold text-content truncate flex items-center gap-1.5">
+            {r.category && <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: catColor(r.category) }} aria-hidden="true" />}
+            {r.title}
+          </h3>
           <p className="text-xs text-muted flex flex-wrap items-center gap-x-1 gap-y-1 mt-0.5">
             <span className="flex items-center gap-1 whitespace-nowrap">
               <ClockIcon className="w-3.5 h-3.5 flex-shrink-0" /> {fmtDate(r.scheduledTime, true)}
@@ -555,6 +716,8 @@ export default function RemindersPage() {
           </p>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
+          <button className="icon-btn" onClick={() => handleShare(r)} title={t('reminders.share')}><ShareIcon className="w-5 h-5" /></button>
+          <button className="icon-btn" onClick={() => handleDuplicate(r)} title={t('reminders.duplicate')}><PlusIcon className="w-5 h-5" /></button>
           <button className="icon-btn" onClick={() => handleEdit(r)} title={t('common.edit')}><EditIcon className="w-5 h-5" /></button>
           <button className="icon-btn" onClick={() => handleDelete(r.id)} title={t('common.delete')}><TrashIcon className="w-5 h-5" /></button>
         </div>
@@ -562,12 +725,43 @@ export default function RemindersPage() {
 
       {r.description && <p className="text-sm text-muted">{r.description}</p>}
 
-      {(r.isRepetitive || (r.completionCount ?? 0) > 0) && (
+      {/* Checklist — tick items right on the card */}
+      {r.checklist && r.checklist.length > 0 && (
+        <div className="space-y-1.5">
+          {r.checklist.map((c) => (
+            <label key={c.id} className="flex items-center gap-2 cursor-pointer text-sm">
+              <input
+                type="checkbox"
+                checked={c.done}
+                onChange={() => handleToggleChecklistItem(r, c.id)}
+                className="w-4 h-4 rounded accent-[color:var(--accent)]"
+              />
+              <span className={c.done ? 'line-through text-muted' : 'text-content'}>{c.text}</span>
+            </label>
+          ))}
+        </div>
+      )}
+
+      {(r.isRepetitive || (r.completionCount ?? 0) > 0 || r.sourceType || streak >= 2) && (
         <div className="flex flex-wrap gap-2">
+          {r.sourceType && (
+            <Link href={r.sourceType === 'debt' ? '/debts' : '/loans'} className="chip tint-warn text-caution">
+              {t(r.sourceType === 'debt' ? 'reminders.sourceDebt' : 'reminders.sourceLoan')}
+            </Link>
+          )}
           {r.isRepetitive && <span className="chip chip-accent">{t('reminders.repetitiveChip')}</span>}
+          {streak >= 2 && <span className="chip">{t('reminders.streak', { count: fmtInt(streak) })}</span>}
           {(r.completionCount ?? 0) > 0 && <span className="chip">{t('reminders.timesCompleted', { count: fmtInt(r.completionCount ?? 0) })}</span>}
         </div>
       )}
+
+      {/* One-tap snooze */}
+      <div className="flex flex-wrap gap-2">
+        <button className="chip" onClick={() => handleSnooze(r, '1h')}>{t('reminders.snooze1h')}</button>
+        <button className="chip" onClick={() => handleSnooze(r, 'tonight')}>{t('reminders.snoozeTonight')}</button>
+        <button className="chip" onClick={() => handleSnooze(r, 'tomorrow')}>{t('reminders.snoozeTomorrow')}</button>
+        <button className="chip" onClick={() => handleSnooze(r, 'nextweek')}>{t('reminders.snoozeNextWeek')}</button>
+      </div>
 
       <div className="flex gap-2 pt-1">
         <button
@@ -588,7 +782,8 @@ export default function RemindersPage() {
         )}
       </div>
     </div>
-  )
+    )
+  }
 
   return (
     <div className="min-h-full">
@@ -615,6 +810,17 @@ export default function RemindersPage() {
             <p className="text-xs text-caution">{t('reminders.pushBlocked')}</p>
           </div>
         )}
+        {/* Reliability meter: notifications are ON + a test button so the user
+            can verify delivery on this device instead of trusting a checkbox. */}
+        {pushState === 'granted' && (
+          <div className="card flex items-center gap-3 py-2.5">
+            <CheckCircleIcon className="w-5 h-5 text-positive flex-shrink-0" />
+            <p className="text-xs text-muted flex-1">{t('reminders.statusOn')}</p>
+            <button onClick={handleTestNotification} className="btn btn-secondary text-xs px-3 py-1.5">
+              {t('reminders.testNotif')}
+            </button>
+          </div>
+        )}
 
         {/* Summary */}
         <div className="grid grid-cols-2 gap-3">
@@ -623,7 +829,7 @@ export default function RemindersPage() {
               <ClockIcon className="w-5 h-5" />
               <span className="text-xs font-medium text-muted">{t('reminders.active')}</span>
             </div>
-            <p className="text-2xl font-bold text-content">{fmtInt(activeReminders.length)}</p>
+            <p className="text-2xl font-bold text-content">{fmtInt(allActiveReminders.length)}</p>
           </div>
           <div className="stat-tile">
             <div className="flex items-center gap-2 mb-2 text-positive">
@@ -633,6 +839,26 @@ export default function RemindersPage() {
             <p className="text-2xl font-bold text-content">{fmtInt(dismissedReminders.length)}</p>
           </div>
         </div>
+
+        {/* View toggle + category filter */}
+        {reminders.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button className={`chip ${viewMode === 'list' ? 'chip-accent' : ''}`} onClick={() => setViewMode('list')}>{t('reminders.viewList')}</button>
+            <button className={`chip ${viewMode === 'calendar' ? 'chip-accent' : ''}`} onClick={() => setViewMode('calendar')}>{t('reminders.viewCalendar')}</button>
+            {hasCategories && (
+              <>
+                <span className="w-px h-4 bg-line mx-1" aria-hidden="true" />
+                <button className={`chip ${filterCat === 'all' ? 'chip-accent' : ''}`} onClick={() => setFilterCat('all')}>{t('reminders.filterAll')}</button>
+                {CATEGORIES.map((c) => (
+                  <button key={c.key} className={`chip ${filterCat === c.key ? 'chip-accent' : ''}`} onClick={() => setFilterCat(c.key)}>
+                    <span className="w-2 h-2 rounded-full inline-block mr-1" style={{ backgroundColor: c.color }} aria-hidden="true" />
+                    {t(c.labelKey)}
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+        )}
 
         {dataLoading ? (
           <ListSkeleton count={3} />
@@ -645,6 +871,50 @@ export default function RemindersPage() {
               <PlusIcon className="w-5 h-5" /> {t('reminders.addFirst')}
             </button>
           </div>
+        ) : viewMode === 'calendar' ? (
+          <>
+            {/* Month calendar: dots mark days with reminders; tap a day for its list */}
+            <div className="card space-y-3">
+              <div className="flex items-center justify-between">
+                <button className="icon-btn" onClick={() => { setCalMonth({ y: cal.m === 0 ? cal.y - 1 : cal.y, m: cal.m === 0 ? 11 : cal.m - 1 }); setSelectedDay(null) }} aria-label="prev">‹</button>
+                <p className="text-sm font-semibold text-content">{monthLabel}</p>
+                <button className="icon-btn" onClick={() => { setCalMonth({ y: cal.m === 11 ? cal.y + 1 : cal.y, m: cal.m === 11 ? 0 : cal.m + 1 }); setSelectedDay(null) }} aria-label="next">›</button>
+              </div>
+              <div className="grid grid-cols-7 gap-1 text-center">
+                {WEEKDAY_LABELS[lang].map((d) => (
+                  <span key={d} className="text-[10px] text-muted font-medium py-1">{d}</span>
+                ))}
+                {calCells.map((day, i) => {
+                  if (day === null) return <span key={`b${i}`} />
+                  const k = `${cal.y}-${String(cal.m + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                  const has = remindersByDay.has(k)
+                  const isToday = k === dayKey(now)
+                  const isSelected = k === selectedDay
+                  return (
+                    <button
+                      key={k}
+                      onClick={() => setSelectedDay(isSelected ? null : k)}
+                      className={`relative aspect-square rounded-lg text-xs flex flex-col items-center justify-center transition-colors ${
+                        isSelected ? 'bg-accent text-accent-fg font-bold' : isToday ? 'bg-surface-2 font-bold text-accent' : 'text-content hover:bg-surface-2'
+                      }`}
+                    >
+                      {fmtInt(day)}
+                      {has && <span className={`absolute bottom-1 w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-accent'}`} aria-hidden="true" />}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            {selectedDay && (
+              <section className="space-y-3">
+                {selectedDayReminders.length > 0 ? (
+                  selectedDayReminders.map((r) => renderActiveReminderCard(r))
+                ) : (
+                  <p className="text-sm text-muted text-center py-6">{t('reminders.calEmpty')}</p>
+                )}
+              </section>
+            )}
+          </>
         ) : (
           <>
             {reminderGroups.map((g) =>
@@ -698,6 +968,34 @@ export default function RemindersPage() {
         </>}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Quick add: free-text like "কাল সকাল ৯টায় ওষুধ" fills title + time */}
+          {!editingReminder && (
+            <div>
+              <input
+                type="text"
+                value={quickAdd}
+                onChange={(e) => handleQuickAddChange(e.target.value)}
+                className="input"
+                placeholder={t('reminders.quickAddPlaceholder')}
+              />
+              {quickAddWhen && (
+                <p className="text-xs text-positive mt-1">{t('reminders.quickAddHint', { time: fmtDate(quickAddWhen, true) })}</p>
+              )}
+            </div>
+          )}
+
+          {/* Templates */}
+          {!editingReminder && (
+            <div className="flex flex-wrap gap-2">
+              {TEMPLATES.map((tpl) => (
+                <button key={tpl.labelKey} type="button" className="chip" onClick={() => applyTemplate(tpl)}>
+                  <span className="w-2 h-2 rounded-full inline-block mr-1" style={{ backgroundColor: catColor(tpl.category) }} aria-hidden="true" />
+                  {t(tpl.labelKey)}
+                </button>
+              ))}
+            </div>
+          )}
+
           <div>
             <label className="label label-required">{t('reminders.fieldTitle')}</label>
             <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="input" placeholder={t('reminders.titlePlaceholder')} required />
@@ -709,11 +1007,136 @@ export default function RemindersPage() {
           <div>
             <label className="label label-required">{t('reminders.fieldTime')}</label>
             <input type="datetime-local" value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} className="input" required />
+            <div className="flex flex-wrap gap-2 mt-2">
+              {TIME_PRESETS.map((p) => (
+                <button key={p.labelKey} type="button" className="chip" onClick={() => applyTimePreset(p.hour)}>
+                  {t(p.labelKey)}
+                </button>
+              ))}
+            </div>
           </div>
+
+          {/* Category */}
+          <div>
+            <label className="label">{t('reminders.categoryLabel')}</label>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.map((c) => (
+                <button
+                  key={c.key}
+                  type="button"
+                  className={`chip ${category === c.key ? 'chip-accent' : ''}`}
+                  onClick={() => setCategory(category === c.key ? '' : c.key)}
+                >
+                  <span className="w-2 h-2 rounded-full inline-block mr-1" style={{ backgroundColor: c.color }} aria-hidden="true" />
+                  {t(c.labelKey)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Notify before */}
+          <div>
+            <label className="label">{t('reminders.leadLabel')}</label>
+            <div className="flex flex-wrap gap-2">
+              {([[0, 'reminders.leadNone'], [10, 'reminders.lead10m'], [60, 'reminders.lead1h'], [1440, 'reminders.lead1d']] as const).map(([mins, key]) => (
+                <button key={mins} type="button" className={`chip ${leadMinutes === mins ? 'chip-accent' : ''}`} onClick={() => setLeadMinutes(mins)}>
+                  {t(key)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Checklist editor */}
+          <div>
+            <label className="label">{t('reminders.checklistLabel')}</label>
+            {checklist.length > 0 && (
+              <div className="space-y-1.5 mb-2">
+                {checklist.map((c) => (
+                  <div key={c.id} className="flex items-center gap-2">
+                    <span className="text-sm text-content flex-1">{c.text}</span>
+                    <button type="button" className="icon-btn w-7 h-7" onClick={() => setChecklist(checklist.filter((x) => x.id !== c.id))}>
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <input
+              type="text"
+              value={checklistInput}
+              onChange={(e) => setChecklistInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  const text = checklistInput.trim()
+                  if (text) {
+                    setChecklist([...checklist, { id: `c${Date.now().toString(36)}`, text, done: false }])
+                    setChecklistInput('')
+                  }
+                }
+              }}
+              className="input"
+              placeholder={t('reminders.checklistPlaceholder')}
+            />
+          </div>
+
           <label className="flex items-center gap-3 cursor-pointer pt-1">
             <input type="checkbox" checked={isRepetitive} onChange={(e) => setIsRepetitive(e.target.checked)} className="w-5 h-5 rounded accent-[color:var(--accent)]" />
             <span className="text-sm text-content">{t('reminders.repetitiveLabel')}</span>
           </label>
+
+          {/* Repeat controls */}
+          {isRepetitive && (
+            <div className="space-y-3 rounded-xl bg-surface-2 p-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-content">{t('reminders.repeatEvery')}</span>
+                {repeatType !== 'weekdays' && (
+                  <input
+                    type="number"
+                    min={1}
+                    value={repeatInterval}
+                    onChange={(e) => setRepeatInterval(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    className="input input-sm w-20"
+                  />
+                )}
+                <select
+                  value={repeatType}
+                  onChange={(e) => setRepeatType(e.target.value as typeof repeatType)}
+                  className="input input-sm flex-1"
+                >
+                  <option value="days">{t('reminders.repeatDays')}</option>
+                  <option value="weeks">{t('reminders.repeatWeeks')}</option>
+                  <option value="months">{t('reminders.repeatMonths')}</option>
+                  <option value="weekdays">{t('reminders.repeatWeekdaysUnit')}</option>
+                </select>
+              </div>
+              {repeatType === 'weekdays' && (
+                <div>
+                  <p className="text-xs text-muted mb-1.5">{t('reminders.repeatWeekdaysPick')}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {WEEKDAY_LABELS[lang].map((label, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        className={`chip ${repeatWeekdays.includes(i) ? 'chip-accent' : ''}`}
+                        onClick={() =>
+                          setRepeatWeekdays(
+                            repeatWeekdays.includes(i) ? repeatWeekdays.filter((d) => d !== i) : [...repeatWeekdays, i].sort()
+                          )
+                        }
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <div>
+                <label className="label">{t('reminders.repeatUntilLabel')}</label>
+                <input type="date" value={repeatUntil} onChange={(e) => setRepeatUntil(e.target.value)} className="input input-sm" />
+              </div>
+            </div>
+          )}
         </form>
       </Modal>
 

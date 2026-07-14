@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { timingSafeEqual } from 'crypto'
 import { getAdminDb } from '@/lib/firebase-admin'
 import type { Reminder } from '@/lib/types'
-import { actionToken, nextOccurrence, toDhakaLocalString } from '@/lib/reminder-shared'
+import { actionToken, nextOccurrence, pastRepeatEnd, toDhakaLocalString } from '@/lib/reminder-shared'
 
 // Called by the service worker when the user taps a notification action
 // (✓ সম্পন্ন / +১ ঘন্টা). Auth: HMAC token from the push payload — bound to
@@ -68,7 +68,12 @@ export async function POST(request: Request) {
       }
       const stillPast = new Date(r.scheduledTime).getTime() <= Date.now()
       if (stillPast) {
-        updates.scheduledTime = nextOccurrence(r.scheduledTime, r.repeatInterval || 1, r.repeatType)
+        const next = nextOccurrence(r.scheduledTime, r.repeatInterval || 1, r.repeatType, Date.now(), r.repeatWeekdays)
+        if (pastRepeatEnd(next, r.repeatUntil)) {
+          updates.dismissed = true
+        } else {
+          updates.scheduledTime = next
+        }
       }
       await ref.update(updates)
     } else {
