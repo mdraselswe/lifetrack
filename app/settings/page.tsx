@@ -230,7 +230,7 @@ export default function SettingsPage() {
 
   return (
     <>
-      <AppBar title={t('settings.title')} />
+      <AppBar title={t('settings.title')} back />
 
       <main className="p-4 space-y-4 max-w-lg mx-auto w-full safe-area-bottom">
         {/* Profile */}

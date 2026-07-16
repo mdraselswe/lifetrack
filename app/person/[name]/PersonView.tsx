@@ -204,7 +204,7 @@ export default function PersonView({ personName }: { personName: string }) {
 
   return (
     <div className="min-h-full">
-      <AppBar title={personName} subtitle={t('person.subtitle')} />
+      <AppBar title={personName} subtitle={t('person.subtitle')} back />
 
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in">
         {dataLoading ? (

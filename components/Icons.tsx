@@ -31,6 +31,10 @@ export const ArrowDownLeftIcon = (p: IconProps) => (
   <svg {...base(p)}><path d="M17 7 7 17" /><path d="M16 17H7V8" /></svg>
 )
 
+export const ArrowLeftIcon = (p: IconProps) => (
+  <svg {...base(p)}><path d="M19 12H5" /><path d="M12 19l-7-7 7-7" /></svg>
+)
+
 export const UserIcon = (p: IconProps) => (
   <svg {...base(p)}><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6" /></svg>
 )

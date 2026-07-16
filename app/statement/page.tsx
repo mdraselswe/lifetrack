@@ -119,7 +119,7 @@ export default function StatementPage() {
 
   return (
     <div className="min-h-full">
-      <AppBar title={t('statement.title')} subtitle={t('statement.subtitle')} />
+      <AppBar title={t('statement.title')} subtitle={t('statement.subtitle')} back />
 
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in">
         {/* Controls — never printed */}

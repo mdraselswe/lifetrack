@@ -6,6 +6,7 @@ export const common: Dict = {
   'common.delete': { bn: 'মুছুন', en: 'Delete' },
   'common.edit': { bn: 'সম্পাদনা', en: 'Edit' },
   'common.close': { bn: 'বন্ধ করুন', en: 'Close' },
+  'common.back': { bn: 'পিছনে', en: 'Back' },
   'common.add': { bn: 'যোগ করুন', en: 'Add' },
   'common.loading': { bn: 'লোড হচ্ছে...', en: 'Loading...' },
   'common.name': { bn: 'নাম', en: 'Name' },

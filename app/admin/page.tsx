@@ -123,7 +123,7 @@ export default function AdminPage() {
 
   return (
     <div className="min-h-full">
-      <AppBar title={t('admin.title')} subtitle={t('admin.subtitle')} />
+      <AppBar title={t('admin.title')} subtitle={t('admin.subtitle')} back />
 
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in">
         {users === null ? (
