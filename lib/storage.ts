@@ -24,6 +24,7 @@ import {
 } from './firebase-db'
 import { auth } from './firebase-app'
 import { round2, num } from './format'
+import { cancelNotification } from './notifications'
 
 // Re-export realtime listeners so pages can subscribe for cross-device sync
 export { subscribeToDebts, subscribeToLoans, subscribeToReminders, subscribeToExpenses } from './firebase-db'
@@ -90,17 +91,21 @@ export const getReminders = async (): Promise<Reminder[]> => {
   }
 }
 
-export const saveReminder = async (reminder: Reminder): Promise<void> => {
-  if (!isBrowser) return
+// Returns the Firestore-assigned document id so callers can schedule/cancel the
+// browser notification by the SAME id the reminder is stored (and later deleted)
+// under. Scheduling with the caller's throwaway id would leave an un-cancellable
+// SW notification (the tag would never match the doc id on delete).
+export const saveReminder = async (reminder: Reminder): Promise<string> => {
+  if (!isBrowser) return ''
   const userId = await resolveUserId()
-  
+
   if (!userId) {
     throw new Error('User must be logged in to save data')
   }
-  
+
   try {
     const { id, ...reminderWithoutId } = reminder
-    await saveFirebaseReminder(userId, reminderWithoutId)
+    return await saveFirebaseReminder(userId, reminderWithoutId)
   } catch (error) {
     console.error('Error saving reminder to Firebase:', error)
     throw error // Don't fallback to localStorage - force Firebase usage
@@ -133,6 +138,9 @@ export const deleteReminder = async (id: string): Promise<void> => {
   
   try {
     await deleteFirebaseReminder(userId, id)
+    // Also cancel any pending SW/setTimeout notification so a deleted reminder
+    // can't still fire a phantom notification. Best-effort — never blocks delete.
+    cancelNotification(id).catch(() => {})
   } catch (error) {
     console.error('Error deleting reminder from Firebase:', error)
     throw error // Don't fallback to localStorage - force Firebase usage

@@ -50,6 +50,15 @@ const buildInstallmentDates = (
   return dates
 }
 
+// Per-installment amount. Every installment is round2(total/count) except the
+// LAST, which absorbs the rounding remainder so the installments sum to exactly
+// the total (e.g. ৳100/3 → 33.33, 33.33, 33.34 not 33.33×3 = 99.99).
+const instAmount = (total: number, count: number, index: number): number => {
+  if (count <= 0) return 0
+  const per = round2(total / count)
+  return index === count - 1 ? round2(total - per * (count - 1)) : per
+}
+
 export default function DebtsPage() {
   useLang() // re-render on language switch
   const [debts, setDebts] = useState<Debt[]>([])
@@ -261,10 +270,10 @@ export default function DebtsPage() {
       // কিস্তি plan: N reminders, one per installment, every M days from the
       // due date (or from the debt date when no due date is set).
       if (hasInstallmentPlan) {
-        const per = round2(parsedAmount / capturedInstCount)
         const start = new Date(capturedDueDate || debt.date)
         if (!isNaN(start.getTime())) {
           buildInstallmentDates(start, capturedInstCount, capturedInstUnit, capturedInstInterval).forEach((local, i) => {
+            const per = instAmount(parsedAmount, capturedInstCount, i)
             saveReminder({
               id: crypto.randomUUID(),
               title: t('debts.instReminderTitle', { name: debt.personName, i: fmtInt(i + 1), n: fmtInt(capturedInstCount) }),
@@ -435,11 +444,30 @@ export default function DebtsPage() {
     getRemindersForSource(sourceId).then((all) => {
       const installments = all.filter((r) => r.reminderKind === 'installment')
       if (installments.length === 0) return
-      const per = round2(newTotalAmount / installments.length)
+      const count = installments.length
       installments.forEach((r) => {
+        // Use the reminder's own 1-based position (autoParams.i) so the last one
+        // absorbs the rounding remainder and the split still sums to the total.
+        const idx = (r.autoParams?.i ?? 1) - 1
+        const per = instAmount(newTotalAmount, count, idx)
         updateReminder(r.id, {
           description: t('debts.instReminderDesc', { name, amount: bn(per) }),
           autoParams: { ...r.autoParams, name, amount: per }, // keep i/n, refresh amount
+        }).catch(console.error)
+      })
+    }).catch(console.error)
+  }
+
+  // The due-date reminder's amount is likewise frozen at creation. Keep it in
+  // sync with the outstanding balance so a payment/increase doesn't leave it
+  // saying "collect ৳<old>". Preserves each reminder's own due date.
+  const syncDueReminderAmount = (sourceId: string, name: string, remainingAmt: number) => {
+    getRemindersForSource(sourceId).then((all) => {
+      all.filter((r) => r.reminderKind === 'due').forEach((r) => {
+        const date = r.autoParams?.date || ''
+        updateReminder(r.id, {
+          description: t('debts.dueReminderDesc', { name, amount: bn(remainingAmt), date: bnDate(date) }),
+          autoParams: { ...r.autoParams, name, amount: remainingAmt, date },
         }).catch(console.error)
       })
     }).catch(console.error)
@@ -550,6 +578,7 @@ export default function DebtsPage() {
         deleteRemindersForSource(debtId)
       } else {
         syncPromiseReminderAmount(debtId, debt.personName, round2(remaining - amount))
+        syncDueReminderAmount(debtId, debt.personName, round2(remaining - amount))
       }
       setPaymentAmount('')
       setPaymentDate(localDatetimeValue())
@@ -592,6 +621,7 @@ export default function DebtsPage() {
         deleteDebtPayment(debtId, paymentId).then(() => {
           // Deleting a payment un-pays it — remaining goes back up.
           syncPromiseReminderAmount(debtId, debt.personName, round2(calculateRemaining(debt) + payment.amount))
+          syncDueReminderAmount(debtId, debt.personName, round2(calculateRemaining(debt) + payment.amount))
           loadDebts().catch(console.error)
           toast.success(t('debts.paymentDeleteSuccess'))
         }).catch((error) => {
@@ -636,6 +666,7 @@ export default function DebtsPage() {
         
         addDebtIncrease(debtId, increase).then(() => {
           syncPromiseReminderAmount(debtId, debt.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(debt))))
+          syncDueReminderAmount(debtId, debt.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(debt))))
           syncInstallmentAmounts(debtId, debt.personName, newTotalAmount)
           toast.success(t('debts.increaseSuccess'))
           handleCloseIncreaseModal()
@@ -685,6 +716,7 @@ export default function DebtsPage() {
         // Just delete the increase record
         deleteDebtIncrease(debtId, increaseId).then(() => {
           syncPromiseReminderAmount(debtId, debt.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(debt))))
+          syncDueReminderAmount(debtId, debt.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(debt))))
           syncInstallmentAmounts(debtId, debt.personName, newTotalAmount)
           loadDebts().catch(console.error)
           toast.success(t('debts.increaseDeleteSuccess'))
@@ -793,7 +825,9 @@ export default function DebtsPage() {
 
         const sourceId = editingDebt.id
         const dueName = editPersonName
-        const dueAmt = newAmount
+        // Due reminder shows the outstanding balance (base + increases − paid),
+        // not the raw base amount, so it stays correct after edits/payments.
+        const dueAmt = round2(Math.max(0, newAmount + increasesTotal - totalPaid))
         const dueVal = editDueDate
         const dueLead = editReminderLead
         updateDebt(sourceId, {
@@ -859,12 +893,14 @@ export default function DebtsPage() {
           // one (an existing plan is managed via handleCancelInstallmentPlan,
           // not overwritten here).
           if (editInstReminders.length === 0 && newInstCount > 1) {
-            const per = round2(newAmount / newInstCount)
+            // Split the full outstanding total (base + increases), not just base.
+            const planTotal = round2(newAmount + increasesTotal)
             const unit = editInstIntervalUnit
             const interval = unit === 'days' ? Math.max(1, parseInt(editInstIntervalDays, 10) || 30) : 1
             const start = new Date(dueVal || editDate)
             if (!isNaN(start.getTime())) {
               buildInstallmentDates(start, newInstCount, unit, interval).forEach((local, i) => {
+                const per = instAmount(planTotal, newInstCount, i)
                 saveReminder({
                   id: crypto.randomUUID(),
                   title: t('debts.instReminderTitle', { name: dueName, i: fmtInt(i + 1), n: fmtInt(newInstCount) }),
@@ -921,7 +957,8 @@ export default function DebtsPage() {
     const sourceId = editingDebt.id
     const dueVal = editDueDate
     const dueName = editPersonName
-    const dueAmt = parseFloat(editAmount) || editingDebt.amount
+    // Show the outstanding balance on the restored due reminder, not raw base.
+    const dueAmt = round2(Math.max(0, calculateRemaining(editingDebt)))
     const dueLead = editReminderLead
     confirm.delete(
       t('debts.instCancelTitle'),
@@ -1011,6 +1048,7 @@ export default function DebtsPage() {
           return addDebtPayment(editingPayment.debtId, updatedPayment)
         }).then(() => {
           syncPromiseReminderAmount(editingPayment.debtId, debt.personName, round2(remaining - amount))
+          syncDueReminderAmount(editingPayment.debtId, debt.personName, round2(remaining - amount))
           setEditingPayment(null)
           setEditPaymentAmount('')
           setEditPaymentDate('')
@@ -1069,6 +1107,7 @@ export default function DebtsPage() {
           return addDebtIncrease(editingIncrease.debtId, updatedIncrease)
         }).then(() => {
           syncPromiseReminderAmount(editingIncrease.debtId, debt.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(debt))))
+          syncDueReminderAmount(editingIncrease.debtId, debt.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(debt))))
           syncInstallmentAmounts(editingIncrease.debtId, debt.personName, newTotalAmount)
           setEditingIncrease(null)
           setEditIncreaseAmount('')

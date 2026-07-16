@@ -254,7 +254,6 @@ export default function ExpensesPage() {
   const [py, pm] = month.split('-').map(Number)
   const prevPrefix = view === 'year' ? `${py - 1}` : monthKeyOf(new Date(py, pm - 2, 1))
   const prevTotal = round2(expenses.filter((e) => e.date.startsWith(prevPrefix)).reduce((s, e) => s + e.amount, 0))
-  const trendPct = prevTotal > 0 ? Math.round(((monthTotal - prevTotal) / prevTotal) * 100) : null
 
   // ---- Daily average + month-end projection ----
   // Period bounds + how far into it "today" is (only projects for the ongoing period).
@@ -266,6 +265,15 @@ export default function ExpensesPage() {
   const daysElapsed = isCurrentPeriod
     ? Math.round((new Date(todayKey).getTime() - periodStart.getTime()) / 86400000) + 1
     : totalDaysInPeriod
+
+  // Trend: compare like-for-like. For an ONGOING period, only part of it has
+  // elapsed, so scale the previous full period down to the same elapsed fraction
+  // instead of comparing a partial month against a full one (which always read
+  // as a false "drop"). For a completed period, compare full vs full.
+  const prevBaseline = isCurrentPeriod && daysElapsed < totalDaysInPeriod
+    ? prevTotal * (daysElapsed / totalDaysInPeriod)
+    : prevTotal
+  const trendPct = prevBaseline > 0 ? Math.round(((monthTotal - prevBaseline) / prevBaseline) * 100) : null
   const dailyAvg = daysElapsed > 0 ? round2(monthTotal / daysElapsed) : 0
   const projection = isCurrentPeriod && daysElapsed < totalDaysInPeriod ? round2(dailyAvg * totalDaysInPeriod) : null
 

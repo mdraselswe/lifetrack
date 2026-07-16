@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef, type FormEvent } from 'react'
 import { getReminders, saveReminder, updateReminder, deleteReminder, subscribeToReminders } from '@/lib/storage'
-import { scheduleNotification } from '@/lib/notifications'
+import { scheduleNotification, cancelNotification } from '@/lib/notifications'
 import { enablePush, refreshPushIfGranted, pushSupported } from '@/lib/push'
 import type { Reminder, ReminderOccurrence } from '@/lib/types'
 import { toast } from '@/lib/toast'
@@ -337,8 +337,11 @@ export default function RemindersPage() {
         ] : [],
       }
 
+      let savedId = reminder.id
       try {
-        await saveReminder(reminder)
+        // Use the Firestore-assigned id as the notification tag so a later
+        // delete (which cancels by doc id) can actually match and cancel it.
+        savedId = (await saveReminder(reminder)) || reminder.id
       } catch (error) {
         console.error('Error saving reminder:', error)
         toast.error(t('reminders.saveError'))
@@ -347,7 +350,7 @@ export default function RemindersPage() {
 
       // Schedule notification
       const hasPermission = await scheduleNotification(
-        reminder.id,
+        savedId,
         reminder.title,
         reminder.description || '',
         new Date(scheduledTime)
@@ -477,6 +480,7 @@ export default function RemindersPage() {
       t('reminders.finishMessage', { title: displayTitle(reminder) }),
       () => {
         updateReminder(reminder.id, { dismissed: true }).then(() => {
+          cancelNotification(reminder.id).catch(() => {})
           haptic([20, 40, 20])
           loadReminders().catch(console.error)
           toast.success(t('reminders.finished'))
@@ -559,6 +563,12 @@ export default function RemindersPage() {
       t(newStatus ? 'reminders.markDismissedConfirm' : 'reminders.markActiveConfirm', { title: displayTitle(reminder) }),
       () => {
         updateReminder(reminder.id, { dismissed: newStatus })
+        // Dismissing → cancel its pending notification; re-activating → reschedule.
+        if (newStatus) {
+          cancelNotification(reminder.id).catch(() => {})
+        } else {
+          scheduleNotification(reminder.id, displayTitle(reminder), displayDesc(reminder) || '', new Date(reminder.scheduledTime)).catch(() => {})
+        }
         loadReminders().catch(console.error)
         toast.success(t(newStatus ? 'reminders.markedDismissed' : 'reminders.markedActive'))
       },
