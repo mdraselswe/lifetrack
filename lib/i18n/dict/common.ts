@@ -61,10 +61,10 @@ export const common: Dict = {
   'filter.settled': { bn: 'পরিশোধিত', en: 'Settled' },
   'filter.overdue': { bn: 'মেয়াদোত্তীর্ণ', en: 'Overdue' },
 
-  'offline.banner': { bn: 'অফলাইন — পরিবর্তন সংযোগ ফিরলে sync হবে', en: 'Offline — changes will sync when back online' },
+  'offline.banner': { bn: 'অফলাইন — সংযোগ ফিরলে পরিবর্তন সিঙ্ক হবে', en: 'Offline — changes will sync when back online' },
   'view.list': { bn: 'তালিকা', en: 'List' },
   'view.byPerson': { bn: 'ব্যক্তি অনুযায়ী', en: 'By person' },
-  'person.entries': { bn: '{count}টি হিসাব', en: '{count} entries' },
+  'person.entries': { bn: '{count}টি লেনদেন', en: '{count} entries' },
   'person.totalDue': { bn: 'মোট বাকি', en: 'Total due' },
 
   'share.action': { bn: 'শেয়ার', en: 'Share' },
@@ -137,6 +137,6 @@ export const common: Dict = {
   'import.importing': { bn: 'ইমপোর্ট হচ্ছে…', en: 'Importing…' },
   'import.confirmTitle': { bn: 'ব্যাকআপ ইমপোর্ট করবেন?', en: 'Import backup?' },
   'import.confirmMsg': { bn: 'ব্যাকআপের সব হিসাব নতুন করে যোগ হবে (বর্তমান ডেটা মুছবে না)।', en: 'All records from the backup will be added (existing data is kept).' },
-  'import.success': { bn: 'ইমপোর্ট সম্পন্ন: ধার {debts}, ঋণ {loans}, রিমাইন্ডার {reminders}, খরচ {expenses}', en: 'Imported: {debts} debts, {loans} loans, {reminders} reminders, {expenses} expenses' },
+  'import.success': { bn: 'ইমপোর্ট সম্পন্ন: পাওনা {debts}, দেনা {loans}, রিমাইন্ডার {reminders}, খরচ {expenses}', en: 'Imported: {debts} debts, {loans} loans, {reminders} reminders, {expenses} expenses' },
   'import.error': { bn: 'ইমপোর্ট করা যায়নি — সঠিক LifeTrack ব্যাকআপ ফাইল দিন', en: 'Import failed — choose a valid LifeTrack backup file' },
 }

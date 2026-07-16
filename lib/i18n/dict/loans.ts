@@ -3,16 +3,16 @@ import type { Dict } from './types'
 export const loans: Dict = {
   // AppBar
   'loans.title': { bn: 'ধার নিয়েছি', en: 'Borrowed' },
-  'loans.subtitle': { bn: 'আপনার ঋণ', en: 'Your loans' },
+  'loans.subtitle': { bn: 'আপনার দেনা', en: 'Your loans' },
 
   // Stats
   'loans.statToPay': { bn: 'দিতে হবে', en: 'To pay' },
   'loans.statReturned': { bn: 'ফেরত দিয়েছি', en: 'Returned' },
 
   // Empty state
-  'loans.emptyTitle': { bn: 'কোনো ঋণ নেই', en: 'No loans' },
+  'loans.emptyTitle': { bn: 'কোনো ধার নেই', en: 'No loans' },
   'loans.emptyDesc': { bn: 'এখনো কারো থেকে টাকা ধার নেননি', en: "You haven't borrowed money from anyone yet" },
-  'loans.addFirst': { bn: 'প্রথম ঋণ যোগ করুন', en: 'Add your first loan' },
+  'loans.addFirst': { bn: 'প্রথম ধার যোগ করুন', en: 'Add your first loan' },
 
   // Section headers
   'loans.sectionActive': { bn: 'ফেরত দিতে হবে', en: 'To repay' },
@@ -34,8 +34,8 @@ export const loans: Dict = {
   'loans.updateBtn': { bn: 'আপডেট', en: 'Update' },
 
   // Modal titles
-  'loans.addNew': { bn: 'নতুন ঋণ যোগ করুন', en: 'Add a new loan' },
-  'loans.editTitle': { bn: 'ঋণ সম্পাদনা করুন', en: 'Edit loan' },
+  'loans.addNew': { bn: 'নতুন ধার যোগ করুন', en: 'Add a new loan' },
+  'loans.editTitle': { bn: 'ধার সম্পাদনা করুন', en: 'Edit loan' },
   'loans.editPaymentTitle': { bn: 'পেমেন্ট সম্পাদনা করুন', en: 'Edit payment' },
   'loans.editIncreaseTitle': { bn: 'পরিমাণ বৃদ্ধি সম্পাদনা করুন', en: 'Edit amount increase' },
   'loans.increaseTitle': { bn: 'ধারের পরিমাণ বৃদ্ধি করুন', en: 'Increase loan amount' },

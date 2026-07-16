@@ -18,7 +18,7 @@ export const statement: Dict = {
   'statement.summaryTitle': { bn: 'সারসংক্ষেপ', en: 'Summary' },
   'statement.moneyIn': { bn: 'মোট এসেছে', en: 'Money in' },
   'statement.moneyOut': { bn: 'মোট গেছে', en: 'Money out' },
-  'statement.net': { bn: 'নিট', en: 'Net' },
+  'statement.net': { bn: 'নেট', en: 'Net' },
   'statement.lent': { bn: 'ধার দিয়েছি', en: 'Lent' },
   'statement.received': { bn: 'ফেরত পেয়েছি', en: 'Received' },
   'statement.borrowed': { bn: 'ধার নিয়েছি', en: 'Borrowed' },

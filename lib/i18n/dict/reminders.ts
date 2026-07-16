@@ -39,7 +39,7 @@ export const reminders: Dict = {
   'reminders.saveError': { bn: 'রিমাইন্ডার সংরক্ষণ করতে সমস্যা হয়েছে', en: 'Failed to save the reminder' },
   'reminders.notifPermission': { bn: 'নোটিফিকেশন পাঠাতে পারমিশন দিন', en: 'Allow permission to send notifications' },
   'reminders.notifPermissionHint': { bn: 'ব্রাউজার সেটিংস থেকে নোটিফিকেশন পারমিশন দিন', en: 'Enable notification permission in your browser settings' },
-  'reminders.backgroundInfo': { bn: 'নোটিফিকেশন background এ কাজ করবে (browser বন্ধ থাকলেও)', en: 'Notifications will work in the background (even when the browser is closed)' },
+  'reminders.backgroundInfo': { bn: 'নোটিফিকেশন ব্যাকগ্রাউন্ডে কাজ করবে (ব্রাউজার বন্ধ থাকলেও)', en: 'Notifications will work in the background (even when the browser is closed)' },
   'reminders.keepBrowserOpen': { bn: 'ব্রাউজার খোলা রাখুন নোটিফিকেশনের জন্য', en: 'Keep the browser open for notifications' },
   'reminders.notifNotSupported': { bn: 'এই ব্রাউজার নোটিফিকেশন সাপোর্ট করে না', en: 'This browser does not support notifications' },
 
@@ -50,11 +50,11 @@ export const reminders: Dict = {
 
   // Toggle active/dismissed
   'reminders.toggleTitle': { bn: 'রিমাইন্ডার অবস্থা পরিবর্তন করুন', en: 'Change reminder status' },
-  'reminders.markDismissedConfirm': { bn: '"{title}" রিমাইন্ডার বাতিল করেছেন হিসেবে চিহ্নিত করবেন?', en: 'Mark the reminder "{title}" as completed?' },
-  'reminders.markActiveConfirm': { bn: '"{title}" রিমাইন্ডার সক্রিয় করেছেন হিসেবে চিহ্নিত করবেন?', en: 'Mark the reminder "{title}" as active?' },
-  'reminders.markedDismissed': { bn: 'রিমাইন্ডার বাতিল করেছেন হিসেবে চিহ্নিত করা হয়েছে', en: 'Reminder marked as completed' },
-  'reminders.markedActive': { bn: 'রিমাইন্ডার সক্রিয় করেছেন হিসেবে চিহ্নিত করা হয়েছে', en: 'Reminder marked as active' },
-  'reminders.confirmDismiss': { bn: 'বাতিল করি', en: 'Mark completed' },
+  'reminders.markDismissedConfirm': { bn: '"{title}" রিমাইন্ডার সম্পন্ন হিসেবে চিহ্নিত করবেন?', en: 'Mark the reminder "{title}" as completed?' },
+  'reminders.markActiveConfirm': { bn: '"{title}" রিমাইন্ডার আবার সক্রিয় করবেন?', en: 'Mark the reminder "{title}" as active?' },
+  'reminders.markedDismissed': { bn: 'রিমাইন্ডার সম্পন্ন হিসেবে চিহ্নিত করা হয়েছে', en: 'Reminder marked as completed' },
+  'reminders.markedActive': { bn: 'রিমাইন্ডার আবার সক্রিয় করা হয়েছে', en: 'Reminder marked as active' },
+  'reminders.confirmDismiss': { bn: 'সম্পন্ন করি', en: 'Mark completed' },
   'reminders.confirmActivate': { bn: 'সক্রিয় করি', en: 'Activate' },
 
   // Completion modal
