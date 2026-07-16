@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState, useRef, type FormEvent } from 'react'
-import { getLoans, saveLoan, updateLoan, softDeleteLoan, restoreLoan, purgeLoan, deleteRemindersForSource, getRemindersForSource, updateReminder, deleteReminder, addLoanPayment, deleteLoanPayment, addLoanIncrease, deleteLoanIncrease, subscribeToLoans, saveReminder } from '@/lib/storage'
+import { getLoans, saveLoan, updateLoan, softDeleteLoan, restoreLoan, purgeLoan, deleteRemindersForSource, getRemindersForSource, updateReminder, deleteReminder, addLoanPayment, deleteLoanPayment, updateLoanPayment, addLoanIncrease, deleteLoanIncrease, updateLoanIncrease, subscribeToLoans, saveReminder } from '@/lib/storage'
 import type { Loan, Payment, AmountIncrease, Reminder } from '@/lib/types'
-import { round2, toMillis } from '@/lib/format'
+import { round2, toMillis, num } from '@/lib/format'
 import { t, useLang, fmtNum, fmtDate, fmtInt } from '@/lib/i18n'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
@@ -46,8 +46,16 @@ const buildInstallmentDates = (
   const dates: string[] = []
   for (let i = 0; i < count; i++) {
     const at = new Date(start)
-    if (unit === 'months') at.setMonth(at.getMonth() + i * interval)
-    else if (unit === 'weeks') at.setDate(at.getDate() + i * interval * 7)
+    if (unit === 'months') {
+      // Clamp the day so a high day-of-month start (e.g. Jan 31 + 1 month)
+      // lands on the last day of the target month instead of overflowing into
+      // the next one (Feb 31 → Mar 2/3).
+      const day = at.getDate()
+      at.setDate(1)
+      at.setMonth(at.getMonth() + i * interval)
+      const lastDay = new Date(at.getFullYear(), at.getMonth() + 1, 0).getDate()
+      at.setDate(Math.min(day, lastDay))
+    } else if (unit === 'weeks') at.setDate(at.getDate() + i * interval * 7)
     else at.setDate(at.getDate() + i * interval)
     dates.push(new Date(at.getTime() - at.getTimezoneOffset() * 60000).toISOString().slice(0, 10))
   }
@@ -353,10 +361,15 @@ export default function LoansPage() {
           }
         } else {
           // Revert to unpaid: drop the auto "full payment" so the balance is due
-          // again (keep any real partial payments).
-          // Only drop the auto-added full payment (flagged), never a real one.
-          const kept = (loan.payments || []).filter((p) => p.auto !== true)
-          updateLoan(loan.id, { payments: kept, returned: false }).then(done).catch(fail)
+          // again (keep any real partial payments). Re-fetch first so a payment
+          // added on another device since this render isn't clobbered by writing
+          // back a stale payments array. Only the auto-added full payment
+          // (flagged) is dropped, never a real one.
+          getLoans().then((fresh) => {
+            const current = fresh.find((l) => l.id === loan.id) || loan
+            const kept = (current.payments || []).filter((p) => p.auto !== true)
+            return updateLoan(loan.id, { payments: kept, returned: false })
+          }).then(done).catch(fail)
         }
       },
       {
@@ -460,7 +473,9 @@ export default function LoansPage() {
   // saying "repay ৳<old>". Preserves each reminder's own due date.
   const syncDueReminderAmount = (sourceId: string, name: string, remainingAmt: number) => {
     getRemindersForSource(sourceId).then((all) => {
-      all.filter((r) => r.reminderKind === 'due').forEach((r) => {
+      // Legacy reminders predate reminderKind — an undefined kind means "due"
+      // (the original single-reminder shape), matching the edit-path filter.
+      all.filter((r) => !r.reminderKind || r.reminderKind === 'due').forEach((r) => {
         const date = r.autoParams?.date || ''
         updateReminder(r.id, {
           description: t('loans.dueReminderDesc', { name, amount: bn(remainingAmt), date: bnDate(date) }),
@@ -617,6 +632,10 @@ export default function LoansPage() {
       t('loans.increaseTitle'),
       t('loans.increaseConfirmMessage', { name: loan.personName, from: fmtNum(currentTotalAmount), to: fmtNum(newTotalAmount) }),
       () => {
+        // Guard against a fast double-confirm racing two writes on the same
+        // increases array (read-modify-write) and losing one.
+        if (savingRef.current) return
+        savingRef.current = true
         // Add increase to history
         const increase: AmountIncrease = {
           id: crypto.randomUUID(),
@@ -625,7 +644,7 @@ export default function LoansPage() {
           ...(increaseReason && { reason: increaseReason }),
           createdAt: new Date().toISOString(),
         }
-        
+
         addLoanIncrease(loanId, increase).then(() => {
           syncPromiseReminderAmount(loanId, loan.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(loan))))
           syncDueReminderAmount(loanId, loan.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(loan))))
@@ -636,7 +655,7 @@ export default function LoansPage() {
         }).catch((error) => {
           console.error('Error increasing loan amount:', error)
           toast.error(t('loans.increaseError'))
-        })
+        }).finally(() => { savingRef.current = false })
       }
     )
   }
@@ -731,13 +750,14 @@ export default function LoansPage() {
 
 
   const calculateRemaining = (loan: Loan): number => {
-    // Calculate total amount including increments
-    const totalAmount = round2(loan.amount + (loan.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))
+    // Calculate total amount including increments. num() coerces any legacy
+    // string amounts so a stray "500" can't trigger string concatenation.
+    const totalAmount = round2(num(loan.amount) + (loan.increases?.reduce((sum, inc) => sum + num(inc.amount), 0) || 0))
 
     if (!loan.payments || loan.payments.length === 0) {
       return round2(totalAmount)
     }
-    const totalPaid = loan.payments.reduce((sum, p) => sum + p.amount, 0)
+    const totalPaid = loan.payments.reduce((sum, p) => sum + num(p.amount), 0)
     // Clamp at 0 so deleting an increase after a large payment never shows a
     // negative balance and aggregate sums stay correct.
     return round2(Math.max(0, totalAmount - totalPaid))
@@ -747,7 +767,7 @@ export default function LoansPage() {
     if (!loan.payments || loan.payments.length === 0) {
       return 0
     }
-    return round2(loan.payments.reduce((sum, p) => sum + p.amount, 0))
+    return round2(loan.payments.reduce((sum, p) => sum + num(p.amount), 0))
   }
 
   // Helper function to get initial amount (always the original amount, never affected by increments)
@@ -1043,9 +1063,12 @@ export default function LoansPage() {
       t('loans.paymentUpdateTitle'),
       t('loans.paymentUpdateMessage', { amount: fmtNum(amount) }),
       () => {
-        // Delete old payment then add updated payment (chained to avoid a race)
-        deleteLoanPayment(editingPayment.loanId, editingPayment.payment.id).then(() => {
-          return addLoanPayment(editingPayment.loanId, updatedPayment)
+        // Atomic in-place edit — a single transaction can't half-fail and lose
+        // the payment the way a delete-then-add pair could.
+        updateLoanPayment(editingPayment.loanId, editingPayment.payment.id, {
+          amount: updatedPayment.amount,
+          date: updatedPayment.date,
+          note: updatedPayment.note,
         }).then(() => {
           syncPromiseReminderAmount(editingPayment.loanId, loan.personName, round2(remaining - amount))
           syncDueReminderAmount(editingPayment.loanId, loan.personName, round2(remaining - amount))
@@ -1071,7 +1094,7 @@ export default function LoansPage() {
       return
     }
 
-    const amount = parseFloat(editIncreaseAmount)
+    const amount = Number(parseFloat(editIncreaseAmount).toFixed(2))
     if (isNaN(amount) || amount <= 0) {
       toast.error(t('loans.errValidAmount'))
       return
@@ -1085,6 +1108,14 @@ export default function LoansPage() {
       .reduce((sum, i) => sum + i.amount, 0)
     const newTotalAmount = round2(loan.amount + otherIncreasesTotal + amount)
 
+    // Block an edit that would drop the total below what's already been paid,
+    // which would silently discard collected money and force returned=true.
+    const totalPaid = getTotalPaid(loan)
+    if (newTotalAmount < totalPaid) {
+      toast.error(t('loans.errAmountBelowPaid', { paid: fmtNum(totalPaid) }))
+      return
+    }
+
     const updatedIncrease: AmountIncrease = {
       ...editingIncrease.increase,
       amount,
@@ -1096,9 +1127,11 @@ export default function LoansPage() {
       t('loans.increaseUpdateTitle'),
       t('loans.increaseUpdateMessage', { amount: fmtNum(amount) }),
       () => {
-        // Delete old increase and add updated increase
-        deleteLoanIncrease(editingIncrease.loanId, editingIncrease.increase.id).then(() => {
-          return addLoanIncrease(editingIncrease.loanId, updatedIncrease)
+        // Atomic in-place edit (single transaction, no half-fail window).
+        updateLoanIncrease(editingIncrease.loanId, editingIncrease.increase.id, {
+          amount: updatedIncrease.amount,
+          date: updatedIncrease.date,
+          reason: updatedIncrease.reason,
         }).then(() => {
           syncPromiseReminderAmount(editingIncrease.loanId, loan.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(loan))))
           syncDueReminderAmount(editingIncrease.loanId, loan.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(loan))))
@@ -1276,9 +1309,12 @@ export default function LoansPage() {
   // By-person grouping (active loans only), sorted by total due desc
   const personGroups = Object.values(
     displayActive.reduce((acc, l) => {
-      if (!acc[l.personName]) acc[l.personName] = { name: l.personName, loans: [], total: 0 }
-      acc[l.personName].loans.push(l)
-      acc[l.personName].total = round2(acc[l.personName].total + calculateRemaining(l))
+      // Key on the trimmed name so "Rahim" and "Rahim " merge into one group
+      // (matches the debts page).
+      const key = l.personName.trim()
+      if (!acc[key]) acc[key] = { name: key, loans: [], total: 0 }
+      acc[key].loans.push(l)
+      acc[key].total = round2(acc[key].total + calculateRemaining(l))
       return acc
     }, {} as Record<string, { name: string; loans: Loan[]; total: number }>)
   ).sort((a, b) => b.total - a.total)

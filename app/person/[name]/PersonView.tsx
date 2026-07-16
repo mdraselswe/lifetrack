@@ -121,6 +121,14 @@ export default function PersonView({ personName }: { personName: string }) {
           return Math.round((settledAt - due) / 86400000)
         }
       }
+      // Cumulative never reached the total but the debt is flagged returned —
+      // e.g. an increase was added after it was already settled. Treat the last
+      // payment as the settlement so a genuine repayment isn't dropped.
+      if (d.returned && pays.length) {
+        const last = pays[pays.length - 1]
+        const settledAt = toMillis(last.date || last.createdAt)
+        return settledAt ? Math.round((settledAt - due) / 86400000) : null
+      }
       return null
     })
     .filter((x): x is number => x !== null)
@@ -137,7 +145,9 @@ export default function PersonView({ personName }: { personName: string }) {
   const settledCount = allRecords.filter((r) => r.returned).length
   const activeCount = allRecords.filter((r) => !r.returned).length
   const nowMs = Date.now()
-  const overdueCount = allRecords.filter((r) => !r.returned && r.dueDate && toMillis(r.dueDate) < nowMs).length
+  // Day-based (not strict-instant) so it matches dueBadge: a record due today is
+  // "আজ", counted overdue only once its due day has fully passed.
+  const overdueCount = allRecords.filter((r) => !r.returned && r.dueDate && Math.ceil((toMillis(r.dueDate) - nowMs) / 86400000) < 0).length
 
   // ---- Unified timeline (newest first) ----
   const events: TimelineEvent[] = []

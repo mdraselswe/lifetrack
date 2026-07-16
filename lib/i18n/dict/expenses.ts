@@ -19,6 +19,7 @@ export const expenses: Dict = {
   'expenses.dailyAvg': { bn: 'দৈনিক গড়', en: 'Daily avg' },
   'expenses.perDay': { bn: 'প্রতিদিন', en: 'per day' },
   'expenses.projected': { bn: 'মাস শেষে আনুমানিক', en: 'Projected' },
+  'expenses.projectedYear': { bn: 'বছর শেষে আনুমানিক', en: 'Projected' },
   'expenses.pace': { bn: 'মাসের {elapsed}% গেছে · বাজেটের {spent}% শেষ', en: '{elapsed}% of month · {spent}% of budget spent' },
   'expenses.trendTitle': { bn: 'শেষ ৬ মাস', en: 'Last 6 months' },
   'expenses.topCategory': { bn: 'সবচেয়ে বেশি', en: 'Top category' },

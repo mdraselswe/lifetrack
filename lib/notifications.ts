@@ -13,6 +13,36 @@ const scheduleTimeout = (callback: () => void, delay: number): void => {
   }
 }
 
+// In-page fallback timers (used only when there is no active SW controller),
+// keyed by reminder id so they can be cancelled/replaced. Without this a
+// deleted reminder would still fire a phantom notification, and re-scheduling
+// on edit would leave the old timer running alongside the new one.
+const fallbackTimers = new Map<string, ReturnType<typeof setTimeout>>()
+
+const clearFallbackTimer = (id: string): void => {
+  const handle = fallbackTimers.get(id)
+  if (handle !== undefined) {
+    clearTimeout(handle)
+    fallbackTimers.delete(id)
+  }
+}
+
+// Like scheduleTimeout but tracks the handle under `id` (re-arming past the
+// 32-bit cap keeps the same id) so clearFallbackTimer(id) can cancel it.
+const scheduleTrackedTimeout = (id: string, callback: () => void, delay: number): void => {
+  clearFallbackTimer(id)
+  const chunk = Math.min(delay, MAX_TIMEOUT)
+  const handle = setTimeout(() => {
+    if (delay > MAX_TIMEOUT) {
+      scheduleTrackedTimeout(id, callback, delay - MAX_TIMEOUT)
+    } else {
+      fallbackTimers.delete(id)
+      callback()
+    }
+  }, chunk)
+  fallbackTimers.set(id, handle)
+}
+
 export const requestNotificationPermission = async (): Promise<boolean> => {
   if (!('Notification' in window)) {
     alert(t('reminders.notifNotSupported'))
@@ -112,7 +142,7 @@ export const scheduleNotification = async (
     // both fire the same notification (duplicate).
     if (!navigator.serviceWorker?.controller) {
       console.log('Scheduling fallback notification with setTimeout')
-      scheduleTimeout(() => {
+      scheduleTrackedTimeout(id, () => {
         try {
           if ('Notification' in window && Notification.permission === 'granted') {
             const notification = new Notification(title, {
@@ -165,6 +195,9 @@ export const scheduleNotification = async (
 
 export const cancelNotification = async (id: string): Promise<void> => {
   try {
+    // Cancel the in-page fallback timer (if any) so a deleted/dismissed reminder
+    // doesn't still fire locally when there's no SW controller.
+    clearFallbackTimer(id)
     // Send cancel message to service worker
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.controller.postMessage({

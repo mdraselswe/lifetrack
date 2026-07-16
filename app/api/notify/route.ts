@@ -26,7 +26,11 @@ export async function GET(request: Request) {
 
     const db = getAdminDb()
     const now = Date.now()
-    const windowStart = now - 24 * 60 * 60 * 1000 // skip anything >24h stale
+    // Skip anything older than this. Widened from 24h to 7d so a due reminder
+    // still fires once after a longer cron outage — or when a user enables push
+    // a day or two after the due time — while notifiedFor dedup prevents repeats
+    // and the bound still avoids replaying ancient reminders on first setup.
+    const windowStart = now - 7 * 24 * 60 * 60 * 1000
 
     // Small dataset — read all reminders and filter in code.
     const snap = await db.collectionGroup('reminders').get()
@@ -59,7 +63,10 @@ export async function GET(request: Request) {
       const monthKey = new Date(mStart + DHAKA).toISOString().slice(0, 7)
       const inMonth = (v?: string) => {
         if (!v) return false
-        const ms = new Date(v).getTime()
+        // Parse with the same Dhaka wall-clock rule as the bounds (parseScheduled
+        // applies +06:00 to bare local strings) so entries near a month boundary
+        // aren't bucketed into the wrong month.
+        const ms = parseScheduled(v)
         return Number.isFinite(ms) && ms >= mStart && ms < mEnd
       }
       const acc = new Map<string, MonthlyReport>()
@@ -173,7 +180,11 @@ export async function GET(request: Request) {
       if (item.r.isRepetitive && item.r.repeatType) {
         updates.scheduledTime = nextOccurrence(item.r.scheduledTime, item.r.repeatInterval || 1, item.r.repeatType)
       }
-      await item.ref.update(updates).catch(() => {})
+      await item.ref.update(updates).catch((e) => {
+        // Don't silently swallow: if this fails, notifiedFor isn't stamped and
+        // the same push re-sends every minute — log so it's diagnosable.
+        console.error('failed to stamp notifiedFor:', item.ref.path, e)
+      })
     }
 
     // Monthly report pushes (already deduped + stamped above).

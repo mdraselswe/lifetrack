@@ -207,6 +207,7 @@ export default function RemindersPage() {
   const handleNotificationAction = (action: string, reminderId: string) => {
     if (action === 'dismiss') {
       updateReminder(reminderId, { dismissed: true })
+      cancelNotification(reminderId).catch(() => {})
       loadReminders()
     } else if (action === 'reschedule') {
       // Open the reschedule modal (replaces native prompt() for a PWA-friendly UX)
@@ -242,7 +243,9 @@ export default function RemindersPage() {
 
     const reminder = reminders.find(r => r.id === rescheduleReminderId)
     if (reminder) {
-      scheduleNotification(rescheduleReminderId, reminder.title, reminder.description || '', newTime)
+      // Use the displayed (translated) text, not the frozen stored string, so an
+      // auto-reminder reschedules with the right language/amount.
+      scheduleNotification(rescheduleReminderId, displayTitle(reminder), displayDesc(reminder) || '', newTime)
     }
     loadReminders().catch(console.error)
     toast.success(t('reminders.rescheduled'))
@@ -267,7 +270,12 @@ export default function RemindersPage() {
     // stored string, so an auto-reminder edits from what the user actually sees.
     setTitle(displayTitle(reminder))
     setDescription(displayDesc(reminder))
-    setScheduledTime(reminder.scheduledTime.slice(0, 16))
+    // Auto/manual reminders store a bare local 'YYYY-MM-DDTHH:mm' (slice is fine),
+    // but a rescheduled one stores full ISO-with-Z (UTC) — slicing that would show
+    // the time 6h early in Dhaka. Convert UTC strings to a local datetime-value.
+    const rawTime = reminder.scheduledTime
+    const isUtc = /z|[+-]\d{2}:\d{2}$/i.test(rawTime)
+    setScheduledTime(isUtc ? toLocalDateTimeValue(new Date(rawTime)) : rawTime.slice(0, 16))
     setIsRepetitive(reminder.isRepetitive || false)
     setRepeatInterval(reminder.repeatInterval || 1)
     setRepeatType(reminder.repeatType || 'weeks')
@@ -292,9 +300,12 @@ export default function RemindersPage() {
         title,
         description,
         scheduledTime,
-        isRepetitive: isRepetitive || undefined,
-        repeatInterval: isRepetitive ? repeatInterval : undefined,
-        repeatType: isRepetitive ? repeatType : undefined,
+        // Turning repetition OFF must CLEAR the stored fields, not send undefined
+        // (filterUndefined would strip those, leaving the old true/repeatType in
+        // Firestore so /api/notify keeps auto-advancing it forever). null clears.
+        isRepetitive: isRepetitive ? true : (null as unknown as undefined),
+        repeatInterval: isRepetitive ? repeatInterval : (null as unknown as undefined),
+        repeatType: isRepetitive ? repeatType : (null as unknown as undefined),
         // Manual edit overrides any auto text — drop autoParams so the page
         // renders the user's typed title/description from here on.
         ...(editingReminder.autoParams ? { autoParams: null as unknown as undefined } : {}),
@@ -309,12 +320,13 @@ export default function RemindersPage() {
       )
       
       if (hasPermission === false) {
+        // The edit is already saved — fall through to the reset instead of
+        // leaving the form open (which invited a confusing re-submit).
         toast.error(t('reminders.notifPermission'))
         toast.info(t('reminders.notifPermissionHint'), 8000)
-        return
+      } else {
+        toast.success(t('reminders.updated'))
       }
-
-      toast.success(t('reminders.updated'))
     } else {
       // Creating new reminder
       const reminder: Reminder = {
@@ -357,19 +369,20 @@ export default function RemindersPage() {
       )
       
       if (hasPermission === false) {
+        // The reminder is already saved — DON'T early-return, or the form stays
+        // open with its values and re-submitting would create a duplicate. Just
+        // warn about the missing permission and fall through to the reset.
         toast.error(t('reminders.notifPermission'))
         toast.info(t('reminders.notifPermissionHint'), 8000)
-        return
-      }
-
-      toast.success(t('reminders.created'))
-
-      // Check if browser supports background notifications
-      const supportsBackground = 'serviceWorker' in navigator && navigator.serviceWorker.controller
-      if (supportsBackground) {
-        toast.info(t('reminders.backgroundInfo'), 6000)
       } else {
-        toast.warning(t('reminders.keepBrowserOpen'), 6000)
+        toast.success(t('reminders.created'))
+        // Check if browser supports background notifications
+        const supportsBackground = 'serviceWorker' in navigator && navigator.serviceWorker.controller
+        if (supportsBackground) {
+          toast.info(t('reminders.backgroundInfo'), 6000)
+        } else {
+          toast.warning(t('reminders.keepBrowserOpen'), 6000)
+        }
       }
     }
 

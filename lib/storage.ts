@@ -8,6 +8,8 @@ import {
   saveLoan as saveFirebaseLoan,
   updateLoan as updateFirebaseLoan,
   deleteLoan as deleteFirebaseLoan,
+  mutateDebtDoc,
+  mutateLoanDoc,
   getReminders as getFirebaseReminders,
   saveReminder as saveFirebaseReminder,
   updateReminder as updateFirebaseReminder,
@@ -373,30 +375,14 @@ export const addDebtPayment = async (debtId: string, payment: Payment): Promise<
   }
   
   try {
-    const debts = await getDebts()
-    const debt = debts.find(d => d.id === debtId)
-    if (!debt) {
-      throw new Error('Debt not found')
-    }
-    
-    // Ensure payment amount is a number
-    const paymentWithNumberAmount = {
-      ...payment,
-      amount: Number(payment.amount)
-    }
-    
-    // Add payment to existing payments array
-    const updatedPayments = [...(debt.payments || []), paymentWithNumberAmount]
-
-    // Auto-mark as returned if fully paid (total = initial amount + all increases)
-    const total = num(debt.amount) + sumAmounts(debt.increases)
-    const totalPaid = sumAmounts(updatedPayments)
-    const shouldBeReturned = round2(totalPaid) >= round2(total)
-
-    // Update the debt with new payment
-    await updateDebt(debtId, {
-      payments: updatedPayments,
-      returned: shouldBeReturned
+    // Atomic read-modify-write so a concurrent payment on another device can't
+    // clobber this one (last-write-wins on the whole array).
+    await mutateDebtDoc(userId, debtId, (debt) => {
+      const paymentWithNumberAmount = { ...payment, amount: Number(payment.amount) }
+      const updatedPayments = [...(debt.payments || []), paymentWithNumberAmount]
+      const total = num(debt.amount) + sumAmounts(debt.increases)
+      const totalPaid = sumAmounts(updatedPayments)
+      return { payments: updatedPayments, returned: round2(totalPaid) >= round2(total) }
     })
   } catch (error) {
     console.error('Error adding payment:', error)
@@ -413,27 +399,35 @@ export const deleteDebtPayment = async (debtId: string, paymentId: string): Prom
   }
   
   try {
-    const debts = await getDebts()
-    const debt = debts.find(d => d.id === debtId)
-    if (!debt) {
-      throw new Error('Debt not found')
-    }
-    
-    // Remove payment from payments array
-    const updatedPayments = (debt.payments || []).filter(p => p.id !== paymentId)
-
-    // Update returned status based on remaining payments (total = initial amount + all increases)
-    const total = num(debt.amount) + sumAmounts(debt.increases)
-    const totalPaid = sumAmounts(updatedPayments)
-    const shouldBeReturned = round2(totalPaid) >= round2(total)
-
-    // Update the debt with removed payment
-    await updateDebt(debtId, {
-      payments: updatedPayments,
-      returned: shouldBeReturned
+    await mutateDebtDoc(userId, debtId, (debt) => {
+      const updatedPayments = (debt.payments || []).filter(p => p.id !== paymentId)
+      const total = num(debt.amount) + sumAmounts(debt.increases)
+      const totalPaid = sumAmounts(updatedPayments)
+      return { payments: updatedPayments, returned: round2(totalPaid) >= round2(total) }
     })
   } catch (error) {
     console.error('Error deleting payment:', error)
+    throw error
+  }
+}
+
+// Atomically edit an existing payment in place (single transaction) so an
+// edit can't half-fail the way a delete-then-add pair could and lose the money.
+export const updateDebtPayment = async (debtId: string, paymentId: string, patch: Partial<Payment>): Promise<void> => {
+  if (!isBrowser) return
+  const userId = await resolveUserId()
+  if (!userId) throw new Error('User must be logged in to update payment')
+  try {
+    await mutateDebtDoc(userId, debtId, (debt) => {
+      const updatedPayments = (debt.payments || []).map((p) =>
+        p.id === paymentId ? { ...p, ...patch, amount: patch.amount !== undefined ? Number(patch.amount) : p.amount } : p
+      )
+      const total = num(debt.amount) + sumAmounts(debt.increases)
+      const totalPaid = sumAmounts(updatedPayments)
+      return { payments: updatedPayments, returned: round2(totalPaid) >= round2(total) }
+    })
+  } catch (error) {
+    console.error('Error updating payment:', error)
     throw error
   }
 }
@@ -448,30 +442,12 @@ export const addLoanPayment = async (loanId: string, payment: Payment): Promise<
   }
   
   try {
-    const loans = await getLoans()
-    const loan = loans.find(l => l.id === loanId)
-    if (!loan) {
-      throw new Error('Loan not found')
-    }
-    
-    // Ensure payment amount is a number
-    const paymentWithNumberAmount = {
-      ...payment,
-      amount: Number(payment.amount)
-    }
-    
-    // Add payment to existing payments array
-    const updatedPayments = [...(loan.payments || []), paymentWithNumberAmount]
-
-    // Auto-mark as returned if fully paid (total = initial amount + all increases)
-    const total = num(loan.amount) + sumAmounts(loan.increases)
-    const totalPaid = sumAmounts(updatedPayments)
-    const shouldBeReturned = round2(totalPaid) >= round2(total)
-
-    // Update the loan with new payment
-    await updateLoan(loanId, {
-      payments: updatedPayments,
-      returned: shouldBeReturned
+    await mutateLoanDoc(userId, loanId, (loan) => {
+      const paymentWithNumberAmount = { ...payment, amount: Number(payment.amount) }
+      const updatedPayments = [...(loan.payments || []), paymentWithNumberAmount]
+      const total = num(loan.amount) + sumAmounts(loan.increases)
+      const totalPaid = sumAmounts(updatedPayments)
+      return { payments: updatedPayments, returned: round2(totalPaid) >= round2(total) }
     })
   } catch (error) {
     console.error('Error adding payment:', error)
@@ -488,27 +464,34 @@ export const deleteLoanPayment = async (loanId: string, paymentId: string): Prom
   }
 
   try {
-    const loans = await getLoans()
-    const loan = loans.find(l => l.id === loanId)
-    if (!loan) {
-      throw new Error('Loan not found')
-    }
-
-    // Remove payment from payments array
-    const updatedPayments = (loan.payments || []).filter(p => p.id !== paymentId)
-
-    // Update returned status based on remaining payments (total = initial amount + all increases)
-    const total = num(loan.amount) + sumAmounts(loan.increases)
-    const totalPaid = sumAmounts(updatedPayments)
-    const shouldBeReturned = round2(totalPaid) >= round2(total)
-
-    // Update the loan with removed payment
-    await updateLoan(loanId, {
-      payments: updatedPayments,
-      returned: shouldBeReturned
+    await mutateLoanDoc(userId, loanId, (loan) => {
+      const updatedPayments = (loan.payments || []).filter(p => p.id !== paymentId)
+      const total = num(loan.amount) + sumAmounts(loan.increases)
+      const totalPaid = sumAmounts(updatedPayments)
+      return { payments: updatedPayments, returned: round2(totalPaid) >= round2(total) }
     })
   } catch (error) {
     console.error('Error deleting payment:', error)
+    throw error
+  }
+}
+
+// Atomically edit an existing loan payment in place (single transaction).
+export const updateLoanPayment = async (loanId: string, paymentId: string, patch: Partial<Payment>): Promise<void> => {
+  if (!isBrowser) return
+  const userId = await resolveUserId()
+  if (!userId) throw new Error('User must be logged in to update payment')
+  try {
+    await mutateLoanDoc(userId, loanId, (loan) => {
+      const updatedPayments = (loan.payments || []).map((p) =>
+        p.id === paymentId ? { ...p, ...patch, amount: patch.amount !== undefined ? Number(patch.amount) : p.amount } : p
+      )
+      const total = num(loan.amount) + sumAmounts(loan.increases)
+      const totalPaid = sumAmounts(updatedPayments)
+      return { payments: updatedPayments, returned: round2(totalPaid) >= round2(total) }
+    })
+  } catch (error) {
+    console.error('Error updating payment:', error)
     throw error
   }
 }
@@ -523,30 +506,15 @@ export const addLoanIncrease = async (loanId: string, increase: AmountIncrease):
   }
 
   try {
-    const loans = await getLoans()
-    const loan = loans.find(l => l.id === loanId)
-    if (!loan) {
-      throw new Error('Loan not found')
-    }
-
-    // Ensure increase amount is a number
-    const increaseWithNumberAmount = {
-      ...increase,
-      amount: typeof increase.amount === 'string' ? parseFloat(increase.amount) : increase.amount
-    }
-
-    // Add increase to existing increases array
-    const updatedIncreases = [...(loan.increases || []), increaseWithNumberAmount]
-
-    // Recompute returned status (total = initial amount + all increases)
-    const total = num(loan.amount) + sumAmounts(updatedIncreases)
-    const totalPaid = sumAmounts(loan.payments)
-    const shouldBeReturned = round2(totalPaid) >= round2(total)
-
-    // Update the loan with new increase
-    await updateLoan(loanId, {
-      increases: updatedIncreases,
-      returned: shouldBeReturned
+    await mutateLoanDoc(userId, loanId, (loan) => {
+      const increaseWithNumberAmount = {
+        ...increase,
+        amount: typeof increase.amount === 'string' ? parseFloat(increase.amount) : increase.amount
+      }
+      const updatedIncreases = [...(loan.increases || []), increaseWithNumberAmount]
+      const total = num(loan.amount) + sumAmounts(updatedIncreases)
+      const totalPaid = sumAmounts(loan.payments)
+      return { increases: updatedIncreases, returned: round2(totalPaid) >= round2(total) }
     })
   } catch (error) {
     console.error('Error adding increase:', error)
@@ -563,27 +531,34 @@ export const deleteLoanIncrease = async (loanId: string, increaseId: string): Pr
   }
 
   try {
-    const loans = await getLoans()
-    const loan = loans.find(l => l.id === loanId)
-    if (!loan) {
-      throw new Error('Loan not found')
-    }
-
-    // Remove increase from increases array
-    const updatedIncreases = (loan.increases || []).filter(i => i.id !== increaseId)
-
-    // Recompute returned status (total = initial amount + all increases)
-    const total = num(loan.amount) + sumAmounts(updatedIncreases)
-    const totalPaid = sumAmounts(loan.payments)
-    const shouldBeReturned = round2(totalPaid) >= round2(total)
-
-    // Update the loan with removed increase
-    await updateLoan(loanId, {
-      increases: updatedIncreases,
-      returned: shouldBeReturned
+    await mutateLoanDoc(userId, loanId, (loan) => {
+      const updatedIncreases = (loan.increases || []).filter(i => i.id !== increaseId)
+      const total = num(loan.amount) + sumAmounts(updatedIncreases)
+      const totalPaid = sumAmounts(loan.payments)
+      return { increases: updatedIncreases, returned: round2(totalPaid) >= round2(total) }
     })
   } catch (error) {
     console.error('Error deleting increase:', error)
+    throw error
+  }
+}
+
+// Atomically edit an existing loan increase in place (single transaction).
+export const updateLoanIncrease = async (loanId: string, increaseId: string, patch: Partial<AmountIncrease>): Promise<void> => {
+  if (!isBrowser) return
+  const userId = await resolveUserId()
+  if (!userId) throw new Error('User must be logged in to update increase')
+  try {
+    await mutateLoanDoc(userId, loanId, (loan) => {
+      const updatedIncreases = (loan.increases || []).map((i) =>
+        i.id === increaseId ? { ...i, ...patch, amount: patch.amount !== undefined ? Number(patch.amount) : i.amount } : i
+      )
+      const total = num(loan.amount) + sumAmounts(updatedIncreases)
+      const totalPaid = sumAmounts(loan.payments)
+      return { increases: updatedIncreases, returned: round2(totalPaid) >= round2(total) }
+    })
+  } catch (error) {
+    console.error('Error updating increase:', error)
     throw error
   }
 }
@@ -598,30 +573,15 @@ export const addDebtIncrease = async (debtId: string, increase: AmountIncrease):
   }
   
   try {
-    const debts = await getDebts()
-    const debt = debts.find(d => d.id === debtId)
-    if (!debt) {
-      throw new Error('Debt not found')
-    }
-    
-    // Ensure increase amount is a number
-    const increaseWithNumberAmount = {
-      ...increase,
-      amount: typeof increase.amount === 'string' ? parseFloat(increase.amount) : increase.amount
-    }
-    
-    // Add increase to existing increases array
-    const updatedIncreases = [...(debt.increases || []), increaseWithNumberAmount]
-
-    // Recompute returned status (total = initial amount + all increases)
-    const total = num(debt.amount) + sumAmounts(updatedIncreases)
-    const totalPaid = sumAmounts(debt.payments)
-    const shouldBeReturned = round2(totalPaid) >= round2(total)
-
-    // Update the debt with new increase
-    await updateDebt(debtId, {
-      increases: updatedIncreases,
-      returned: shouldBeReturned
+    await mutateDebtDoc(userId, debtId, (debt) => {
+      const increaseWithNumberAmount = {
+        ...increase,
+        amount: typeof increase.amount === 'string' ? parseFloat(increase.amount) : increase.amount
+      }
+      const updatedIncreases = [...(debt.increases || []), increaseWithNumberAmount]
+      const total = num(debt.amount) + sumAmounts(updatedIncreases)
+      const totalPaid = sumAmounts(debt.payments)
+      return { increases: updatedIncreases, returned: round2(totalPaid) >= round2(total) }
     })
   } catch (error) {
     console.error('Error adding increase:', error)
@@ -638,27 +598,34 @@ export const deleteDebtIncrease = async (debtId: string, increaseId: string): Pr
   }
   
   try {
-    const debts = await getDebts()
-    const debt = debts.find(d => d.id === debtId)
-    if (!debt) {
-      throw new Error('Debt not found')
-    }
-    
-    // Remove increase from increases array
-    const updatedIncreases = (debt.increases || []).filter(i => i.id !== increaseId)
-
-    // Recompute returned status (total = initial amount + all increases)
-    const total = num(debt.amount) + sumAmounts(updatedIncreases)
-    const totalPaid = sumAmounts(debt.payments)
-    const shouldBeReturned = round2(totalPaid) >= round2(total)
-
-    // Update the debt with removed increase
-    await updateDebt(debtId, {
-      increases: updatedIncreases,
-      returned: shouldBeReturned
+    await mutateDebtDoc(userId, debtId, (debt) => {
+      const updatedIncreases = (debt.increases || []).filter(i => i.id !== increaseId)
+      const total = num(debt.amount) + sumAmounts(updatedIncreases)
+      const totalPaid = sumAmounts(debt.payments)
+      return { increases: updatedIncreases, returned: round2(totalPaid) >= round2(total) }
     })
   } catch (error) {
     console.error('Error deleting increase:', error)
+    throw error
+  }
+}
+
+// Atomically edit an existing debt increase in place (single transaction).
+export const updateDebtIncrease = async (debtId: string, increaseId: string, patch: Partial<AmountIncrease>): Promise<void> => {
+  if (!isBrowser) return
+  const userId = await resolveUserId()
+  if (!userId) throw new Error('User must be logged in to update increase')
+  try {
+    await mutateDebtDoc(userId, debtId, (debt) => {
+      const updatedIncreases = (debt.increases || []).map((i) =>
+        i.id === increaseId ? { ...i, ...patch, amount: patch.amount !== undefined ? Number(patch.amount) : i.amount } : i
+      )
+      const total = num(debt.amount) + sumAmounts(updatedIncreases)
+      const totalPaid = sumAmounts(debt.payments)
+      return { increases: updatedIncreases, returned: round2(totalPaid) >= round2(total) }
+    })
+  } catch (error) {
+    console.error('Error updating increase:', error)
     throw error
   }
 }

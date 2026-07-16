@@ -262,8 +262,12 @@ export default function ExpensesPage() {
   const periodEnd = view === 'year' ? new Date(py, 11, 31) : new Date(py, pm, 0)
   const totalDaysInPeriod = Math.round((periodEnd.getTime() - periodStart.getTime()) / 86400000) + 1
   const isCurrentPeriod = todayKey.startsWith(periodPrefix)
+  // Build today's local midnight from the date parts (new Date('YYYY-MM-DD')
+  // parses as UTC, which would skew daysElapsed by one in far-off timezones).
+  const [ty, tm, td] = todayKey.split('-').map(Number)
+  const todayLocal = new Date(ty, tm - 1, td)
   const daysElapsed = isCurrentPeriod
-    ? Math.round((new Date(todayKey).getTime() - periodStart.getTime()) / 86400000) + 1
+    ? Math.round((todayLocal.getTime() - periodStart.getTime()) / 86400000) + 1
     : totalDaysInPeriod
 
   // Trend: compare like-for-like. For an ONGOING period, only part of it has
@@ -447,7 +451,7 @@ export default function ExpensesPage() {
               <span className="text-muted">{t('expenses.dailyAvg')}: <span className="font-semibold text-content tabular-nums">৳{bn(dailyAvg)}</span></span>
             )}
             {projection !== null && (
-              <span className="text-muted">{t('expenses.projected')}: <span className="font-semibold text-content tabular-nums">৳{bn(projection)}</span></span>
+              <span className="text-muted">{t(view === 'year' ? 'expenses.projectedYear' : 'expenses.projected')}: <span className="font-semibold text-content tabular-nums">৳{bn(projection)}</span></span>
             )}
             {budgetActive && isCurrentPeriod && (
               <span className={burningFast ? 'text-negative font-medium' : 'text-muted'}>

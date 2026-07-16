@@ -11,7 +11,8 @@ import {
   where,
   orderBy,
   onSnapshot,
-  serverTimestamp
+  serverTimestamp,
+  runTransaction
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { scheduleBackup } from './backup-trigger'
@@ -38,9 +39,18 @@ const filterUndefined = (obj: any): any => {
   }
   
   if (typeof obj === 'object') {
+    // Pass class instances through untouched — recursing into a Firestore
+    // FieldValue (serverTimestamp()) or Timestamp would strip its internals and
+    // silently turn it into a plain map, so `updatedAt` would be stored as
+    // `{ _methodName: "serverTimestamp" }` instead of a real server timestamp.
+    // Only plain object literals ({}) should be filtered.
+    if (obj.constructor && obj.constructor !== Object) {
+      return obj
+    }
+
     const filtered: any = {}
     const undefinedKeys: string[] = []
-    
+
     for (const [key, value] of Object.entries(obj)) {
       if (value !== undefined) {
         const filteredValue = filterUndefined(value)
@@ -112,6 +122,44 @@ export const updateDebt = async (userId: string, debtId: string, updates: Partia
     console.error('Error updating debt:', error)
     throw error
   }
+}
+
+// Atomically read-modify-write a debt document. The `mutate` callback receives
+// the CURRENT stored debt (read inside the transaction, never a stale client
+// snapshot) and returns the fields to write. This prevents two concurrent
+// writers (e.g. two devices adding a payment) from clobbering each other's
+// array — the transaction re-runs on conflict. Use for every payments/increases
+// mutation so nested-array writes stay consistent.
+export const mutateDebtDoc = async (
+  userId: string,
+  debtId: string,
+  mutate: (debt: Debt) => Partial<Debt>
+): Promise<void> => {
+  const debtRef = getUserDoc(userId, 'debts', debtId)
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(debtRef)
+    if (!snap.exists()) throw new Error('Debt not found')
+    const debt = { id: snap.id, ...snap.data() } as Debt
+    const updates = filterUndefined({ ...mutate(debt), updatedAt: serverTimestamp() })
+    tx.update(debtRef, updates)
+  })
+  scheduleBackup()
+}
+
+export const mutateLoanDoc = async (
+  userId: string,
+  loanId: string,
+  mutate: (loan: Loan) => Partial<Loan>
+): Promise<void> => {
+  const loanRef = getUserDoc(userId, 'loans', loanId)
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(loanRef)
+    if (!snap.exists()) throw new Error('Loan not found')
+    const loan = { id: snap.id, ...snap.data() } as Loan
+    const updates = filterUndefined({ ...mutate(loan), updatedAt: serverTimestamp() })
+    tx.update(loanRef, updates)
+  })
+  scheduleBackup()
 }
 
 export const deleteDebt = async (userId: string, debtId: string): Promise<void> => {

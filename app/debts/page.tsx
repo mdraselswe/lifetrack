@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState, useRef, type FormEvent } from 'react'
-import { getDebts, saveDebt, updateDebt, softDeleteDebt, restoreDebt, purgeDebt, deleteRemindersForSource, getRemindersForSource, updateReminder, deleteReminder, addDebtPayment, deleteDebtPayment, addDebtIncrease, deleteDebtIncrease, subscribeToDebts, saveReminder } from '@/lib/storage'
+import { getDebts, saveDebt, updateDebt, softDeleteDebt, restoreDebt, purgeDebt, deleteRemindersForSource, getRemindersForSource, updateReminder, deleteReminder, addDebtPayment, deleteDebtPayment, updateDebtPayment, addDebtIncrease, deleteDebtIncrease, updateDebtIncrease, subscribeToDebts, saveReminder } from '@/lib/storage'
 import type { Debt, Payment, AmountIncrease, Reminder } from '@/lib/types'
-import { round2, toMillis } from '@/lib/format'
+import { round2, toMillis, num } from '@/lib/format'
 import { t, useLang, fmtNum, fmtDate, fmtInt } from '@/lib/i18n'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
@@ -42,8 +42,16 @@ const buildInstallmentDates = (
   const dates: string[] = []
   for (let i = 0; i < count; i++) {
     const at = new Date(start)
-    if (unit === 'months') at.setMonth(at.getMonth() + i * interval)
-    else if (unit === 'weeks') at.setDate(at.getDate() + i * interval * 7)
+    if (unit === 'months') {
+      // Clamp the day so a high day-of-month start (e.g. Jan 31 + 1 month)
+      // lands on the last day of the target month instead of overflowing into
+      // the next one (Feb 31 → Mar 2/3).
+      const day = at.getDate()
+      at.setDate(1)
+      at.setMonth(at.getMonth() + i * interval)
+      const lastDay = new Date(at.getFullYear(), at.getMonth() + 1, 0).getDate()
+      at.setDate(Math.min(day, lastDay))
+    } else if (unit === 'weeks') at.setDate(at.getDate() + i * interval * 7)
     else at.setDate(at.getDate() + i * interval)
     dates.push(new Date(at.getTime() - at.getTimezoneOffset() * 60000).toISOString().slice(0, 10))
   }
@@ -354,12 +362,15 @@ export default function DebtsPage() {
           }
         } else {
           // Revert to unpaid: drop the auto "full payment" so the balance is due
-          // again (keep any real partial payments the user entered).
-          // Only drop the auto-added full payment (flagged), never a real one —
-          // matching on the note text could delete a genuine payment that happens
-          // to share the note.
-          const kept = (debt.payments || []).filter((p) => p.auto !== true)
-          updateDebt(debt.id, { payments: kept, returned: false }).then(done).catch(fail)
+          // again (keep any real partial payments). Re-fetch first so a payment
+          // added on another device since this render isn't clobbered by writing
+          // back a stale payments array. Only the auto-added full payment
+          // (flagged) is dropped, never a real one.
+          getDebts().then((fresh) => {
+            const current = fresh.find((d) => d.id === debt.id) || debt
+            const kept = (current.payments || []).filter((p) => p.auto !== true)
+            return updateDebt(debt.id, { payments: kept, returned: false })
+          }).then(done).catch(fail)
         }
       },
       {
@@ -463,7 +474,9 @@ export default function DebtsPage() {
   // saying "collect ৳<old>". Preserves each reminder's own due date.
   const syncDueReminderAmount = (sourceId: string, name: string, remainingAmt: number) => {
     getRemindersForSource(sourceId).then((all) => {
-      all.filter((r) => r.reminderKind === 'due').forEach((r) => {
+      // Legacy reminders predate reminderKind — an undefined kind means "due"
+      // (the original single-reminder shape), matching the edit-path filter.
+      all.filter((r) => !r.reminderKind || r.reminderKind === 'due').forEach((r) => {
         const date = r.autoParams?.date || ''
         updateReminder(r.id, {
           description: t('debts.dueReminderDesc', { name, amount: bn(remainingAmt), date: bnDate(date) }),
@@ -549,6 +562,10 @@ export default function DebtsPage() {
       toast.error(t('debts.errValidAmount'))
       return
     }
+    if (!paymentDate) {
+      toast.error(t('debts.errAmountDate'))
+      return
+    }
 
     const amount = Number(parsedAmount.toFixed(2))
     const debt = debts.find(d => d.id === debtId)
@@ -565,7 +582,7 @@ export default function DebtsPage() {
       id: crypto.randomUUID(),
       amount,
       date: paymentDate,
-      note: paymentNote,
+      note: paymentNote || undefined,
       createdAt: new Date().toISOString(),
     }
 
@@ -655,6 +672,10 @@ export default function DebtsPage() {
       t('debts.increaseTitle'),
       t('debts.increaseConfirmMsg', { name: debt.personName, from: bn(currentTotalAmount), to: bn(newTotalAmount) }),
       () => {
+        // Guard against a fast double-confirm racing two writes on the same
+        // increases array (read-modify-write) and doubling the increase.
+        if (savingRef.current) return
+        savingRef.current = true
         // Add increase to history
         const increase: AmountIncrease = {
           id: crypto.randomUUID(),
@@ -663,7 +684,7 @@ export default function DebtsPage() {
           ...(increaseReason && { reason: increaseReason }),
           createdAt: new Date().toISOString(),
         }
-        
+
         addDebtIncrease(debtId, increase).then(() => {
           syncPromiseReminderAmount(debtId, debt.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(debt))))
           syncDueReminderAmount(debtId, debt.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(debt))))
@@ -674,7 +695,7 @@ export default function DebtsPage() {
         }).catch((error) => {
           console.error('Error increasing debt amount:', error)
           toast.error(t('debts.increaseError'))
-        })
+        }).finally(() => { savingRef.current = false })
       }
     )
   }
@@ -729,13 +750,14 @@ export default function DebtsPage() {
   }
 
   const calculateRemaining = (debt: Debt): number => {
-    // Calculate total amount including increments
-    const totalAmount = round2(debt.amount + (debt.increases?.reduce((sum, inc) => sum + inc.amount, 0) || 0))
+    // Calculate total amount including increments. num() coerces any legacy
+    // string amounts so a stray "500" can't trigger string concatenation.
+    const totalAmount = round2(num(debt.amount) + (debt.increases?.reduce((sum, inc) => sum + num(inc.amount), 0) || 0))
 
     if (!debt.payments || debt.payments.length === 0) {
       return round2(totalAmount)
     }
-    const totalPaid = debt.payments.reduce((sum, p) => sum + p.amount, 0)
+    const totalPaid = debt.payments.reduce((sum, p) => sum + num(p.amount), 0)
     // Clamp at 0: deleting an increase after a large payment must not show a
     // negative balance, and keeps aggregate sums (selected total, by-person) correct.
     return round2(Math.max(0, totalAmount - totalPaid))
@@ -745,7 +767,7 @@ export default function DebtsPage() {
     if (!debt.payments || debt.payments.length === 0) {
       return 0
     }
-    return round2(debt.payments.reduce((sum, p) => sum + p.amount, 0))
+    return round2(debt.payments.reduce((sum, p) => sum + num(p.amount), 0))
   }
 
   // Helper function to get initial amount (always the original amount, never affected by increments)
@@ -1043,9 +1065,12 @@ export default function DebtsPage() {
       t('debts.paymentUpdateTitle'),
       t('debts.paymentUpdateMsg', { amount: bn(amount) }),
       () => {
-        // Delete old payment and add updated payment
-        deleteDebtPayment(editingPayment.debtId, editingPayment.payment.id).then(() => {
-          return addDebtPayment(editingPayment.debtId, updatedPayment)
+        // Atomic in-place edit — a single transaction can't half-fail and lose
+        // the payment the way a delete-then-add pair could.
+        updateDebtPayment(editingPayment.debtId, editingPayment.payment.id, {
+          amount: updatedPayment.amount,
+          date: updatedPayment.date,
+          note: updatedPayment.note,
         }).then(() => {
           syncPromiseReminderAmount(editingPayment.debtId, debt.personName, round2(remaining - amount))
           syncDueReminderAmount(editingPayment.debtId, debt.personName, round2(remaining - amount))
@@ -1102,9 +1127,11 @@ export default function DebtsPage() {
       t('debts.increaseUpdateTitle'),
       t('debts.increaseUpdateMsg', { amount: bn(amount) }),
       () => {
-        // Delete old increase and add updated increase
-        deleteDebtIncrease(editingIncrease.debtId, editingIncrease.increase.id).then(() => {
-          return addDebtIncrease(editingIncrease.debtId, updatedIncrease)
+        // Atomic in-place edit (single transaction, no half-fail window).
+        updateDebtIncrease(editingIncrease.debtId, editingIncrease.increase.id, {
+          amount: updatedIncrease.amount,
+          date: updatedIncrease.date,
+          reason: updatedIncrease.reason,
         }).then(() => {
           syncPromiseReminderAmount(editingIncrease.debtId, debt.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(debt))))
           syncDueReminderAmount(editingIncrease.debtId, debt.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(debt))))

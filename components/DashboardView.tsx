@@ -430,7 +430,9 @@ export default function Dashboard() {
 
   // ---- Insights ----
   const nowMs = Date.now()
-  const overdueDebts = debts.filter((d) => !d.returned && d.dueDate && new Date(d.dueDate).getTime() < nowMs)
+  // Use toMillis (handles Timestamp/date-only) + day-based comparison so a debt
+  // due today isn't flagged overdue at 00:01, matching the person page's badge.
+  const overdueDebts = debts.filter((d) => !d.returned && d.dueDate && Math.ceil((toMillis(d.dueDate) - nowMs) / 86400000) < 0)
   const overdueTotal = round2(overdueDebts.reduce((s, d) => s + remainingOf(d), 0))
   const topDebtor = topDebts[0] // largest outstanding receivable
 

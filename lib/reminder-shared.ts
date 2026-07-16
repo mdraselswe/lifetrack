@@ -8,7 +8,10 @@ import { createHmac } from 'crypto'
 export const parseScheduled = (s?: string): number => {
   if (!s) return NaN
   const hasZone = /Z$|[+-]\d{2}:?\d{2}$/.test(s)
-  const d = new Date(hasZone ? s : `${s}+06:00`)
+  // A date-only "YYYY-MM-DD" has no time — "2026-06-15+06:00" is Invalid Date,
+  // so pad it to midnight before appending the zone.
+  const withTime = s.includes('T') ? s : `${s}T00:00`
+  const d = new Date(hasZone ? s : `${withTime}+06:00`)
   return d.getTime()
 }
 
