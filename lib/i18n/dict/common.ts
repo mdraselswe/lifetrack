@@ -100,6 +100,7 @@ export const common: Dict = {
   'common.call': { bn: 'কল করুন', en: 'Call' },
   'common.whatsapp': { bn: 'হোয়াটসঅ্যাপ', en: 'WhatsApp' },
   'common.phoneOptional': { bn: 'ফোন নম্বর (ঐচ্ছিক)', en: 'Phone number (optional)' },
+  'common.invalidPhone': { bn: 'সঠিক মোবাইল নম্বর দিন (যেমন: ০১৭XXXXXXXX)', en: 'Enter a valid mobile number (e.g., 017XXXXXXXX)' },
 
   // Trash (soft delete)
   'common.trash': { bn: 'ট্র্যাশ', en: 'Trash' },
@@ -110,6 +111,9 @@ export const common: Dict = {
   'common.trashPurged': { bn: 'স্থায়ীভাবে মুছে ফেলা হয়েছে', en: 'Permanently deleted' },
   'common.trashPurgeTitle': { bn: 'স্থায়ীভাবে মুছবেন?', en: 'Delete permanently?' },
   'common.trashPurgeMsg': { bn: 'এটি আর ফিরিয়ে আনা যাবে না।', en: 'This cannot be undone.' },
+  'common.trashEmptyAll': { bn: 'সব মুছুন', en: 'Empty trash' },
+  'common.trashEmptyTitle': { bn: 'ট্র্যাশ খালি করবেন?', en: 'Empty trash?' },
+  'common.trashEmptyMsg': { bn: 'ট্র্যাশের {count}টি আইটেম স্থায়ীভাবে মুছে ফেলা হবে। এটি আর ফিরিয়ে আনা যাবে না।', en: 'All {count} items in trash will be permanently deleted. This cannot be undone.' },
 
   // App lock (PIN)
   'lock.title': { bn: 'অ্যাপ লক', en: 'App lock' },

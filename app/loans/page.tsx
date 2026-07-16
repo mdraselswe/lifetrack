@@ -13,8 +13,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
-import { ArrowDownLeftIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, SearchIcon, SortIcon, ShareIcon, ChevronDownIcon, PhoneIcon, WhatsAppIcon } from '@/components/Icons'
-import { waLink } from '@/lib/phone'
+import { ArrowDownLeftIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, SearchIcon, SortIcon, ShareIcon, ChevronDownIcon, PhoneIcon, WhatsAppIcon, MessageIcon } from '@/components/Icons'
+import { waLink, isValidBdPhone } from '@/lib/phone'
 import { shareOrCopy } from '@/lib/share'
 import { LEAD_OPTIONS, dueReminderTime, type LeadKey } from '@/lib/reminder-lead'
 import { MoneyIllustration, NoResultsIllustration } from '@/components/Illustrations'
@@ -33,6 +33,27 @@ const bnDate = (v: string) => fmtDate(v)
 const localDatetimeValue = (d = new Date()) =>
   new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 
+// Generate `count` installment due-dates, `interval` steps of `unit` apart,
+// starting at `start`. setMonth is calendar-accurate for months (no drift
+// from month length); weeks/days step by a fixed number of days. Shared by
+// the create-time and edit-time (add-a-plan-later) installment flows.
+const buildInstallmentDates = (
+  start: Date,
+  count: number,
+  unit: 'days' | 'weeks' | 'months',
+  interval: number
+): string[] => {
+  const dates: string[] = []
+  for (let i = 0; i < count; i++) {
+    const at = new Date(start)
+    if (unit === 'months') at.setMonth(at.getMonth() + i * interval)
+    else if (unit === 'weeks') at.setDate(at.getDate() + i * interval * 7)
+    else at.setDate(at.getDate() + i * interval)
+    dates.push(new Date(at.getTime() - at.getTimezoneOffset() * 60000).toISOString().slice(0, 10))
+  }
+  return dates
+}
+
 export default function LoansPage() {
   useLang() // re-render on language switch
   const [loans, setLoans] = useState<Loan[]>([])
@@ -44,12 +65,23 @@ export default function LoansPage() {
   const [reason, setReason] = useState('')
   const [date, setDate] = useState('')
   const [dueDate, setDueDate] = useState('')
-  const [promiseDate, setPromiseDate] = useState('')
   const [reminderLead, setReminderLead] = useState<LeadKey>('onTime')
   // কিস্তি: optionally split repayment into N installments, every M days
   const [instCount, setInstCount] = useState('')
   const [instIntervalDays, setInstIntervalDays] = useState('30')
+  const [instIntervalUnit, setInstIntervalUnit] = useState<'days' | 'weeks' | 'months'>('months')
   const [showTrash, setShowTrash] = useState(false)
+  // Phone / promise date / কিস্তি are collapsed by default — most loans don't
+  // need them, and having every field flat made the form hard to scan.
+  const [showMoreOptions, setShowMoreOptions] = useState(false)
+  const [showMoreOptionsEdit, setShowMoreOptionsEdit] = useState(false)
+  // Installment plan management from the edit form: shows a summary + cancel
+  // button when a plan already exists (editInstReminders non-empty), or lets
+  // the user set up a brand-new plan for a loan that didn't have one.
+  const [editInstReminders, setEditInstReminders] = useState<Reminder[]>([])
+  const [editInstCount, setEditInstCount] = useState('')
+  const [editInstIntervalDays, setEditInstIntervalDays] = useState('30')
+  const [editInstIntervalUnit, setEditInstIntervalUnit] = useState<'days' | 'weeks' | 'months'>('months')
   const [mounted, setMounted] = useState(false)
   const { user, loading } = useAuth()
   const router = useRouter()
@@ -64,8 +96,10 @@ export default function LoansPage() {
   const [editReason, setEditReason] = useState('')
   const [editDate, setEditDate] = useState('')
   const [editDueDate, setEditDueDate] = useState('')
-  const [editPromiseDate, setEditPromiseDate] = useState('')
   const [editReminderLead, setEditReminderLead] = useState<LeadKey>('onTime')
+  // Standalone "remind me again" action (replaces the old promiseDate field).
+  const [promiseModalId, setPromiseModalId] = useState<string | null>(null)
+  const [promiseModalDate, setPromiseModalDate] = useState('')
   const [editingPayment, setEditingPayment] = useState<{loanId: string, payment: Payment} | null>(null)
   const [editPaymentAmount, setEditPaymentAmount] = useState('')
   const [editPaymentDate, setEditPaymentDate] = useState('')
@@ -126,6 +160,7 @@ export default function LoansPage() {
     setIncreaseDate(localDatetimeValue())
   }, [])
 
+
   // Realtime sync across all devices
   useEffect(() => {
     if (loading) return
@@ -167,6 +202,16 @@ export default function LoansPage() {
       toast.error(t('loans.errValidAmount'))
       return
     }
+    // The due date can't precede the loan itself — catches an accidental
+    // wrong-month pick instead of creating an instantly-overdue loan.
+    if (dueDate && dueDate < date) {
+      toast.error(t('loans.errDueBeforeDate'))
+      return
+    }
+    if (!isValidBdPhone(personPhone)) {
+      toast.error(t('common.invalidPhone'))
+      return
+    }
 
     savingRef.current = true
     setSaving(true)
@@ -179,7 +224,6 @@ export default function LoansPage() {
       reason,
       date,
       ...(dueDate && { dueDate }),
-      ...(promiseDate && { promiseDate }),
       returned: false,
       createdAt: new Date().toISOString(),
       payments: [],
@@ -187,12 +231,18 @@ export default function LoansPage() {
     }
 
     const capturedDueDate = dueDate
-    const capturedPromise = promiseDate
     const capturedLead = reminderLead
     const capturedInstCount = parseInt(instCount, 10) || 0
-    const capturedInstInterval = Math.max(1, parseInt(instIntervalDays, 10) || 30)
+    const capturedInstUnit = instIntervalUnit
+    // Only the custom (days) preset uses a free-typed number; weekly/monthly
+    // presets are a fixed 1 week / 1 month step.
+    const capturedInstInterval = capturedInstUnit === 'days' ? Math.max(1, parseInt(instIntervalDays, 10) || 30) : 1
+    const hasInstallmentPlan = capturedInstCount > 1
     saveLoan(loan).then((newId) => {
-      if (capturedDueDate) {
+      // Skip the separate due-date reminder when an installment plan exists —
+      // installment #1 always lands on the due date (it's the stepping start),
+      // so a parallel due reminder would just duplicate it on the same day.
+      if (capturedDueDate && !hasInstallmentPlan) {
         saveReminder({
           id: crypto.randomUUID(),
           title: t('loans.dueReminderTitle', { name: loan.personName }),
@@ -203,32 +253,18 @@ export default function LoansPage() {
           sourceId: newId,
           sourceType: 'loan',
           reminderKind: 'due',
+          autoParams: { name: loan.personName, amount: parsedAmount, date: capturedDueDate },
         }).then(() => toast.info(t('loans.dueReminderCreated'))).catch(console.error)
       }
-      // Promise-date follow-up: "কথা দিয়েছি X তারিখ দেব" → remind at 9am that day.
-      if (capturedPromise) {
-        saveReminder({
-          id: crypto.randomUUID(),
-          title: t('loans.promiseReminderTitle', { name: loan.personName }),
-          description: t('loans.promiseReminderDesc', { name: loan.personName, amount: bn(parsedAmount) }),
-          scheduledTime: `${capturedPromise}T09:00`,
-          dismissed: false,
-          createdAt: new Date().toISOString(),
-          sourceId: newId,
-          sourceType: 'loan',
-          reminderKind: 'promise',
-        }).catch(console.error)
-      }
+      // Promise date is no longer set at creation — it's set afterward via the
+      // "আবার মনে করিয়ে দিন" action on the card (see handleSavePromiseReminder).
       // কিস্তি plan: N reminders, one per installment, every M days from the
       // due date (or from the loan date when no due date is set).
-      if (capturedInstCount > 1) {
+      if (hasInstallmentPlan) {
         const per = round2(parsedAmount / capturedInstCount)
         const start = new Date(capturedDueDate || loan.date)
         if (!isNaN(start.getTime())) {
-          for (let i = 0; i < capturedInstCount; i++) {
-            const at = new Date(start)
-            at.setDate(at.getDate() + i * capturedInstInterval)
-            const local = new Date(at.getTime() - at.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+          buildInstallmentDates(start, capturedInstCount, capturedInstUnit, capturedInstInterval).forEach((local, i) => {
             saveReminder({
               id: crypto.randomUUID(),
               title: t('loans.instReminderTitle', { name: loan.personName, i: fmtInt(i + 1), n: fmtInt(capturedInstCount) }),
@@ -239,8 +275,9 @@ export default function LoansPage() {
               sourceId: newId,
               sourceType: 'loan',
               reminderKind: 'installment',
+              autoParams: { name: loan.personName, amount: per, i: i + 1, n: capturedInstCount },
             }).catch(console.error)
-          }
+          })
           toast.info(t('loans.instCreated', { n: fmtInt(capturedInstCount) }))
         }
       }
@@ -256,9 +293,10 @@ export default function LoansPage() {
     setReason('')
     setDate(localDatetimeValue())
     setDueDate('')
-    setPromiseDate('')
     setInstCount('')
     setInstIntervalDays('30')
+    setInstIntervalUnit('months')
+    setShowMoreOptions(false)
     setReminderLead('onTime')
     setShowForm(false)
     savingRef.current = false
@@ -357,6 +395,122 @@ export default function LoansPage() {
     })
   }
 
+  const handleEmptyTrash = () => {
+    const ids = loans.filter(l => !!l.deletedAt).map(l => l.id)
+    if (ids.length === 0) return
+    confirm.delete(t('common.trashEmptyTitle'), t('common.trashEmptyMsg', { count: fmtInt(ids.length) }), () => {
+      Promise.all(ids.map((id) => purgeLoan(id)))
+        .then(() => {
+          loadLoans().catch(console.error)
+          toast.success(t('common.trashPurged'))
+        })
+        .catch(() => toast.error(t('loans.deleteError')))
+    })
+  }
+
+  // The promise-date reminder's amount is written once (at creation) into a
+  // static push payload — it can't recompute itself at fire time. Keep it
+  // honest by patching the stored description whenever the remaining balance
+  // changes (partial payment, or the loan amount itself being edited).
+  const syncPromiseReminderAmount = (sourceId: string, name: string, remainingAmt: number) => {
+    getRemindersForSource(sourceId).then((all) => {
+      all.filter((r) => r.reminderKind === 'promise' && !r.autoParams?.generic).forEach((r) => {
+        updateReminder(r.id, {
+          description: t('loans.promiseReminderDesc', { name, amount: bn(remainingAmt) }),
+          autoParams: { ...r.autoParams, name, amount: remainingAmt },
+        }).catch(console.error)
+      })
+    }).catch(console.error)
+  }
+
+  // Same staleness problem for কিস্তি reminders: each one's per-installment
+  // amount is frozen at plan-creation time. Whenever the loan's total changes
+  // (amount edit or an increase), re-split the new total evenly across every
+  // installment reminder — including already-completed ones, so the split
+  // stays simple and predictable rather than tracking partial collection.
+  const syncInstallmentAmounts = (sourceId: string, name: string, newTotalAmount: number) => {
+    getRemindersForSource(sourceId).then((all) => {
+      const installments = all.filter((r) => r.reminderKind === 'installment')
+      if (installments.length === 0) return
+      const per = round2(newTotalAmount / installments.length)
+      installments.forEach((r) => {
+        updateReminder(r.id, {
+          description: t('loans.instReminderDesc', { name, amount: bn(per) }),
+          autoParams: { ...r.autoParams, name, amount: per },
+        }).catch(console.error)
+      })
+    }).catch(console.error)
+  }
+
+  // "আবার মনে করিয়ে দিন" — replaces the old promiseDate form field entirely.
+  // Tapping the chip on a card opens a tiny modal to set/change/clear a single
+  // follow-up reminder, independent of the due-date reminder and any কিস্তি plan.
+  const handleOpenPromiseModal = (loan: Loan) => {
+    setPromiseModalId(loan.id)
+    // promiseDate is a datetime-local string now. Legacy values are date-only
+    // (YYYY-MM-DD) — pad them to 09:00 so the datetime-local input accepts them.
+    const p = loan.promiseDate || ''
+    setPromiseModalDate(p && !p.includes('T') ? `${p}T09:00` : p)
+  }
+
+  const handleClosePromiseModal = () => {
+    setPromiseModalId(null)
+    setPromiseModalDate('')
+  }
+
+  const handleSavePromiseReminder = () => {
+    const loan = loans.find((l) => l.id === promiseModalId)
+    if (!loan || !promiseModalDate) return
+    if (promiseModalDate.slice(0, 10) < loan.date.slice(0, 10)) {
+      toast.error(t('loans.errPromiseBeforeDate'))
+      return
+    }
+    updateLoan(loan.id, { promiseDate: promiseModalDate }).catch(console.error)
+    getRemindersForSource(loan.id).then((all) => {
+      const hasInstallmentPlan = all.some((r) => r.reminderKind === 'installment')
+      const existing = all.filter((r) => r.reminderKind === 'promise')
+      // promiseModalDate already carries the user-chosen time.
+      const scheduledTime = promiseModalDate
+      const description = hasInstallmentPlan
+        ? t('loans.promiseReminderDescGeneric', { name: loan.personName })
+        : t('loans.promiseReminderDesc', { name: loan.personName, amount: bn(calculateRemaining(loan)) })
+      const autoParams = { name: loan.personName, amount: calculateRemaining(loan), generic: hasInstallmentPlan }
+      if (existing.length) {
+        existing.forEach((r) => updateReminder(r.id, { scheduledTime, description, autoParams }).catch(console.error))
+      } else {
+        saveReminder({
+          id: crypto.randomUUID(),
+          title: t('loans.promiseReminderTitle', { name: loan.personName }),
+          description,
+          scheduledTime,
+          dismissed: false,
+          createdAt: new Date().toISOString(),
+          sourceId: loan.id,
+          sourceType: 'loan',
+          reminderKind: 'promise',
+          autoParams,
+        }).catch(console.error)
+      }
+    }).catch(console.error)
+    loadLoans().catch(console.error)
+    toast.success(t('loans.promiseSet'))
+    handleClosePromiseModal()
+  }
+
+  const handleClearPromiseReminder = () => {
+    const loan = loans.find((l) => l.id === promiseModalId)
+    if (!loan) return
+    confirm.delete(t('loans.promiseClearTitle'), t('loans.promiseClearMsg'), () => {
+      updateLoan(loan.id, { promiseDate: null as unknown as string }).catch(console.error)
+      getRemindersForSource(loan.id).then((all) => {
+        all.filter((r) => r.reminderKind === 'promise').forEach((r) => deleteReminder(r.id).catch(console.error))
+      }).catch(console.error)
+      loadLoans().catch(console.error)
+      toast.success(t('loans.promiseCleared'))
+      handleClosePromiseModal()
+    })
+  }
+
   const handleAddPayment = (loanId: string) => {
     if (savingRef.current) return
     if (!paymentAmount || !paymentDate) {
@@ -392,7 +546,12 @@ export default function LoansPage() {
     savingRef.current = true; setSaving(true)
     addLoanPayment(loanId, payment).then(() => {
       haptic(fullPayoff ? [20, 40, 20] : 12)
-      if (fullPayoff) { celebrate(); deleteRemindersForSource(loanId) }
+      if (fullPayoff) {
+        celebrate()
+        deleteRemindersForSource(loanId)
+      } else {
+        syncPromiseReminderAmount(loanId, loan.personName, round2(remaining - amount))
+      }
       setPaymentAmount('')
       setPaymentDate(localDatetimeValue())
       setPaymentNote('')
@@ -439,6 +598,8 @@ export default function LoansPage() {
         }
         
         addLoanIncrease(loanId, increase).then(() => {
+          syncPromiseReminderAmount(loanId, loan.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(loan))))
+          syncInstallmentAmounts(loanId, loan.personName, newTotalAmount)
           toast.success(t('loans.increaseSuccess'))
           handleCloseIncreaseModal()
           loadLoans().catch(console.error)
@@ -490,6 +651,8 @@ export default function LoansPage() {
       t('loans.paymentDeleteMessage', { amount: fmtNum(payment.amount) }),
       () => {
         deleteLoanPayment(loanId, paymentId).then(() => {
+          // Deleting a payment un-pays it — remaining goes back up.
+          syncPromiseReminderAmount(loanId, loan.personName, round2(calculateRemaining(loan) + payment.amount))
           loadLoans().catch(console.error)
           toast.success(t('loans.paymentDeleteSuccess'))
         }).catch((error) => {
@@ -522,6 +685,8 @@ export default function LoansPage() {
         // Don't update loan.amount - it should always remain the initial amount
         // Just delete the increase record
         deleteLoanIncrease(loanId, increaseId).then(() => {
+          syncPromiseReminderAmount(loanId, loan.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(loan))))
+          syncInstallmentAmounts(loanId, loan.personName, newTotalAmount)
           loadLoans().catch(console.error)
           toast.success(t('loans.increaseDeleteSuccess'))
         }).catch((error) => {
@@ -575,8 +740,19 @@ export default function LoansPage() {
     setEditReason(getInitialReason(loan))
     setEditDate(loan.date)
     setEditDueDate(loan.dueDate || '')
-    setEditPromiseDate(loan.promiseDate || '')
     setEditReminderLead('onTime')
+    setEditInstCount('')
+    setEditInstIntervalDays('30')
+    setEditInstIntervalUnit('months')
+    setEditInstReminders([])
+    // Load any existing installment plan so the edit form can show/cancel it
+    // instead of letting the user set up a conflicting second plan.
+    getRemindersForSource(loan.id)
+      .then((linked) => setEditInstReminders(linked.filter((r) => r.reminderKind === 'installment')))
+      .catch(console.error)
+    // Auto-expand if phone already has data — otherwise editing would
+    // silently hide it behind a closed toggle.
+    setShowMoreOptionsEdit(!!loan.personPhone)
   }
 
   const handleEditSubmit = (e: FormEvent) => {
@@ -590,6 +766,14 @@ export default function LoansPage() {
     const newAmount = parseFloat(editAmount)
     if (isNaN(newAmount) || newAmount <= 0) {
       toast.error(t('loans.errValidAmount'))
+      return
+    }
+    if (editDueDate && editDueDate < editDate) {
+      toast.error(t('loans.errDueBeforeDate'))
+      return
+    }
+    if (!isValidBdPhone(editPersonPhone)) {
+      toast.error(t('common.invalidPhone'))
       return
     }
 
@@ -622,21 +806,40 @@ export default function LoansPage() {
           reason: editReason,
           date: editDate,
           dueDate: editDueDate || '',
-          promiseDate: editPromiseDate || '',
+          // promiseDate is intentionally NOT written here — it's now managed
+          // independently via the "আবার মনে করিয়ে দিন" card action.
           returned: shouldBeReturned,
         }).then(() => {
-          // Keep the linked due-date reminder in sync (update / create / delete).
+          const newInstCount = parseInt(editInstCount, 10) || 0
+          // True whether the plan already existed or is being created in this
+          // same submit — either way, a standalone due reminder would
+          // duplicate installment #1 (which always lands on the due date).
+          const willHaveInstallmentPlan = editInstReminders.length > 0 || newInstCount > 1
+
+          // Keep any promise-date reminder's frozen amount honest after an
+          // amount edit.
+          syncPromiseReminderAmount(sourceId, dueName, round2(Math.max(0, newAmount + increasesTotal - totalPaid)))
+          // Existing কিস্তি reminders split the OLD total — if this plan
+          // already existed (not the brand-new-plan branch below), rebalance
+          // them across the new total.
+          if (editInstReminders.length > 0) {
+            syncInstallmentAmounts(sourceId, dueName, round2(newAmount + increasesTotal))
+          }
+
+          // Keep the linked due-date reminder in sync (update / create / delete
+          // it, or delete it when an installment plan now covers it instead).
           getRemindersForSource(sourceId).then((all) => {
             // Only touch the due-date reminder — promise-date and installment
             // reminders share the same sourceId and must survive a due-date
             // edit untouched. Older reminders predate reminderKind, so an
             // undefined kind is treated as "due" (the original single-reminder shape).
             const linked = all.filter((r) => !r.reminderKind || r.reminderKind === 'due')
-            if (dueVal) {
+            if (dueVal && !willHaveInstallmentPlan) {
               const patch = {
                 title: t('loans.dueReminderTitle', { name: dueName }),
                 description: t('loans.dueReminderDesc', { name: dueName, amount: bn(dueAmt), date: bnDate(dueVal) }),
                 scheduledTime: dueReminderTime(dueVal, dueLead),
+                autoParams: { name: dueName, amount: dueAmt, date: dueVal },
               }
               if (linked.length) {
                 linked.forEach((r) => updateReminder(r.id, patch).catch(console.error))
@@ -651,12 +854,43 @@ export default function LoansPage() {
               linked.forEach((r) => deleteReminder(r.id).catch(console.error))
             }
           }).catch(console.error)
+
+          // Set up a brand-new কিস্তি plan if this loan didn't already have
+          // one (an existing plan is managed via handleCancelInstallmentPlan,
+          // not overwritten here).
+          if (editInstReminders.length === 0 && newInstCount > 1) {
+            const per = round2(newAmount / newInstCount)
+            const unit = editInstIntervalUnit
+            const interval = unit === 'days' ? Math.max(1, parseInt(editInstIntervalDays, 10) || 30) : 1
+            const start = new Date(dueVal || editDate)
+            if (!isNaN(start.getTime())) {
+              buildInstallmentDates(start, newInstCount, unit, interval).forEach((local, i) => {
+                saveReminder({
+                  id: crypto.randomUUID(),
+                  title: t('loans.instReminderTitle', { name: dueName, i: fmtInt(i + 1), n: fmtInt(newInstCount) }),
+                  description: t('loans.instReminderDesc', { name: dueName, amount: bn(per) }),
+                  scheduledTime: `${local}T09:00`,
+                  dismissed: false,
+                  createdAt: new Date().toISOString(),
+                  sourceId, sourceType: 'loan', reminderKind: 'installment',
+                  autoParams: { name: dueName, amount: per, i: i + 1, n: newInstCount },
+                }).catch(console.error)
+              })
+              toast.info(t('loans.instCreated', { n: fmtInt(newInstCount) }))
+            }
+          }
+
           setEditingLoan(null)
           setEditPersonName('')
           setEditAmount('')
           setEditReason('')
           setEditDate('')
           setEditDueDate('')
+          setShowMoreOptionsEdit(false)
+          setEditInstReminders([])
+          setEditInstCount('')
+          setEditInstIntervalDays('30')
+          setEditInstIntervalUnit('months')
           loadLoans().catch(console.error)
           toast.success(t('loans.updateSuccess'))
         }).catch((error) => {
@@ -674,6 +908,48 @@ export default function LoansPage() {
     setEditReason('')
     setEditDate('')
     setEditDueDate('')
+    setShowMoreOptionsEdit(false)
+    setEditInstReminders([])
+    setEditInstCount('')
+    setEditInstIntervalDays('30')
+    setEditInstIntervalUnit('months')
+  }
+
+  // Delete every reminder in an existing installment plan at once.
+  const handleCancelInstallmentPlan = () => {
+    if (editInstReminders.length === 0 || !editingLoan) return
+    const sourceId = editingLoan.id
+    const dueVal = editDueDate
+    const dueName = editPersonName
+    const dueAmt = parseFloat(editAmount) || editingLoan.amount
+    const dueLead = editReminderLead
+    confirm.delete(
+      t('loans.instCancelTitle'),
+      t('loans.instCancelMsg', { n: fmtInt(editInstReminders.length) }),
+      () => {
+        Promise.all(editInstReminders.map((r) => deleteReminder(r.id)))
+          .then(() => {
+            setEditInstReminders([])
+            // The installment plan was the only thing covering the due date —
+            // restore a standalone due reminder now that it's gone, otherwise
+            // cancelling silently leaves the due date with no reminder at all.
+            if (dueVal) {
+              saveReminder({
+                id: crypto.randomUUID(),
+                title: t('loans.dueReminderTitle', { name: dueName }),
+                description: t('loans.dueReminderDesc', { name: dueName, amount: bn(dueAmt), date: bnDate(dueVal) }),
+                scheduledTime: dueReminderTime(dueVal, dueLead),
+                dismissed: false,
+                createdAt: new Date().toISOString(),
+                sourceId, sourceType: 'loan', reminderKind: 'due',
+                autoParams: { name: dueName, amount: dueAmt, date: dueVal },
+              }).catch(console.error)
+            }
+            toast.success(t('loans.instCancelled'))
+          })
+          .catch(() => toast.error(t('loans.instCancelError')))
+      }
+    )
   }
 
   const handleEditPayment = (loanId: string, payment: Payment) => {
@@ -734,6 +1010,7 @@ export default function LoansPage() {
         deleteLoanPayment(editingPayment.loanId, editingPayment.payment.id).then(() => {
           return addLoanPayment(editingPayment.loanId, updatedPayment)
         }).then(() => {
+          syncPromiseReminderAmount(editingPayment.loanId, loan.personName, round2(remaining - amount))
           setEditingPayment(null)
           setEditPaymentAmount('')
           setEditPaymentDate('')
@@ -762,6 +1039,14 @@ export default function LoansPage() {
       return
     }
 
+    const loan = loans.find(l => l.id === editingIncrease.loanId)
+    if (!loan) return
+
+    const otherIncreasesTotal = (loan.increases || [])
+      .filter(i => i.id !== editingIncrease.increase.id)
+      .reduce((sum, i) => sum + i.amount, 0)
+    const newTotalAmount = round2(loan.amount + otherIncreasesTotal + amount)
+
     const updatedIncrease: AmountIncrease = {
       ...editingIncrease.increase,
       amount,
@@ -777,6 +1062,8 @@ export default function LoansPage() {
         deleteLoanIncrease(editingIncrease.loanId, editingIncrease.increase.id).then(() => {
           return addLoanIncrease(editingIncrease.loanId, updatedIncrease)
         }).then(() => {
+          syncPromiseReminderAmount(editingIncrease.loanId, loan.personName, round2(Math.max(0, newTotalAmount - getTotalPaid(loan))))
+          syncInstallmentAmounts(editingIncrease.loanId, loan.personName, newTotalAmount)
           setEditingIncrease(null)
           setEditIncreaseAmount('')
           setEditIncreaseDate('')
@@ -1070,7 +1357,7 @@ export default function LoansPage() {
                 return (
                   <div key={g.name} className="card bar-neg space-y-3">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
+                      <Link href={`/person/${encodeURIComponent(g.name)}`} className="flex items-center gap-3 min-w-0 flex-1">
                         <div
                           className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 font-semibold"
                           style={{ backgroundColor: avatarColor(g.name).bg, color: avatarColor(g.name).fg }}
@@ -1079,7 +1366,7 @@ export default function LoansPage() {
                           <h3 className="font-semibold text-content truncate">{g.name}</h3>
                           <p className="text-xs text-muted">{t('person.entries', { count: fmtInt(g.loans.length) })}</p>
                         </div>
-                      </div>
+                      </Link>
                       <button className="icon-btn flex-shrink-0" onClick={() => handleSharePerson(g.name, g.loans, g.total)} title={t('share.action')} aria-label={t('share.action')}><ShareIcon className="w-5 h-5" /></button>
                     </div>
                     <div className="flex items-center justify-between rounded-xl tint-neg px-3 py-2">
@@ -1120,7 +1407,9 @@ export default function LoansPage() {
                           </button>
                           <div className="min-w-0">
                             <Link href={`/person/${encodeURIComponent(loan.personName)}`} className="font-semibold text-content truncate block hover:text-accent transition-colors">{loan.personName}</Link>
-                            <p className="text-xs text-muted">{bnDate(loan.date)}</p>
+                            <p className="text-xs text-muted truncate">
+                              {bnDate(loan.date)}{getInitialReason(loan) ? ` · ${getInitialReason(loan)}` : ''}
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
@@ -1141,15 +1430,29 @@ export default function LoansPage() {
                         </div>
                       </div>
 
-                      {(loan.dueDate || loan.promiseDate) && (
+                      {/* Due date (formal deadline — amber/red, urgency-coded) and
+                          promise date (a verbal check-in — accent/indigo, never
+                          confused for urgency) are deliberately on separate rows
+                          with different colors: they answer different questions
+                          ("when is it formally due" vs "what did I tell them"). */}
+                      {loan.dueDate && (
                         <div className="flex items-center gap-2 flex-wrap -mt-2">
                           {dueBadge(loan.dueDate)}
-                          {loan.dueDate && <span className="text-xs text-muted whitespace-nowrap">{t('due.on', { date: bnDate(loan.dueDate) })}</span>}
-                          {loan.promiseDate && (
-                            <span className="chip tint-warn text-caution text-[11px]">{t('loans.promiseChip', { date: bnDate(loan.promiseDate) })}</span>
-                          )}
+                          <span className="text-xs text-muted whitespace-nowrap">{t('due.on', { date: bnDate(loan.dueDate) })}</span>
                         </div>
                       )}
+                      {/* Tap to set/change a "remind me again" follow-up date —
+                          replaces the old always-visible form field entirely. */}
+                      <div className="flex items-center -mt-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenPromiseModal(loan)}
+                          className={`chip text-[11px] flex items-center gap-1 ${loan.promiseDate ? 'tint-accent text-accent' : ''}`}
+                        >
+                          <MessageIcon className="w-3 h-3 flex-shrink-0" />
+                          {loan.promiseDate ? t('loans.promiseChip', { date: bnDate(loan.promiseDate) }) : t('loans.promiseCta')}
+                        </button>
+                      </div>
 
                       <div className="grid grid-cols-3 gap-2 text-center">
                         <div><p className="text-xs text-muted mb-0.5">{t('loans.total')}</p><p className="text-sm font-semibold text-content">৳{bn(total)}</p></div>
@@ -1261,7 +1564,7 @@ export default function LoansPage() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="badge badge-success">{t('loans.paid')}</span>
-                            <h3 className="font-semibold text-content truncate">{loan.personName}</h3>
+                            <Link href={`/person/${encodeURIComponent(loan.personName)}`} className="font-semibold text-content truncate hover:text-accent transition-colors">{loan.personName}</Link>
                           </div>
                           <p className="text-xs text-muted mt-1">{t('loans.total')} ৳{bn(total)} · {t('loans.paidLabel')} ৳{bn(totalPaid)}</p>
                         </div>
@@ -1328,12 +1631,43 @@ export default function LoansPage() {
         </button>
       )}
 
+      {/* "আবার মনে করিয়ে দিন" — set/change/clear a follow-up promise reminder */}
+      <Modal
+        isOpen={promiseModalId !== null}
+        onClose={handleClosePromiseModal}
+        title={t('loans.promiseModalTitle')}
+        footerActions={<>
+          {loans.find((l) => l.id === promiseModalId)?.promiseDate && (
+            <ActionButton onClick={handleClearPromiseReminder} variant="secondary">{t('loans.promiseClear')}</ActionButton>
+          )}
+          <ActionButton onClick={handleClosePromiseModal} variant="secondary">{t('common.cancel')}</ActionButton>
+          <ActionButton onClick={handleSavePromiseReminder} variant="primary">{t('loans.promiseSave')}</ActionButton>
+        </>}
+      >
+        <div>
+          <label className="label">{t('loans.promiseModalLabel')}</label>
+          <input
+            type="datetime-local"
+            value={promiseModalDate}
+            min={(() => { const l = loans.find((x) => x.id === promiseModalId); return l ? l.date.slice(0, 16) : undefined })()}
+            onChange={(e) => setPromiseModalDate(e.target.value)}
+            className="input"
+          />
+          <p className="text-xs text-muted mt-1">{t('loans.promiseModalHelp')}</p>
+        </div>
+      </Modal>
+
       {/* Trash: soft-deleted loans — restore or purge permanently */}
       <Modal
         isOpen={showTrash}
         onClose={() => setShowTrash(false)}
         title={t('common.trash')}
-        footerActions={<ActionButton onClick={() => setShowTrash(false)} variant="secondary">{t('common.close')}</ActionButton>}
+        footerActions={<>
+          {trashedLoans.length > 0 && (
+            <ActionButton onClick={handleEmptyTrash} variant="danger">{t('common.trashEmptyAll')}</ActionButton>
+          )}
+          <ActionButton onClick={() => setShowTrash(false)} variant="secondary">{t('common.close')}</ActionButton>
+        </>}
       >
         {trashedLoans.length === 0 ? (
           <p className="text-sm text-muted text-center py-6">{t('common.trashEmpty')}</p>
@@ -1384,7 +1718,8 @@ export default function LoansPage() {
           </div>
           <div>
             <label className="label">{t('loans.dueDateOptional')}</label>
-            <input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="input" />
+            <input type="datetime-local" value={dueDate} onChange={(e) => setDueDate(e.target.value)} min={date || undefined} className="input" />
+            <p className="text-xs text-muted mt-1">{t('loans.dueDateHelp')}</p>
           </div>
           {dueDate && (
           <div>
@@ -1394,28 +1729,59 @@ export default function LoansPage() {
             </select>
           </div>
           )}
+
+          {/* Phone / promise date / কিস্তি are secondary — collapsed by default
+              so the common case (name, amount, date, maybe a due date) stays a
+              short form. */}
+          <button
+            type="button"
+            onClick={() => setShowMoreOptions((v) => !v)}
+            className="flex items-center gap-1 text-sm font-medium text-accent"
+          >
+            {showMoreOptions ? t('loans.lessOptions') : t('loans.moreOptions')}
+            <ChevronDownIcon className={`w-4 h-4 transition-transform ${showMoreOptions ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showMoreOptions && (<>
           <div>
             <label className="label">{t('common.phoneOptional')}</label>
             <input type="tel" inputMode="tel" value={personPhone} onChange={(e) => setPersonPhone(e.target.value)} className="input" placeholder="01XXXXXXXXX" />
           </div>
-          <div>
-            <label className="label">{t('loans.promiseDateOptional')}</label>
-            <input type="date" value={promiseDate} onChange={(e) => setPromiseDate(e.target.value)} className="input" />
-          </div>
+          {/* No promise-date field here — it's a post-creation card action now
+              (see handleOpenPromiseModal), not something you set up front. */}
           {/* কিস্তি: split into N installments with a reminder per installment */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="label">{t('loans.instCountLabel')}</label>
-              <input type="text" inputMode="numeric" value={instCount} onChange={(e) => setInstCount(e.target.value.replace(/\D/g, ''))} className="input" placeholder={t('loans.instCountPlaceholder')} />
-            </div>
+          <div>
+            <label className="label">{t('loans.instCountLabel')}</label>
+            <input type="text" inputMode="numeric" value={instCount} onChange={(e) => setInstCount(e.target.value.replace(/\D/g, ''))} className="input" placeholder={t('loans.instCountPlaceholder')} />
+          </div>
+          {parseInt(instCount, 10) > 1 && (
             <div>
               <label className="label">{t('loans.instIntervalLabel')}</label>
-              <input type="text" inputMode="numeric" value={instIntervalDays} onChange={(e) => setInstIntervalDays(e.target.value.replace(/\D/g, ''))} className="input" />
+              <div className="flex gap-2">
+                {(['weeks', 'months', 'days'] as const).map((u) => (
+                  <button
+                    key={u}
+                    type="button"
+                    onClick={() => setInstIntervalUnit(u)}
+                    className={`chip ${instIntervalUnit === u ? 'chip-accent' : ''}`}
+                  >
+                    {t(`loans.interval${u === 'weeks' ? 'Weekly' : u === 'months' ? 'Monthly' : 'Custom'}`)}
+                  </button>
+                ))}
+              </div>
+              {instIntervalUnit === 'days' && (
+                <input
+                  type="text" inputMode="numeric" value={instIntervalDays}
+                  onChange={(e) => setInstIntervalDays(e.target.value.replace(/\D/g, ''))}
+                  className="input mt-2" placeholder={t('loans.instCustomDaysPlaceholder')}
+                />
+              )}
             </div>
-          </div>
+          )}
           {parseInt(instCount, 10) > 1 && amount && (
             <p className="text-xs text-muted -mt-2">{t('loans.instPreview', { n: fmtInt(parseInt(instCount, 10)), per: bn(round2((parseFloat(amount) || 0) / parseInt(instCount, 10))) })}</p>
           )}
+          </>)}
         </form>
       </Modal>
 
@@ -1448,7 +1814,8 @@ export default function LoansPage() {
           </div>
           <div>
             <label className="label">{t('loans.dueDateOptional')}</label>
-            <input type="datetime-local" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} className="input" />
+            <input type="datetime-local" value={editDueDate} onChange={(e) => setEditDueDate(e.target.value)} min={editDate || undefined} className="input" />
+            <p className="text-xs text-muted mt-1">{t('loans.dueDateHelp')}</p>
           </div>
           {editDueDate && (
           <div>
@@ -1458,14 +1825,66 @@ export default function LoansPage() {
             </select>
           </div>
           )}
+
+          <button
+            type="button"
+            onClick={() => setShowMoreOptionsEdit((v) => !v)}
+            className="flex items-center gap-1 text-sm font-medium text-accent"
+          >
+            {showMoreOptionsEdit ? t('loans.lessOptions') : t('loans.moreOptions')}
+            <ChevronDownIcon className={`w-4 h-4 transition-transform ${showMoreOptionsEdit ? 'rotate-180' : ''}`} />
+          </button>
+
+          {showMoreOptionsEdit && (<>
           <div>
             <label className="label">{t('common.phoneOptional')}</label>
             <input type="tel" inputMode="tel" value={editPersonPhone} onChange={(e) => setEditPersonPhone(e.target.value)} className="input" placeholder="01XXXXXXXXX" />
           </div>
-          <div>
-            <label className="label">{t('loans.promiseDateOptional')}</label>
-            <input type="date" value={editPromiseDate} onChange={(e) => setEditPromiseDate(e.target.value)} className="input" />
-          </div>
+          {/* No promise-date field here — it's a post-creation card action now
+              (see handleOpenPromiseModal), not part of this form. */}
+
+          {/* কিস্তি: show/cancel an existing plan, or set one up for this loan */}
+          {editInstReminders.length > 0 ? (
+            <div className="rounded-xl bg-surface-2 p-3 space-y-2">
+              <p className="text-sm font-medium text-content">{t('loans.instPlanSummary', { n: fmtInt(editInstReminders.length) })}</p>
+              <button type="button" className="btn btn-danger text-xs px-3 py-2" onClick={handleCancelInstallmentPlan}>
+                {t('loans.instCancelPlan')}
+              </button>
+            </div>
+          ) : (<>
+            <div>
+              <label className="label">{t('loans.instCountLabel')}</label>
+              <input type="text" inputMode="numeric" value={editInstCount} onChange={(e) => setEditInstCount(e.target.value.replace(/\D/g, ''))} className="input" placeholder={t('loans.instCountPlaceholder')} />
+            </div>
+            {parseInt(editInstCount, 10) > 1 && (
+              <div>
+                <label className="label">{t('loans.instIntervalLabel')}</label>
+                <div className="flex gap-2">
+                  {(['weeks', 'months', 'days'] as const).map((u) => (
+                    <button
+                      key={u}
+                      type="button"
+                      onClick={() => setEditInstIntervalUnit(u)}
+                      className={`chip ${editInstIntervalUnit === u ? 'chip-accent' : ''}`}
+                    >
+                      {t(`loans.interval${u === 'weeks' ? 'Weekly' : u === 'months' ? 'Monthly' : 'Custom'}`)}
+                    </button>
+                  ))}
+                </div>
+                {editInstIntervalUnit === 'days' && (
+                  <input
+                    type="text" inputMode="numeric" value={editInstIntervalDays}
+                    onChange={(e) => setEditInstIntervalDays(e.target.value.replace(/\D/g, ''))}
+                    className="input mt-2" placeholder={t('loans.instCustomDaysPlaceholder')}
+                  />
+                )}
+              </div>
+            )}
+            {parseInt(editInstCount, 10) > 1 && editAmount && (
+              <p className="text-xs text-muted -mt-2">{t('loans.instPreview', { n: fmtInt(parseInt(editInstCount, 10)), per: bn(round2((parseFloat(editAmount) || 0) / parseInt(editInstCount, 10))) })}</p>
+            )}
+          </>)}
+          </>)}
         </form>
       </Modal>
 

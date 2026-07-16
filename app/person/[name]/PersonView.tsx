@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ComponentType } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { subscribeToDebts, subscribeToLoans } from '@/lib/storage'
 import type { Debt, Loan } from '@/lib/types'
 import { useAuth } from '@/lib/firebase-auth'
@@ -13,7 +14,7 @@ import { NoResultsIllustration } from '@/components/Illustrations'
 import { avatarColor } from '@/lib/avatar'
 import {
   ArrowUpRightIcon, ArrowDownLeftIcon, RotateIcon, PlusCircleIcon,
-  ScaleIcon, ClockIcon, HistoryIcon,
+  ScaleIcon, ClockIcon, HistoryIcon, ChevronDownIcon,
 } from '@/components/Icons'
 
 const bn = (n: number) => fmtNum(round2(n))
@@ -38,6 +39,7 @@ type TimelineEvent = {
   tone: 'pos' | 'neg' | 'warn'
   Icon: ComponentType<{ className?: string }>
   label: string
+  note?: string // reason/payment-note for context ("why / what")
   date: string
   amount: number
 }
@@ -129,28 +131,61 @@ export default function PersonView({ personName }: { personName: string }) {
     : 0
   const hasBehaviorData = settleDelays.length > 0
   const totalTransactions = debts.length + loans.length
+  // Always-available counts so the card is useful even before anything is
+  // settled (the delay insight above needs settled-with-due-date history).
+  const allRecords = [...debts, ...loans]
+  const settledCount = allRecords.filter((r) => r.returned).length
+  const activeCount = allRecords.filter((r) => !r.returned).length
+  const nowMs = Date.now()
+  const overdueCount = allRecords.filter((r) => !r.returned && r.dueDate && toMillis(r.dueDate) < nowMs).length
 
   // ---- Unified timeline (newest first) ----
   const events: TimelineEvent[] = []
   debts.forEach((d) => {
-    events.push({ id: `dc-${d.id}`, at: toMillis(d.createdAt) || toMillis(d.date), tone: 'pos', Icon: ArrowUpRightIcon, label: t('person.evLent'), date: d.date, amount: d.amount || 0 })
+    events.push({ id: `dc-${d.id}`, at: toMillis(d.createdAt) || toMillis(d.date), tone: 'pos', Icon: ArrowUpRightIcon, label: t('person.evLent'), note: d.reason, date: d.date, amount: d.amount || 0 })
     ;(d.payments || []).forEach((p, i) =>
-      events.push({ id: `dp-${d.id}-${p.id || i}`, at: toMillis(p.createdAt) || toMillis(p.date), tone: 'pos', Icon: RotateIcon, label: t('person.evDebtPayment'), date: p.date, amount: p.amount || 0 })
+      events.push({ id: `dp-${d.id}-${p.id || i}`, at: toMillis(p.createdAt) || toMillis(p.date), tone: 'pos', Icon: RotateIcon, label: t('person.evDebtPayment'), note: p.note, date: p.date, amount: p.amount || 0 })
     )
     ;(d.increases || []).forEach((inc, i) =>
-      events.push({ id: `di-${d.id}-${inc.id || i}`, at: toMillis(inc.createdAt) || toMillis(inc.date), tone: 'warn', Icon: PlusCircleIcon, label: t('person.evIncrease'), date: inc.date, amount: inc.amount || 0 })
+      events.push({ id: `di-${d.id}-${inc.id || i}`, at: toMillis(inc.createdAt) || toMillis(inc.date), tone: 'warn', Icon: PlusCircleIcon, label: t('person.evIncrease'), note: inc.reason, date: inc.date, amount: inc.amount || 0 })
     )
   })
   loans.forEach((l) => {
-    events.push({ id: `lc-${l.id}`, at: toMillis(l.createdAt) || toMillis(l.date), tone: 'neg', Icon: ArrowDownLeftIcon, label: t('person.evBorrowed'), date: l.date, amount: l.amount || 0 })
+    events.push({ id: `lc-${l.id}`, at: toMillis(l.createdAt) || toMillis(l.date), tone: 'neg', Icon: ArrowDownLeftIcon, label: t('person.evBorrowed'), note: l.reason, date: l.date, amount: l.amount || 0 })
     ;(l.payments || []).forEach((p, i) =>
-      events.push({ id: `lp-${l.id}-${p.id || i}`, at: toMillis(p.createdAt) || toMillis(p.date), tone: 'neg', Icon: RotateIcon, label: t('person.evLoanPayment'), date: p.date, amount: p.amount || 0 })
+      events.push({ id: `lp-${l.id}-${p.id || i}`, at: toMillis(p.createdAt) || toMillis(p.date), tone: 'neg', Icon: RotateIcon, label: t('person.evLoanPayment'), note: p.note, date: p.date, amount: p.amount || 0 })
     )
     ;(l.increases || []).forEach((inc, i) =>
-      events.push({ id: `li-${l.id}-${inc.id || i}`, at: toMillis(inc.createdAt) || toMillis(inc.date), tone: 'warn', Icon: PlusCircleIcon, label: t('person.evIncrease'), date: inc.date, amount: inc.amount || 0 })
+      events.push({ id: `li-${l.id}-${inc.id || i}`, at: toMillis(inc.createdAt) || toMillis(inc.date), tone: 'warn', Icon: PlusCircleIcon, label: t('person.evIncrease'), note: inc.reason, date: inc.date, amount: inc.amount || 0 })
     )
   })
   events.sort((a, b) => b.at - a.at)
+
+  // ---- Itemized active records (the "who owes what, per record" breakdown) ----
+  const recordTs = (r: Debt | Loan) => toMillis(r.createdAt) || toMillis(r.date)
+  const activeDebts = debts.filter((d) => !d.returned && remainingOf(d) > 0)
+    .sort((a, b) => recordTs(b) - recordTs(a)) // newest first
+  const activeLoans = loans.filter((l) => !l.returned && remainingOf(l) > 0)
+    .sort((a, b) => recordTs(b) - recordTs(a))
+  const dueBadge = (item: Debt | Loan) => {
+    if (!item.dueDate) return null
+    const days = Math.ceil((toMillis(item.dueDate) - nowMs) / 86400000)
+    if (days < 0) return <span className="chip text-[10px] tint-neg text-negative">{t('due.overdue', { count: fmtInt(-days) })}</span>
+    if (days === 0) return <span className="chip text-[10px] tint-warn text-caution">{t('due.today')}</span>
+    return <span className="chip text-[10px] tint-warn text-caution">{t('due.daysLeft', { count: fmtInt(days) })}</span>
+  }
+  const recordRow = (item: Debt | Loan, href: string, tone: 'pos' | 'neg') => (
+    <Link key={item.id} href={href} className="flex items-center gap-3 py-2.5">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-content truncate">{item.reason || fmtDate(item.date)}</p>
+        <p className="text-[11px] text-muted flex items-center gap-1.5 flex-wrap">
+          <span>{fmtDate(item.date)}</span>
+          {dueBadge(item)}
+        </p>
+      </div>
+      <span className={`text-sm font-semibold flex-shrink-0 tabular-nums ${tone === 'pos' ? 'text-positive' : 'text-negative'}`}>৳{bn(remainingOf(item))}</span>
+    </Link>
+  )
 
   const toneText = { pos: 'text-positive', neg: 'text-negative', warn: 'text-caution' } as const
   const toneTint = { pos: 'tint-pos', neg: 'tint-neg', warn: 'tint-warn' } as const
@@ -232,11 +267,40 @@ export default function PersonView({ personName }: { personName: string }) {
               </div>
             )}
 
+            {/* Itemized active records — the per-record breakdown behind the
+                net totals, split by direction so "who owes what, and why" is
+                readable at a glance. Each row deep-links to its full record. */}
+            {activeDebts.length > 0 && (
+              <div className="card">
+                <p className="text-sm font-semibold text-positive mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-2"><ArrowUpRightIcon className="w-4 h-4" /> {t('person.theyOwe')}</span>
+                  <span className="tabular-nums">৳{bn(theyOwe)}</span>
+                </p>
+                <div className="divide-y divide-line">
+                  {activeDebts.map((d) => recordRow(d, `/debts?id=${d.id}`, 'pos'))}
+                </div>
+              </div>
+            )}
+            {activeLoans.length > 0 && (
+              <div className="card">
+                <p className="text-sm font-semibold text-negative mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-2"><ArrowDownLeftIcon className="w-4 h-4" /> {t('person.youOwe')}</span>
+                  <span className="tabular-nums">৳{bn(youOwe)}</span>
+                </p>
+                <div className="divide-y divide-line">
+                  {activeLoans.map((l) => recordRow(l, `/loans?id=${l.id}`, 'neg'))}
+                </div>
+              </div>
+            )}
+
             {/* Repayment behavior */}
             <div className="card space-y-3">
               <p className="text-sm font-semibold text-content flex items-center gap-2">
                 <ClockIcon className="w-4 h-4 text-accent" /> {t('person.behaviorTitle')}
               </p>
+              {/* Delay insight — only meaningful once something with a due date
+                  has been fully settled. When settled: show on-time/late split;
+                  otherwise a hint that due dates unlock this. */}
               {hasBehaviorData ? (
                 <>
                   <p className={`text-sm font-medium ${avgDelay > 0 ? 'text-negative' : 'text-positive'}`}>
@@ -246,11 +310,7 @@ export default function PersonView({ personName }: { personName: string }) {
                         ? t('person.avgDelayEarly', { days: fmtInt(-avgDelay) })
                         : t('person.avgOnTime')}
                   </p>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div>
-                      <p className="text-xs text-muted mb-0.5">{t('person.totalTransactions')}</p>
-                      <p className="text-sm font-semibold text-content">{fmtInt(totalTransactions)}</p>
-                    </div>
+                  <div className="grid grid-cols-2 gap-2 text-center">
                     <div>
                       <p className="text-xs text-muted mb-0.5">{t('person.onTime')}</p>
                       <p className="text-sm font-semibold text-positive">{fmtInt(onTimeCount)}</p>
@@ -262,8 +322,30 @@ export default function PersonView({ personName }: { personName: string }) {
                   </div>
                 </>
               ) : (
-                <p className="text-sm text-muted">{t('person.noBehaviorData')}</p>
+                <p className="text-xs text-muted">{t('person.behaviorHint')}</p>
               )}
+
+              {/* Always-visible counts as tinted stat pills — each state reads
+                  as its own colored object (number + label side by side)
+                  instead of four bare numbers on a hairline grid. */}
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="flex items-center gap-2.5 rounded-xl bg-surface-2 px-3 py-2.5">
+                  <span className="text-lg font-bold text-content tabular-nums">{fmtInt(totalTransactions)}</span>
+                  <span className="text-xs text-muted leading-tight">{t('person.totalTransactions')}</span>
+                </div>
+                <div className="flex items-center gap-2.5 rounded-xl tint-pos px-3 py-2.5">
+                  <span className="text-lg font-bold text-positive tabular-nums">{fmtInt(settledCount)}</span>
+                  <span className="text-xs text-muted leading-tight">{t('person.settled')}</span>
+                </div>
+                <div className="flex items-center gap-2.5 rounded-xl tint-accent px-3 py-2.5">
+                  <span className="text-lg font-bold text-accent tabular-nums">{fmtInt(activeCount)}</span>
+                  <span className="text-xs text-muted leading-tight">{t('person.active')}</span>
+                </div>
+                <div className={`flex items-center gap-2.5 rounded-xl px-3 py-2.5 ${overdueCount > 0 ? 'tint-neg' : 'bg-surface-2'}`}>
+                  <span className={`text-lg font-bold tabular-nums ${overdueCount > 0 ? 'text-negative' : 'text-muted'}`}>{fmtInt(overdueCount)}</span>
+                  <span className="text-xs text-muted leading-tight">{t('person.overdue')}</span>
+                </div>
+              </div>
             </div>
 
             {/* Unified timeline */}
@@ -279,7 +361,9 @@ export default function PersonView({ personName }: { personName: string }) {
                         <ev.Icon className="w-4 h-4" />
                       </span>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm text-content truncate">{ev.label}</p>
+                        <p className="text-sm text-content truncate">
+                          {ev.label}{ev.note ? <span className="text-muted"> · {ev.note}</span> : ''}
+                        </p>
                         <p className="text-[11px] text-muted">{fmtDate(ev.date)}</p>
                       </div>
                       <span className={`text-sm font-semibold flex-shrink-0 ${toneText[ev.tone]}`}>৳{bn(ev.amount)}</span>

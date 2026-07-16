@@ -121,11 +121,31 @@ export const loans: Dict = {
   'loans.increaseUpdateSuccess': { bn: 'পরিমাণ বৃদ্ধি সফলভাবে আপডেট করা হয়েছে', en: 'Amount increase updated successfully' },
   'loans.increaseUpdateError': { bn: 'পরিমাণ বৃদ্ধি আপডেট করতে সমস্যা হয়েছে', en: 'Failed to update amount increase' },
 
-  // Promise date (কথা দিয়েছি X তারিখ দেব)
-  'loans.promiseDateOptional': { bn: 'প্রতিশ্রুতির তারিখ (ঐচ্ছিক)', en: 'Promised date (optional)' },
-  'loans.promiseChip': { bn: 'কথা দিয়েছি: {date}', en: 'Promised: {date}' },
+  // Due date help + form chrome
+  'loans.dueDateHelp': { bn: 'আপনি যে ডেডলাইন ঠিক করেছেন', en: 'The deadline you set' },
+  'loans.moreOptions': { bn: 'আরও অপশন', en: 'More options' },
+  'loans.lessOptions': { bn: 'কম অপশন', en: 'Fewer options' },
+  'loans.errDueBeforeDate': { bn: 'ফেরতের তারিখ, ধার নেওয়ার তারিখের আগে হতে পারবে না', en: 'Due date cannot be before the date taken' },
+  'loans.errPromiseBeforeDate': { bn: 'তারিখ, ধার নেওয়ার তারিখের আগে হতে পারবে না', en: 'Date cannot be before the date taken' },
+  'loans.intervalWeekly': { bn: 'সাপ্তাহিক', en: 'Weekly' },
+  'loans.intervalMonthly': { bn: 'মাসিক', en: 'Monthly' },
+  'loans.intervalCustom': { bn: 'কাস্টম', en: 'Custom' },
+
+  // "আবার মনে করিয়ে দিন" — follow-up promise reminder (card action, not a form field)
+  'loans.promiseCta': { bn: 'আবার মনে করিয়ে দিন', en: 'Remind me again' },
+  'loans.promiseChip': { bn: 'মনে করাবে: {date}', en: 'Reminder: {date}' },
+  'loans.promiseModalTitle': { bn: 'আবার কবে মনে করাব?', en: 'Remind again when?' },
+  'loans.promiseModalLabel': { bn: 'তারিখ', en: 'Date' },
+  'loans.promiseModalHelp': { bn: 'আপনি নতুন করে যে দিন-সময় দেবেন বলেছেন, ঠিক তখন মনে করিয়ে দেব', en: "We'll remind you at the date & time you now promise" },
+  'loans.promiseSave': { bn: 'সেট করুন', en: 'Set' },
+  'loans.promiseSet': { bn: 'মনে করানোর তারিখ সেট হয়েছে', en: 'Reminder date set' },
+  'loans.promiseClear': { bn: 'মুছুন', en: 'Clear' },
+  'loans.promiseClearTitle': { bn: 'মনে করানোর তারিখ মুছবেন?', en: 'Clear the reminder date?' },
+  'loans.promiseClearMsg': { bn: 'এই ফলো-আপ রিমাইন্ডারটি মুছে ফেলা হবে।', en: 'This follow-up reminder will be removed.' },
+  'loans.promiseCleared': { bn: 'মনে করানোর তারিখ মুছে ফেলা হয়েছে', en: 'Reminder date cleared' },
   'loans.promiseReminderTitle': { bn: '{name} কে দেওয়ার প্রতিশ্রুতির দিন', en: 'Promised day to pay {name}' },
   'loans.promiseReminderDesc': { bn: '{name} কে আজ ৳{amount} দেওয়ার কথা', en: 'You promised to pay {name} ৳{amount} today' },
+  'loans.promiseReminderDescGeneric': { bn: '{name} কে প্রতিশ্রুতি অনুযায়ী যোগাযোগ করুন — কিস্তি অনুযায়ী পরিশোধ চলছে', en: "Follow up with {name} per your promise — repayment is via the installment plan" },
 
   // WhatsApp
   'loans.waNudge': { bn: 'আসসালামু আলাইকুম {name}, আপনার ৳{amount} শীঘ্রই ফেরত দেব ইনশাআল্লাহ। ধন্যবাদ।', en: 'Hi {name}, I will repay your ৳{amount} soon. Thanks for your patience.' },
@@ -133,9 +153,17 @@ export const loans: Dict = {
   // কিস্তি (installments)
   'loans.instCountLabel': { bn: 'কিস্তি সংখ্যা (ঐচ্ছিক)', en: 'Installments (optional)' },
   'loans.instCountPlaceholder': { bn: 'যেমন: ৪', en: 'e.g., 4' },
-  'loans.instIntervalLabel': { bn: 'কত দিন পরপর', en: 'Every N days' },
+  'loans.instIntervalLabel': { bn: 'কত দিন/সপ্তাহ/মাস পরপর', en: 'Interval' },
+  'loans.instCustomDaysPlaceholder': { bn: 'যেমন: ৪৫', en: 'e.g., 45' },
   'loans.instPreview': { bn: '{n}টি কিস্তি × ৳{per}', en: '{n} installments × ৳{per}' },
   'loans.instReminderTitle': { bn: '{name} — কিস্তি {i}/{n}', en: '{name} — installment {i}/{n}' },
   'loans.instReminderDesc': { bn: '{name} কে কিস্তি ৳{amount} দেওয়ার দিন', en: 'Pay installment of ৳{amount} to {name}' },
   'loans.instCreated': { bn: '{n}টি কিস্তির রিমাইন্ডার তৈরি হয়েছে', en: '{n} installment reminders created' },
+  'loans.promiseHiddenNote': { bn: 'কিস্তি প্ল্যান থাকলে আলাদা প্রতিশ্রুতির তারিখ দরকার নেই — প্রতিটি কিস্তির নিজস্ব তারিখ আছে', en: "No separate promised date needed with an installment plan — each installment has its own date" },
+  'loans.instPlanSummary': { bn: 'কিস্তি পরিকল্পনা: {n}টি রিমাইন্ডার সক্রিয়', en: 'Installment plan: {n} reminders active' },
+  'loans.instCancelPlan': { bn: 'পরিকল্পনা বাতিল করুন', en: 'Cancel plan' },
+  'loans.instCancelTitle': { bn: 'কিস্তি পরিকল্পনা বাতিল করবেন?', en: 'Cancel installment plan?' },
+  'loans.instCancelMsg': { bn: '{n}টি কিস্তির রিমাইন্ডার মুছে ফেলা হবে। এটি ফেরানো যাবে না।', en: 'All {n} installment reminders will be deleted. This cannot be undone.' },
+  'loans.instCancelled': { bn: 'কিস্তি পরিকল্পনা বাতিল করা হয়েছে', en: 'Installment plan cancelled' },
+  'loans.instCancelError': { bn: 'পরিকল্পনা বাতিল করতে সমস্যা হয়েছে', en: 'Failed to cancel the plan' },
 }

@@ -116,11 +116,31 @@ export const debts: Dict = {
   'debts.increaseUpdateError': { bn: 'পরিমাণ বৃদ্ধি আপডেট করতে সমস্যা হয়েছে', en: 'Failed to update amount increase' },
   'debts.errOverpay': { bn: 'বাকির চেয়ে বেশি দেওয়া যাবে না (বাকি ৳{remaining})', en: 'Cannot exceed the remaining amount (৳{remaining} due)' },
 
-  // Promise date (কথা দিয়েছে X তারিখ দেবে)
-  'debts.promiseDateOptional': { bn: 'প্রতিশ্রুতির তারিখ (ঐচ্ছিক)', en: 'Promised date (optional)' },
-  'debts.promiseChip': { bn: 'কথা দিয়েছে: {date}', en: 'Promised: {date}' },
+  // Due date help + form chrome
+  'debts.dueDateHelp': { bn: 'আপনি যে ডেডলাইন ঠিক করেছেন', en: 'The deadline you set' },
+  'debts.moreOptions': { bn: 'আরও অপশন', en: 'More options' },
+  'debts.lessOptions': { bn: 'কম অপশন', en: 'Fewer options' },
+  'debts.errDueBeforeDate': { bn: 'ফেরতের তারিখ, ধার দেওয়ার তারিখের আগে হতে পারবে না', en: 'Due date cannot be before the date given' },
+  'debts.errPromiseBeforeDate': { bn: 'তারিখ, ধার দেওয়ার তারিখের আগে হতে পারবে না', en: 'Date cannot be before the date given' },
+  'debts.intervalWeekly': { bn: 'সাপ্তাহিক', en: 'Weekly' },
+  'debts.intervalMonthly': { bn: 'মাসিক', en: 'Monthly' },
+  'debts.intervalCustom': { bn: 'কাস্টম', en: 'Custom' },
+
+  // "আবার মনে করিয়ে দিন" — follow-up promise reminder (card action, not a form field)
+  'debts.promiseCta': { bn: 'আবার মনে করিয়ে দিন', en: 'Remind me again' },
+  'debts.promiseChip': { bn: 'মনে করাবে: {date}', en: 'Reminder: {date}' },
+  'debts.promiseModalTitle': { bn: 'আবার কবে মনে করাব?', en: 'Remind again when?' },
+  'debts.promiseModalLabel': { bn: 'তারিখ', en: 'Date' },
+  'debts.promiseModalHelp': { bn: 'ও নতুন করে যে দিন-সময় দেবে বলেছে, ঠিক তখন মনে করিয়ে দেব', en: "We'll remind you at the date & time they now promise" },
+  'debts.promiseSave': { bn: 'সেট করুন', en: 'Set' },
+  'debts.promiseSet': { bn: 'মনে করানোর তারিখ সেট হয়েছে', en: 'Reminder date set' },
+  'debts.promiseClear': { bn: 'মুছুন', en: 'Clear' },
+  'debts.promiseClearTitle': { bn: 'মনে করানোর তারিখ মুছবেন?', en: 'Clear the reminder date?' },
+  'debts.promiseClearMsg': { bn: 'এই ফলো-আপ রিমাইন্ডারটি মুছে ফেলা হবে।', en: 'This follow-up reminder will be removed.' },
+  'debts.promiseCleared': { bn: 'মনে করানোর তারিখ মুছে ফেলা হয়েছে', en: 'Reminder date cleared' },
   'debts.promiseReminderTitle': { bn: '{name} এর প্রতিশ্রুতির দিন', en: "{name}'s promised day" },
   'debts.promiseReminderDesc': { bn: '{name} আজ ৳{amount} দেওয়ার কথা', en: '{name} promised to pay ৳{amount} today' },
+  'debts.promiseReminderDescGeneric': { bn: '{name}-এর সাথে প্রতিশ্রুতি অনুযায়ী যোগাযোগ করুন — কিস্তি অনুযায়ী পরিশোধ চলছে', en: "Follow up with {name} per their promise — repayment is via the installment plan" },
 
   // WhatsApp তাগাদা
   'debts.waNudge': { bn: 'আসসালামু আলাইকুম {name}, আপনার কাছে আমার ৳{amount} পাওনা আছে। সুবিধামতো ফেরত দিলে উপকার হয়। ধন্যবাদ।', en: 'Hi {name}, a friendly reminder that ৳{amount} is due to me. Please repay when convenient. Thanks.' },
@@ -128,9 +148,17 @@ export const debts: Dict = {
   // কিস্তি (installments)
   'debts.instCountLabel': { bn: 'কিস্তি সংখ্যা (ঐচ্ছিক)', en: 'Installments (optional)' },
   'debts.instCountPlaceholder': { bn: 'যেমন: ৪', en: 'e.g., 4' },
-  'debts.instIntervalLabel': { bn: 'কত দিন পরপর', en: 'Every N days' },
+  'debts.instIntervalLabel': { bn: 'কত দিন/সপ্তাহ/মাস পরপর', en: 'Interval' },
+  'debts.instCustomDaysPlaceholder': { bn: 'যেমন: ৪৫', en: 'e.g., 45' },
   'debts.instPreview': { bn: '{n}টি কিস্তি × ৳{per}', en: '{n} installments × ৳{per}' },
   'debts.instReminderTitle': { bn: '{name} — কিস্তি {i}/{n}', en: '{name} — installment {i}/{n}' },
   'debts.instReminderDesc': { bn: '{name} এর কাছ থেকে কিস্তি ৳{amount} নেওয়ার দিন', en: 'Collect installment of ৳{amount} from {name}' },
   'debts.instCreated': { bn: '{n}টি কিস্তির রিমাইন্ডার তৈরি হয়েছে', en: '{n} installment reminders created' },
+  'debts.promiseHiddenNote': { bn: 'কিস্তি প্ল্যান থাকলে আলাদা প্রতিশ্রুতির তারিখ দরকার নেই — প্রতিটি কিস্তির নিজস্ব তারিখ আছে', en: "No separate promised date needed with an installment plan — each installment has its own date" },
+  'debts.instPlanSummary': { bn: 'কিস্তি পরিকল্পনা: {n}টি রিমাইন্ডার সক্রিয়', en: 'Installment plan: {n} reminders active' },
+  'debts.instCancelPlan': { bn: 'পরিকল্পনা বাতিল করুন', en: 'Cancel plan' },
+  'debts.instCancelTitle': { bn: 'কিস্তি পরিকল্পনা বাতিল করবেন?', en: 'Cancel installment plan?' },
+  'debts.instCancelMsg': { bn: '{n}টি কিস্তির রিমাইন্ডার মুছে ফেলা হবে। এটি ফেরানো যাবে না।', en: 'All {n} installment reminders will be deleted. This cannot be undone.' },
+  'debts.instCancelled': { bn: 'কিস্তি পরিকল্পনা বাতিল করা হয়েছে', en: 'Installment plan cancelled' },
+  'debts.instCancelError': { bn: 'পরিকল্পনা বাতিল করতে সমস্যা হয়েছে', en: 'Failed to cancel the plan' },
 }

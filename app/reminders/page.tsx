@@ -13,9 +13,35 @@ import { useRouter } from 'next/navigation'
 import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
 import { ClockIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, HistoryIcon, MicIcon } from '@/components/Icons'
-import { t, useLang, fmtInt, fmtDate, fmtRelative } from '@/lib/i18n'
+import { t, useLang, fmtInt, fmtDate, fmtRelative, fmtNum } from '@/lib/i18n'
 import { haptic } from '@/lib/haptics'
 import { BellIllustration } from '@/components/Illustrations'
+
+// Auto-created reminders (from a debt/loan) store raw params so their text can
+// be rendered in the CURRENT language here, instead of the frozen strings saved
+// at creation time. Manual/legacy reminders (no autoParams) fall back to the
+// stored title/description.
+const displayTitle = (r: Reminder): string => {
+  const p = r.autoParams
+  if (!p || !r.sourceType || !r.reminderKind) return r.title
+  const ns = r.sourceType === 'debt' ? 'debts' : 'loans'
+  if (r.reminderKind === 'due') return t(`${ns}.dueReminderTitle`, { name: p.name ?? '' })
+  if (r.reminderKind === 'promise') return t(`${ns}.promiseReminderTitle`, { name: p.name ?? '' })
+  if (r.reminderKind === 'installment') return t(`${ns}.instReminderTitle`, { name: p.name ?? '', i: fmtInt(p.i ?? 0), n: fmtInt(p.n ?? 0) })
+  return r.title
+}
+const displayDesc = (r: Reminder): string => {
+  const p = r.autoParams
+  if (!p || !r.sourceType || !r.reminderKind) return r.description || ''
+  const ns = r.sourceType === 'debt' ? 'debts' : 'loans'
+  const amount = fmtNum(p.amount ?? 0)
+  if (r.reminderKind === 'due') return t(`${ns}.dueReminderDesc`, { name: p.name ?? '', amount, date: fmtDate(p.date ?? '') })
+  if (r.reminderKind === 'promise') return p.generic
+    ? t(`${ns}.promiseReminderDescGeneric`, { name: p.name ?? '' })
+    : t(`${ns}.promiseReminderDesc`, { name: p.name ?? '', amount })
+  if (r.reminderKind === 'installment') return t(`${ns}.instReminderDesc`, { name: p.name ?? '', amount })
+  return r.description || ''
+}
 
 // Minimal Web Speech API surface we use (lib.dom has no SpeechRecognition types).
 interface SpeechRecognitionLike {
@@ -237,8 +263,10 @@ export default function RemindersPage() {
 
   const handleEdit = (reminder: Reminder) => {
     setEditingReminder(reminder)
-    setTitle(reminder.title)
-    setDescription(reminder.description || '')
+    // Prefill with the currently-displayed (translated) text, not the frozen
+    // stored string, so an auto-reminder edits from what the user actually sees.
+    setTitle(displayTitle(reminder))
+    setDescription(displayDesc(reminder))
     setScheduledTime(reminder.scheduledTime.slice(0, 16))
     setIsRepetitive(reminder.isRepetitive || false)
     setRepeatInterval(reminder.repeatInterval || 1)
@@ -267,6 +295,9 @@ export default function RemindersPage() {
         isRepetitive: isRepetitive || undefined,
         repeatInterval: isRepetitive ? repeatInterval : undefined,
         repeatType: isRepetitive ? repeatType : undefined,
+        // Manual edit overrides any auto text — drop autoParams so the page
+        // renders the user's typed title/description from here on.
+        ...(editingReminder.autoParams ? { autoParams: null as unknown as undefined } : {}),
       })
       
       // Reschedule notification if time changed
@@ -372,7 +403,7 @@ export default function RemindersPage() {
     
     confirm.delete(
       t('reminders.deleteTitle'),
-      t('reminders.deleteConfirm', { title: reminder.title }),
+      t('reminders.deleteConfirm', { title: displayTitle(reminder) }),
       () => {
         deleteReminder(id)
         loadReminders().catch(console.error)
@@ -422,7 +453,7 @@ export default function RemindersPage() {
 
     loadReminders().catch(console.error)
     haptic(15)
-    toast.success(t('reminders.completedToast', { title: reminderToComplete.title, count: fmtInt(updatedCount) }))
+    toast.success(t('reminders.completedToast', { title: displayTitle(reminderToComplete), count: fmtInt(updatedCount) }))
 
     setShowCompleteModal(false)
     setReminderToComplete(null)
@@ -443,7 +474,7 @@ export default function RemindersPage() {
   const handleFinishRepetitive = (reminder: Reminder) => {
     confirm.custom(
       t('reminders.finishTitle'),
-      t('reminders.finishMessage', { title: reminder.title }),
+      t('reminders.finishMessage', { title: displayTitle(reminder) }),
       () => {
         updateReminder(reminder.id, { dismissed: true }).then(() => {
           haptic([20, 40, 20])
@@ -525,7 +556,7 @@ export default function RemindersPage() {
 
     confirm.custom(
       t('reminders.toggleTitle'),
-      t(newStatus ? 'reminders.markDismissedConfirm' : 'reminders.markActiveConfirm', { title: reminder.title }),
+      t(newStatus ? 'reminders.markDismissedConfirm' : 'reminders.markActiveConfirm', { title: displayTitle(reminder) }),
       () => {
         updateReminder(reminder.id, { dismissed: newStatus })
         loadReminders().catch(console.error)
@@ -589,7 +620,7 @@ export default function RemindersPage() {
     <div key={r.id} className={overdue ? 'card bar-neg space-y-3' : 'card space-y-3'}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <h3 className="font-semibold text-content truncate">{r.title}</h3>
+          <h3 className="font-semibold text-content truncate">{displayTitle(r)}</h3>
           <p className="text-xs text-muted flex flex-wrap items-center gap-x-1 gap-y-1 mt-0.5">
             <span className="flex items-center gap-1 whitespace-nowrap">
               <ClockIcon className="w-3.5 h-3.5 flex-shrink-0" /> {fmtDate(r.scheduledTime, true)}
@@ -607,7 +638,7 @@ export default function RemindersPage() {
         </div>
       </div>
 
-      {r.description && <p className="text-sm text-muted">{r.description}</p>}
+      {displayDesc(r) && <p className="text-sm text-muted">{displayDesc(r)}</p>}
 
       {(r.isRepetitive || (r.completionCount ?? 0) > 0) && (
         <div className="flex flex-wrap gap-2">
@@ -711,7 +742,7 @@ export default function RemindersPage() {
                 {dismissedReminders.map((r) => (
                   <div key={r.id} className="card flex items-center justify-between gap-3 opacity-90">
                     <div className="min-w-0">
-                      <h3 className="font-medium text-content truncate line-through">{r.title}</h3>
+                      <h3 className="font-medium text-content truncate line-through">{displayTitle(r)}</h3>
                       <p className="text-xs text-muted mt-0.5">{fmtDate(r.scheduledTime, true)}</p>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">
@@ -781,7 +812,7 @@ export default function RemindersPage() {
       <Modal
         isOpen={showCompleteModal}
         onClose={() => { setShowCompleteModal(false); setReminderToComplete(null); setCompletionDateTime('') }}
-        title={reminderToComplete ? t('reminders.completeModalTitle', { title: reminderToComplete.title }) : t('reminders.completeTitle')}
+        title={reminderToComplete ? t('reminders.completeModalTitle', { title: displayTitle(reminderToComplete) }) : t('reminders.completeTitle')}
         footerActions={<>
           <ActionButton onClick={() => { setShowCompleteModal(false); setReminderToComplete(null); setCompletionDateTime('') }} variant="secondary">{t('common.cancel')}</ActionButton>
           <ActionButton onClick={handleSaveCompletion} variant="primary">{t('reminders.markDone')}</ActionButton>
@@ -819,7 +850,7 @@ export default function RemindersPage() {
       <Modal
         isOpen={!!selectedReminderForHistory}
         onClose={() => setSelectedReminderForHistory(null)}
-        title={selectedReminderForHistory ? t('reminders.historyModalTitle', { title: selectedReminderForHistory.title }) : t('reminders.history')}
+        title={selectedReminderForHistory ? t('reminders.historyModalTitle', { title: displayTitle(selectedReminderForHistory) }) : t('reminders.history')}
         footerActions={<ActionButton onClick={() => setSelectedReminderForHistory(null)} variant="secondary">{t('common.close')}</ActionButton>}
       >
         {selectedReminderForHistory && (

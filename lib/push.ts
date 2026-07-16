@@ -22,7 +22,12 @@ const subscriptionId = (endpoint: string): string => {
   return `sub_${(h >>> 0).toString(36)}`
 }
 
+// Push needs an ACTIVE service worker. PWARegistration deliberately never
+// registers one in development (it fights Turbopack HMR and caused a reload
+// loop), so subscribe attempts there always fail with a noisy AbortError even
+// though nothing is actually broken — treat push as unsupported in dev.
 export const pushSupported = (): boolean =>
+  process.env.NODE_ENV === 'production' &&
   typeof window !== 'undefined' &&
   'serviceWorker' in navigator &&
   'PushManager' in window &&

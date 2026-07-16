@@ -4,10 +4,27 @@ export const expenses: Dict = {
   'expenses.title': { bn: 'খরচ', en: 'Expenses' },
   'expenses.subtitle': { bn: 'দৈনন্দিন খরচের হিসাব রাখুন', en: 'Track your daily spending' },
 
+  // View toggle
+  'expenses.viewMonth': { bn: 'মাস', en: 'Month' },
+  'expenses.viewYear': { bn: 'বছর', en: 'Year' },
+
   // Stat tiles
-  'expenses.statMonthTotal': { bn: 'এই মাসের খরচ', en: 'Spent this month' },
+  'expenses.statMonthTotal': { bn: 'মোট খরচ', en: 'Total spent' },
   'expenses.statBudget': { bn: 'বাজেট', en: 'Budget' },
   'expenses.entriesCount': { bn: '{count}টি খরচ', en: '{count} expenses' },
+
+  // Trend + metrics
+  'expenses.trendMonth': { bn: 'গত মাসের চেয়ে {pct}%', en: '{pct}% vs last month' },
+  'expenses.trendYear': { bn: 'গত বছরের চেয়ে {pct}%', en: '{pct}% vs last year' },
+  'expenses.dailyAvg': { bn: 'দৈনিক গড়', en: 'Daily avg' },
+  'expenses.perDay': { bn: 'প্রতিদিন', en: 'per day' },
+  'expenses.projected': { bn: 'মাস শেষে আনুমানিক', en: 'Projected' },
+  'expenses.pace': { bn: 'মাসের {elapsed}% গেছে · বাজেটের {spent}% শেষ', en: '{elapsed}% of month · {spent}% of budget spent' },
+  'expenses.trendTitle': { bn: 'শেষ ৬ মাস', en: 'Last 6 months' },
+  'expenses.topCategory': { bn: 'সবচেয়ে বেশি', en: 'Top category' },
+  'expenses.biggestExpense': { bn: 'সবচেয়ে বড় খরচ', en: 'Biggest expense' },
+  'expenses.today': { bn: 'আজ', en: 'Today' },
+  'expenses.yesterday': { bn: 'গতকাল', en: 'Yesterday' },
   'expenses.remaining': { bn: 'অবশিষ্ট ৳{amount}', en: '৳{amount} remaining' },
   'expenses.overBudget': { bn: 'বাজেটের চেয়ে ৳{amount} বেশি', en: '৳{amount} over budget' },
   'expenses.budgetUsed': { bn: '{pct}% ব্যবহার হয়েছে', en: '{pct}% used' },
@@ -40,11 +57,15 @@ export const expenses: Dict = {
   // Categories
   'expenses.filterAll': { bn: 'সব', en: 'All' },
   'expenses.cat.food': { bn: 'খাবার', en: 'Food' },
+  'expenses.cat.groceries': { bn: 'বাজার', en: 'Groceries' },
   'expenses.cat.transport': { bn: 'যাতায়াত', en: 'Transport' },
   'expenses.cat.bills': { bn: 'বিল', en: 'Bills' },
+  'expenses.cat.rent': { bn: 'বাড়িভাড়া', en: 'Rent' },
+  'expenses.cat.mobile': { bn: 'রিচার্জ/ইন্টারনেট', en: 'Mobile/Internet' },
   'expenses.cat.shopping': { bn: 'কেনাকাটা', en: 'Shopping' },
   'expenses.cat.health': { bn: 'স্বাস্থ্য', en: 'Health' },
   'expenses.cat.education': { bn: 'শিক্ষা', en: 'Education' },
+  'expenses.cat.entertainment': { bn: 'বিনোদন', en: 'Entertainment' },
   'expenses.cat.other': { bn: 'অন্যান্য', en: 'Other' },
 
   // Add / edit form

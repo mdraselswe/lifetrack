@@ -12,3 +12,12 @@ export const normalizePhone = (raw: string): string => {
 // WhatsApp deep link with a prefilled message.
 export const waLink = (phone: string, message: string): string =>
   `https://wa.me/${normalizePhone(phone)}?text=${encodeURIComponent(message)}`
+
+// Valid Bangladeshi mobile: 11 digits "01[3-9]XXXXXXXX", optionally with a
+// 880 or +880 country prefix. Empty is treated as valid (the field is optional).
+export const isValidBdPhone = (raw: string): boolean => {
+  const s = (raw || '').trim()
+  if (!s) return true
+  const digits = s.replace(/\D/g, '')
+  return /^01[3-9]\d{8}$/.test(digits) || /^8801[3-9]\d{8}$/.test(digits)
+}

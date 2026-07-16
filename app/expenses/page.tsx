@@ -19,11 +19,15 @@ const bn = (n: number) => fmtNum(n)
 // 7 distinct category colors (dots, bars)
 const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
   food: '#f97316', // orange
+  groceries: '#84cc16', // lime
   transport: '#3b82f6', // blue
   bills: '#eab308', // yellow
+  rent: '#14b8a6', // teal
+  mobile: '#06b6d4', // cyan
   shopping: '#ec4899', // pink
   health: '#10b981', // emerald
   education: '#8b5cf6', // violet
+  entertainment: '#d946ef', // fuchsia
   other: '#64748b', // slate
 }
 const CATEGORIES = Object.keys(CATEGORY_COLORS) as ExpenseCategory[]
@@ -45,6 +49,7 @@ export default function ExpensesPage() {
   const [mounted, setMounted] = useState(false)
   // 'YYYY-MM' — seeded after mount; new Date() must not run during prerender.
   const [month, setMonth] = useState('')
+  const [view, setView] = useState<'month' | 'year'>('month')
   const [budget, setBudget] = useState<number | null>(null)
   const [filterCat, setFilterCat] = useState<'all' | ExpenseCategory>('all')
 
@@ -95,15 +100,17 @@ export default function ExpensesPage() {
     if (/^\d*\.?\d*$/.test(v)) setter(v)
   }
 
+  // Nav step: a month in month-view, a year in year-view. `month` state stays
+  // 'YYYY-MM' either way; year-view only reads its year part.
   const shiftMonth = (delta: number) => {
     const [y, m] = month.split('-').map(Number)
-    const d = new Date(y, m - 1 + delta, 1)
-    setMonth(monthKeyOf(d))
+    if (view === 'year') setMonth(`${y + delta}-${String(m).padStart(2, '0')}`)
+    else setMonth(monthKeyOf(new Date(y, m - 1 + delta, 1)))
   }
 
   const monthLabel = () => {
     const [y, m] = month.split('-').map(Number)
-    return `${t(`expenses.month.${m - 1}`)} ${fmtInt(y)}`
+    return view === 'year' ? fmtInt(y) : `${t(`expenses.month.${m - 1}`)} ${fmtInt(y)}`
   }
 
   const openAddForm = () => {
@@ -237,8 +244,30 @@ export default function ExpensesPage() {
   }
 
   // ---- Derived data for the selected month ----
-  const monthExpenses = expenses.filter((e) => e.date.startsWith(month))
+  // Period = the whole month ('YYYY-MM') or the whole year ('YYYY'). Every
+  // figure below is scoped to the selected period via this string prefix.
+  const periodPrefix = view === 'year' ? month.slice(0, 4) : month
+  const monthExpenses = expenses.filter((e) => e.date.startsWith(periodPrefix))
   const monthTotal = round2(monthExpenses.reduce((sum, e) => sum + e.amount, 0))
+
+  // ---- Trend vs previous period ----
+  const [py, pm] = month.split('-').map(Number)
+  const prevPrefix = view === 'year' ? `${py - 1}` : monthKeyOf(new Date(py, pm - 2, 1))
+  const prevTotal = round2(expenses.filter((e) => e.date.startsWith(prevPrefix)).reduce((s, e) => s + e.amount, 0))
+  const trendPct = prevTotal > 0 ? Math.round(((monthTotal - prevTotal) / prevTotal) * 100) : null
+
+  // ---- Daily average + month-end projection ----
+  // Period bounds + how far into it "today" is (only projects for the ongoing period).
+  const todayKey = localDateValue()
+  const periodStart = view === 'year' ? new Date(py, 0, 1) : new Date(py, pm - 1, 1)
+  const periodEnd = view === 'year' ? new Date(py, 11, 31) : new Date(py, pm, 0)
+  const totalDaysInPeriod = Math.round((periodEnd.getTime() - periodStart.getTime()) / 86400000) + 1
+  const isCurrentPeriod = todayKey.startsWith(periodPrefix)
+  const daysElapsed = isCurrentPeriod
+    ? Math.round((new Date(todayKey).getTime() - periodStart.getTime()) / 86400000) + 1
+    : totalDaysInPeriod
+  const dailyAvg = daysElapsed > 0 ? round2(monthTotal / daysElapsed) : 0
+  const projection = isCurrentPeriod && daysElapsed < totalDaysInPeriod ? round2(dailyAvg * totalDaysInPeriod) : null
 
   const visibleExpenses = filterCat === 'all' ? monthExpenses : monthExpenses.filter((e) => e.category === filterCat)
 
@@ -269,17 +298,61 @@ export default function ExpensesPage() {
     .sort((a, b) => b.total - a.total)
   const breakdownMax = breakdown.length > 0 ? breakdown[0].total : 0
 
-  // Budget tile numbers
-  const budgetRemaining = budget != null ? round2(budget - monthTotal) : null
-  const overBudget = budget != null && monthTotal > budget
-  const budgetPct = budget != null && budget > 0 ? Math.min(100, Math.round((monthTotal / budget) * 100)) : 0
+  // ---- Insight line: top category + biggest single expense ----
+  const topCat = breakdown[0] || null
+  const biggest = monthExpenses.reduce<Expense | null>((max, e) => (!max || e.amount > max.amount ? e : max), null)
+
+  // Budget tile numbers (monthly budget → only meaningful in month view)
+  const budgetActive = budget != null && view === 'month'
+  const budgetRemaining = budgetActive ? round2((budget ?? 0) - monthTotal) : null
+  const overBudget = budgetActive && monthTotal > (budget ?? 0)
+  const budgetPct = budgetActive && (budget ?? 0) > 0 ? Math.min(100, Math.round((monthTotal / (budget ?? 1)) * 100)) : 0
+  // Pace: how far through the month vs how much of the budget is spent. If
+  // spending outruns the calendar, the user is burning budget too fast.
+  const monthElapsedPct = Math.min(100, Math.round((daysElapsed / totalDaysInPeriod) * 100))
+  const budgetRawPct = budgetActive && (budget ?? 0) > 0 ? Math.round((monthTotal / (budget ?? 1)) * 100) : 0
+  const burningFast = budgetActive && isCurrentPeriod && !overBudget && budgetRawPct > monthElapsedPct + 10
+
+  // ---- Last 6 months trend chart (month view only) ----
+  const trendMonths = (() => {
+    if (view !== 'month') return []
+    const arr: { key: string; label: string; total: number }[] = []
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(py, pm - 1 - i, 1)
+      const key = monthKeyOf(d)
+      arr.push({
+        key,
+        label: t(`expenses.month.${d.getMonth()}`),
+        total: round2(expenses.filter((e) => e.date.startsWith(key)).reduce((s, e) => s + e.amount, 0)),
+      })
+    }
+    return arr
+  })()
+  const trendMax = trendMonths.reduce((m, x) => Math.max(m, x.total), 0)
+
+  // Relative, human date header for the list ("আজ" / "গতকাল" / full date).
+  const yesterdayKey = localDateValue(new Date(new Date(todayKey).getTime() - 86400000))
+  const dayHeader = (day: string) => (day === todayKey ? t('expenses.today') : day === yesterdayKey ? t('expenses.yesterday') : fmtDate(day))
 
   return (
     <div className="min-h-full">
       <AppBar title={t('expenses.title')} subtitle={t('expenses.subtitle')} />
 
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in">
-        {/* Month navigation */}
+        {/* মাস / বছর view toggle */}
+        <div className="flex items-center gap-1 rounded-xl bg-surface-2 p-1">
+          {(['month', 'year'] as const).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`flex-1 px-3 py-1.5 text-sm rounded-lg transition-colors ${view === v ? 'bg-surface text-content font-medium shadow-sm' : 'text-muted'}`}
+            >
+              {t(v === 'month' ? 'expenses.viewMonth' : 'expenses.viewYear')}
+            </button>
+          ))}
+        </div>
+
+        {/* Period navigation */}
         <div className="flex items-center justify-between gap-2">
           <button className="icon-btn" onClick={() => shiftMonth(-1)} aria-label={t('expenses.prevMonth')}>
             <span className="text-xl leading-none" aria-hidden="true">‹</span>
@@ -298,8 +371,16 @@ export default function ExpensesPage() {
               <span className="text-xs font-medium text-negative">{t('expenses.statMonthTotal')}</span>
             </div>
             <p className="text-[clamp(0.85rem,4.2vw,1.5rem)] font-bold text-content tracking-tight tabular-nums leading-tight">৳{bn(monthTotal)}</p>
-            <p className="text-[11px] text-muted mt-1">{t('expenses.entriesCount', { count: fmtInt(monthExpenses.length) })}</p>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <span className="text-[11px] text-muted">{t('expenses.entriesCount', { count: fmtInt(monthExpenses.length) })}</span>
+              {trendPct !== null && trendPct !== 0 && (
+                <span className={`text-[11px] font-medium ${trendPct > 0 ? 'text-negative' : 'text-positive'}`}>
+                  {trendPct > 0 ? '↑' : '↓'} {t(view === 'year' ? 'expenses.trendYear' : 'expenses.trendMonth', { pct: fmtInt(Math.abs(trendPct)) })}
+                </span>
+              )}
+            </div>
           </div>
+          {budgetActive || view === 'month' ? (
           <div className={`stat-tile ${overBudget ? 'tint-warn' : 'tint-accent'}`}>
             <div className="flex items-center justify-between gap-2 mb-2">
               <div className="flex items-center gap-2 text-accent min-w-0">
@@ -338,7 +419,56 @@ export default function ExpensesPage() {
               </>
             )}
           </div>
+          ) : (
+            /* Year view: no monthly budget — show the daily-average tile instead */
+            <div className="stat-tile tint-accent">
+              <div className="flex items-center gap-2 mb-2 text-accent">
+                <ChartIcon className="w-5 h-5" />
+                <span className="text-xs font-medium text-accent">{t('expenses.dailyAvg')}</span>
+              </div>
+              <p className="text-[clamp(0.85rem,4.2vw,1.5rem)] font-bold text-content tracking-tight tabular-nums leading-tight">৳{bn(dailyAvg)}</p>
+              <p className="text-[11px] text-muted mt-1">{t('expenses.perDay')}</p>
+            </div>
+          )}
         </div>
+
+        {/* Metrics strip: daily average, month-end projection, budget pace */}
+        {monthExpenses.length > 0 && (
+          <div className="card flex flex-wrap items-center gap-x-4 gap-y-1.5 py-3 text-xs">
+            {view === 'month' && (
+              <span className="text-muted">{t('expenses.dailyAvg')}: <span className="font-semibold text-content tabular-nums">৳{bn(dailyAvg)}</span></span>
+            )}
+            {projection !== null && (
+              <span className="text-muted">{t('expenses.projected')}: <span className="font-semibold text-content tabular-nums">৳{bn(projection)}</span></span>
+            )}
+            {budgetActive && isCurrentPeriod && (
+              <span className={burningFast ? 'text-negative font-medium' : 'text-muted'}>
+                {t('expenses.pace', { elapsed: fmtInt(monthElapsedPct), spent: fmtInt(budgetRawPct) })}
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Insight line: biggest category + biggest single expense */}
+        {monthExpenses.length > 0 && (topCat || biggest) && (
+          <div className="card py-2.5 space-y-1">
+            {topCat && (
+              <button onClick={() => setFilterCat(topCat.category)} className="flex items-center justify-between w-full text-xs">
+                <span className="text-muted">{t('expenses.topCategory')}</span>
+                <span className="font-medium text-content flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: CATEGORY_COLORS[topCat.category] }} aria-hidden="true" />
+                  {catLabel(topCat.category)} · ৳{bn(topCat.total)}
+                </span>
+              </button>
+            )}
+            {biggest && (
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted">{t('expenses.biggestExpense')}</span>
+                <span className="font-medium text-content truncate ml-2">{biggest.note || catLabel(biggest.category)} · ৳{bn(biggest.amount)}</span>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Category filter chips */}
         <div className="flex items-center gap-2 flex-wrap">
@@ -379,7 +509,29 @@ export default function ExpensesPage() {
           </div>
         ) : (
           <>
-            {/* Category breakdown for the month */}
+            {/* Last 6 months trend chart (month view) — spending rising or falling */}
+            {view === 'month' && trendMax > 0 && (
+              <div className="card">
+                <h2 className="text-sm font-semibold text-content mb-3">{t('expenses.trendTitle')}</h2>
+                <div className="flex items-end justify-between gap-2 h-24">
+                  {trendMonths.map((m) => {
+                    const h = trendMax > 0 ? Math.max(4, Math.round((m.total / trendMax) * 100)) : 0
+                    const isCur = m.key === month
+                    return (
+                      <div key={m.key} className="flex-1 flex flex-col items-center justify-end gap-1 h-full">
+                        <span className="text-[9px] text-muted tabular-nums">{m.total > 0 ? bn(Math.round(m.total)) : ''}</span>
+                        <div className="w-full rounded-t bg-surface-2 flex items-end" style={{ height: '100%' }}>
+                          <div className={`w-full rounded-t transition-all ${isCur ? 'bg-accent' : 'bg-negative opacity-50'}`} style={{ height: `${h}%` }} />
+                        </div>
+                        <span className={`text-[10px] ${isCur ? 'text-accent font-semibold' : 'text-muted'}`}>{m.label}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Category breakdown — tap a row to filter the list to it */}
             {breakdown.length > 0 && (
               <div className="card space-y-3">
                 <h2 className="text-sm font-semibold text-content">{t('expenses.breakdownTitle')}</h2>
@@ -388,7 +540,12 @@ export default function ExpensesPage() {
                     const pct = monthTotal > 0 ? Math.round((b.total / monthTotal) * 100) : 0
                     const barWidth = breakdownMax > 0 ? Math.max(4, Math.round((b.total / breakdownMax) * 100)) : 0
                     return (
-                      <div key={b.category}>
+                      <button
+                        key={b.category}
+                        type="button"
+                        onClick={() => setFilterCat(filterCat === b.category ? 'all' : b.category)}
+                        className={`w-full text-left rounded-lg -mx-1 px-1 py-0.5 transition-colors ${filterCat === b.category ? 'bg-surface-2' : ''}`}
+                      >
                         <div className="flex items-center justify-between gap-2 mb-1">
                           <span className="flex items-center gap-1.5 text-xs text-content min-w-0">
                             <span
@@ -408,7 +565,7 @@ export default function ExpensesPage() {
                             style={{ width: `${barWidth}%`, backgroundColor: CATEGORY_COLORS[b.category] }}
                           />
                         </div>
-                      </div>
+                      </button>
                     )
                   })}
                 </div>
@@ -422,7 +579,7 @@ export default function ExpensesPage() {
               groups.map((group) => (
                 <section key={group.day} className="space-y-2 list-stagger">
                   <div className="flex items-center justify-between px-1">
-                    <h2 className="text-sm font-semibold text-muted">{fmtDate(group.day)}</h2>
+                    <h2 className="text-sm font-semibold text-muted">{dayHeader(group.day)}</h2>
                     <span className="text-xs text-muted tabular-nums">৳{bn(group.total)}</span>
                   </div>
                   <div className="card py-1">

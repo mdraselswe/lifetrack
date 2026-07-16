@@ -13,6 +13,18 @@ export interface Reminder {
   // more than one (due date + promise date + installments all share sourceId).
   // Undefined on older reminders means "due" (the original single-reminder shape).
   reminderKind?: 'due' | 'promise' | 'installment'
+  // Raw params for auto-created reminders so the reminders page can render
+  // their title/description LIVE in the current language (the stored title/
+  // description are frozen at creation time — kept only for push + as a
+  // fallback for manual/legacy reminders). Present ⇒ render from these.
+  autoParams?: {
+    name?: string
+    amount?: number
+    date?: string // YYYY-MM-DD or datetime-local
+    i?: number // installment index (1-based)
+    n?: number // installment count
+    generic?: boolean // promise: an installment plan exists → generic wording
+  }
   // Repetitive reminder fields
   isRepetitive?: boolean
   repeatInterval?: number // number of days/weeks/months
@@ -85,7 +97,9 @@ export interface Loan {
 }
 
 // ===== Expenses (daily spending tracker) =====
-export type ExpenseCategory = 'food' | 'transport' | 'bills' | 'shopping' | 'health' | 'education' | 'other'
+export type ExpenseCategory =
+  | 'food' | 'groceries' | 'transport' | 'bills' | 'rent' | 'mobile'
+  | 'shopping' | 'health' | 'education' | 'entertainment' | 'other'
 
 export interface Expense {
   id: string

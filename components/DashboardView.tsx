@@ -29,7 +29,6 @@ const localDatetimeValue = (d = new Date()) =>
   new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
 
 const bn = (n: number) => fmtNum(round2(n))
-const bnInt = (n: number) => fmtNum(Math.round(n))
 
 const greeting = () => {
   const h = new Date().getHours()
@@ -262,6 +261,8 @@ export default function Dashboard() {
           createdAt: new Date().toISOString(),
           sourceId: newId,
           sourceType: isDebt ? 'debt' : 'loan',
+          reminderKind: 'due',
+          autoParams: { name: item.personName, amount: parsedAmount, date: capturedDue },
         }).then(() => toast.info(t(`${k}.dueReminderCreated`))).catch(console.error)
       }
     }).catch((e) => { console.error(e); toast.error(t(`${k}.addError`)) })
@@ -338,8 +339,6 @@ export default function Dashboard() {
 
   // Animated figures (no time deps — safe before the prerender guard)
   const animNet = useCountUp(Math.abs(netBalance))
-  const animLent = useCountUp(totalLent)
-  const animBorrowed = useCountUp(totalBorrowed)
 
   if (loading || !mounted || dataLoading) {
     return <DashboardSkeleton />
@@ -353,7 +352,6 @@ export default function Dashboard() {
   // Reminders — overdue / today
   const now = Date.now()
   const activeRem = reminders.filter((r) => !r.dismissed)
-  const reminderCount = activeRem.length
   const overdue = activeRem.filter((r) => ts(r.scheduledTime) > 0 && ts(r.scheduledTime) < now)
   const todayRem = activeRem.filter(
     (r) => ts(r.scheduledTime) >= now && isSameDay(new Date(ts(r.scheduledTime)), new Date())
@@ -546,25 +544,78 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Two-up summary */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="stat-tile tint-pos">
-              <div className="flex items-center gap-2 text-positive mb-2">
-                <ArrowUpRightIcon className="w-5 h-5" />
-                <span className="text-xs font-medium text-positive">{t('dashboard.willReceive')}</span>
+          {/* Empty state */}
+          {isEmpty && (
+            <div className="card flex flex-col items-center text-center py-8 gap-3">
+              <MoneyIllustration className="w-52 h-36" />
+              <div>
+                <p className="text-base font-semibold text-content">{t('dashboard.noRecords')}</p>
+                <p className="text-sm text-muted mt-1">{t('dashboard.startHint')}</p>
               </div>
-              <p className="text-[clamp(0.85rem,4.2vw,1.375rem)] font-bold text-content tracking-tight tabular-nums leading-tight">৳{bn(animLent)}</p>
-              <p className="text-[11px] text-muted mt-0.5">{t('common.people', { count: fmtInt(debtDetails.length) })}</p>
-            </div>
-            <div className="stat-tile tint-neg">
-              <div className="flex items-center gap-2 text-negative mb-2">
-                <ArrowDownLeftIcon className="w-5 h-5" />
-                <span className="text-xs font-medium text-negative">{t('dashboard.willPay')}</span>
+              <div className="flex gap-2 mt-1">
+                <Link href="/debts" className="btn btn-primary">{t('dashboard.lentBtn')}</Link>
+                <Link href="/loans" className="btn btn-secondary">{t('dashboard.borrowedBtn')}</Link>
               </div>
-              <p className="text-[clamp(0.85rem,4.2vw,1.375rem)] font-bold text-content tracking-tight tabular-nums leading-tight">৳{bn(animBorrowed)}</p>
-              <p className="text-[11px] text-muted mt-0.5">{t('common.people', { count: fmtInt(loanDetails.length) })}</p>
             </div>
-          </div>
+          )}
+
+          {/* দিয়েছি / নিয়েছি — the primary actionable card: per-tab totals in the
+              switch, the top people below, and take-a-return inline. Sits right
+              under the net balance so the most-used actions are top of page. */}
+          {!isEmpty && (
+            <div className={`card ${homeTab === 'debts' ? 'bar-pos' : 'bar-neg'}`}>
+              <div className="grid grid-cols-2 gap-1 rounded-xl bg-surface-2 p-1 mb-3">
+                <button
+                  className={`px-3 py-2 rounded-lg transition-colors text-left ${homeTab === 'debts' ? 'bg-surface shadow-sm' : ''}`}
+                  onClick={() => setHomeTab('debts')}
+                >
+                  <span className={`text-xs font-medium flex items-center gap-1 ${homeTab === 'debts' ? 'text-positive' : 'text-muted'}`}>
+                    <ArrowUpRightIcon className="w-3.5 h-3.5" /> {t('nav.given')}
+                  </span>
+                  <span className={`block text-base font-bold tabular-nums leading-tight ${homeTab === 'debts' ? 'text-content' : 'text-muted'}`}>৳{bn(totalLent)}</span>
+                  <span className="block text-[10px] text-muted">{t('common.people', { count: fmtInt(debtDetails.length) })}</span>
+                </button>
+                <button
+                  className={`px-3 py-2 rounded-lg transition-colors text-left ${homeTab === 'loans' ? 'bg-surface shadow-sm' : ''}`}
+                  onClick={() => setHomeTab('loans')}
+                >
+                  <span className={`text-xs font-medium flex items-center gap-1 ${homeTab === 'loans' ? 'text-negative' : 'text-muted'}`}>
+                    <ArrowDownLeftIcon className="w-3.5 h-3.5" /> {t('nav.taken')}
+                  </span>
+                  <span className={`block text-base font-bold tabular-nums leading-tight ${homeTab === 'loans' ? 'text-content' : 'text-muted'}`}>৳{bn(totalBorrowed)}</span>
+                  <span className="block text-[10px] text-muted">{t('common.people', { count: fmtInt(loanDetails.length) })}</span>
+                </button>
+              </div>
+
+              {(homeTab === 'debts' ? topDebts : topLoans).length === 0 ? (
+                <p key={homeTab} className="text-center text-sm text-muted py-6 fade-in">{t('dashboard.noRecords')}</p>
+              ) : (
+                <div key={homeTab} className="divide-y divide-line fade-in">
+                  {(homeTab === 'debts' ? topDebts : topLoans).map((x) => (
+                    <div key={x.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
+                      <Avatar name={x.name} />
+                      <div className="flex-1 min-w-0">
+                        <Link href={`/person/${encodeURIComponent(x.name)}`} className="text-sm text-content truncate block hover:text-accent transition-colors">{x.name}</Link>
+                        <p className={`text-sm font-semibold ${homeTab === 'debts' ? 'text-positive' : 'text-negative'}`}>৳{bn(x.amount)}</p>
+                      </div>
+                      <button
+                        className="btn btn-secondary px-3 py-1.5 text-xs flex-shrink-0"
+                        onClick={() => openPay(homeTab === 'debts' ? 'debt' : 'loan', x.id, x.amount)}
+                      >
+                        <CheckIcon className="w-3.5 h-3.5" /> {homeTab === 'debts' ? t('debts.receivedBack') : t('loans.paidBackBtn')}
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="pt-3 mt-1 border-t border-line text-center">
+                <Link href={homeTab === 'debts' ? '/debts' : '/loans'} className="text-xs font-medium text-accent">
+                  {t('common.viewAll')}
+                </Link>
+              </div>
+            </div>
+          )}
 
           {/* This month summary */}
           {(receivedThisMonth > 0 || paidThisMonth > 0) && (
@@ -658,69 +709,6 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Empty state */}
-          {isEmpty && (
-            <div className="card flex flex-col items-center text-center py-8 gap-3">
-              <MoneyIllustration className="w-52 h-36" />
-              <div>
-                <p className="text-base font-semibold text-content">{t('dashboard.noRecords')}</p>
-                <p className="text-sm text-muted mt-1">{t('dashboard.startHint')}</p>
-              </div>
-              <div className="flex gap-2 mt-1">
-                <Link href="/debts" className="btn btn-primary">{t('dashboard.lentBtn')}</Link>
-                <Link href="/loans" className="btn btn-secondary">{t('dashboard.borrowedBtn')}</Link>
-              </div>
-            </div>
-          )}
-
-          {/* দিয়েছি / নিয়েছি tabs — view balances and take returns right here */}
-          {!isEmpty && (
-            <div className={`card ${homeTab === 'debts' ? 'bar-pos' : 'bar-neg'}`}>
-              <div className="flex items-center gap-1 rounded-xl bg-surface-2 p-1 mb-3">
-                <button
-                  className={`flex-1 px-3 py-1.5 text-sm rounded-lg transition-colors ${homeTab === 'debts' ? 'bg-surface text-content font-medium shadow-sm' : 'text-muted'}`}
-                  onClick={() => setHomeTab('debts')}
-                >
-                  {t('nav.given')} · {fmtInt(topDebts.length)}
-                </button>
-                <button
-                  className={`flex-1 px-3 py-1.5 text-sm rounded-lg transition-colors ${homeTab === 'loans' ? 'bg-surface text-content font-medium shadow-sm' : 'text-muted'}`}
-                  onClick={() => setHomeTab('loans')}
-                >
-                  {t('nav.taken')} · {fmtInt(topLoans.length)}
-                </button>
-              </div>
-
-              {(homeTab === 'debts' ? topDebts : topLoans).length === 0 ? (
-                <p key={homeTab} className="text-center text-sm text-muted py-6 fade-in">{t('dashboard.noRecords')}</p>
-              ) : (
-                <div key={homeTab} className="divide-y divide-line fade-in">
-                  {(homeTab === 'debts' ? topDebts : topLoans).map((x) => (
-                    <div key={x.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0">
-                      <Avatar name={x.name} />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm text-content truncate">{x.name}</p>
-                        <p className={`text-sm font-semibold ${homeTab === 'debts' ? 'text-positive' : 'text-negative'}`}>৳{bn(x.amount)}</p>
-                      </div>
-                      <button
-                        className="btn btn-secondary px-3 py-1.5 text-xs flex-shrink-0"
-                        onClick={() => openPay(homeTab === 'debts' ? 'debt' : 'loan', x.id, x.amount)}
-                      >
-                        <CheckIcon className="w-3.5 h-3.5" /> {homeTab === 'debts' ? t('debts.receivedBack') : t('loans.paidBackBtn')}
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="pt-3 mt-1 border-t border-line text-center">
-                <Link href={homeTab === 'debts' ? '/debts' : '/loans'} className="text-xs font-medium text-accent">
-                  {t('common.viewAll')}
-                </Link>
-              </div>
-            </div>
-          )}
-
           {/* Year in review */}
           {hasYearData && (
             <div className="card">
@@ -762,24 +750,9 @@ export default function Dashboard() {
             </div>
           )}
 
-          {/* Quick links */}
-          <div className="grid grid-cols-3 gap-3">
-            <Link href="/reminders" className="card card-interactive flex flex-col items-center gap-2 py-4 text-center">
-              <span className="text-accent"><ClockIcon className="w-6 h-6" /></span>
-              <span className="text-xs font-medium text-content">{t('nav.reminders')}</span>
-              <span className="text-[11px] text-muted">{t('dashboard.activeCount', { count: fmtInt(reminderCount) })}</span>
-            </Link>
-            <Link href="/debts" className="card card-interactive bar-pos flex flex-col items-center gap-2 py-4 text-center">
-              <span className="text-positive"><ArrowUpRightIcon className="w-6 h-6" /></span>
-              <span className="text-xs font-medium text-content">{t('nav.given')}</span>
-              <span className="text-[11px] text-muted">৳{bnInt(totalLent)}</span>
-            </Link>
-            <Link href="/loans" className="card card-interactive bar-neg flex flex-col items-center gap-2 py-4 text-center">
-              <span className="text-negative"><ArrowDownLeftIcon className="w-6 h-6" /></span>
-              <span className="text-xs font-medium text-content">{t('nav.taken')}</span>
-              <span className="text-[11px] text-muted">৳{bnInt(totalBorrowed)}</span>
-            </Link>
-          </div>
+          {/* Quick-links row removed — the footer nav already covers
+              Home/Reminders/Given/Taken/Expenses, and the actionable
+              দিয়েছি/নিয়েছি card above covers the balances. */}
         </div>
       </div>
 

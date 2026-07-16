@@ -30,6 +30,10 @@ export const person: Dict = {
   'person.avgDelayEarly': { bn: 'গড়ে {days} দিন আগে ফেরত দেয়', en: 'Repays {days} days early on average' },
   'person.avgOnTime': { bn: 'গড়ে সময়মতো ফেরত দেয়', en: 'Repays on time on average' },
   'person.noBehaviorData': { bn: 'ফেরতের তারিখের তথ্য নেই — হিসাবে ফেরতের তারিখ দিলে এখানে বিশ্লেষণ দেখা যাবে', en: 'No due-date data yet — add due dates to records to see repayment insights here' },
+  'person.behaviorHint': { bn: 'ফেরতের তারিখ দেওয়া কোনো হিসাব পরিশোধ হলে এখানে সময়মতো/দেরির হিসাব দেখাবে', en: 'On-time/late stats appear once a record with a due date is settled' },
+  'person.settled': { bn: 'সম্পন্ন', en: 'Settled' },
+  'person.active': { bn: 'চলমান', en: 'Active' },
+  'person.overdue': { bn: 'মেয়াদোত্তীর্ণ', en: 'Overdue' },
 
   // Timeline
   'person.timelineTitle': { bn: 'টাইমলাইন', en: 'Timeline' },
