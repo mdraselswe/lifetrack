@@ -436,10 +436,11 @@ export default function Dashboard() {
 
   // ---- Year in review (current calendar year) ----
   const yearStart = new Date(new Date().getFullYear(), 0, 1).getTime()
+  const yearEnd = new Date(new Date().getFullYear() + 1, 0, 1).getTime()
   const inYear = (v?: string) => {
     if (!v) return false
     const ms = new Date(v).getTime()
-    return Number.isFinite(ms) && ms >= yearStart
+    return Number.isFinite(ms) && ms >= yearStart && ms < yearEnd
   }
   const yr = {
     lent: round2(

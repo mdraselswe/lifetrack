@@ -314,7 +314,7 @@ export default function DebtsPage() {
 
     confirm.custom(
       t('debts.statusTitle'),
-      t(newStatus ? 'debts.statusConfirmReceived' : 'debts.statusConfirmNotReceived', { name: debt.personName, amount: totalAmount }),
+      t(newStatus ? 'debts.statusConfirmReceived' : 'debts.statusConfirmNotReceived', { name: debt.personName, amount: bn(totalAmount) }),
       () => {
         const done = () => {
           loadDebts().catch(console.error)
@@ -529,7 +529,7 @@ export default function DebtsPage() {
     const remaining = calculateRemaining(debt)
 
     if (amount > remaining) {
-      toast.error(t('debts.errExceedsRemaining', { remaining }))
+      toast.error(t('debts.errExceedsRemaining', { remaining: bn(remaining) }))
       return
     }
 
@@ -587,7 +587,7 @@ export default function DebtsPage() {
     
     confirm.delete(
       t('debts.paymentDeleteTitle'),
-      t('debts.paymentDeleteMsg', { amount: payment.amount }),
+      t('debts.paymentDeleteMsg', { amount: bn(payment.amount) }),
       () => {
         deleteDebtPayment(debtId, paymentId).then(() => {
           // Deleting a payment un-pays it — remaining goes back up.
@@ -623,7 +623,7 @@ export default function DebtsPage() {
 
     confirm.update(
       t('debts.increaseTitle'),
-      t('debts.increaseConfirmMsg', { name: debt.personName, from: currentTotalAmount, to: newTotalAmount }),
+      t('debts.increaseConfirmMsg', { name: debt.personName, from: bn(currentTotalAmount), to: bn(newTotalAmount) }),
       () => {
         // Add increase to history
         const increase: AmountIncrease = {
@@ -679,7 +679,7 @@ export default function DebtsPage() {
 
     confirm.delete(
       t('debts.increaseDeleteTitle'),
-      t('debts.increaseDeleteMsg', { amount: increase.amount, from: currentTotalAmount, to: newTotalAmount }),
+      t('debts.increaseDeleteMsg', { amount: bn(increase.amount), from: bn(currentTotalAmount), to: bn(newTotalAmount) }),
       () => {
         // Don't update debt.amount - it should always remain the initial amount
         // Just delete the increase record
@@ -991,7 +991,7 @@ export default function DebtsPage() {
     const remaining = round2(debt.amount + increasesTotal - otherPaymentsTotal)
     
     if (amount > remaining) {
-      toast.error(t('debts.errExceedsRemaining', { remaining }))
+      toast.error(t('debts.errExceedsRemaining', { remaining: bn(remaining) }))
       return
     }
 
@@ -1004,7 +1004,7 @@ export default function DebtsPage() {
 
     confirm.update(
       t('debts.paymentUpdateTitle'),
-      t('debts.paymentUpdateMsg', { amount }),
+      t('debts.paymentUpdateMsg', { amount: bn(amount) }),
       () => {
         // Delete old payment and add updated payment
         deleteDebtPayment(editingPayment.debtId, editingPayment.payment.id).then(() => {
@@ -1047,6 +1047,12 @@ export default function DebtsPage() {
       .reduce((sum, i) => sum + i.amount, 0)
     const newTotalAmount = round2(debt.amount + otherIncreasesTotal + amount)
 
+    const totalPaid = getTotalPaid(debt)
+    if (newTotalAmount < totalPaid) {
+      toast.error(t('debts.errLessThanPaid', { paid: bn(totalPaid) }))
+      return
+    }
+
     const updatedIncrease: AmountIncrease = {
       ...editingIncrease.increase,
       amount,
@@ -1056,7 +1062,7 @@ export default function DebtsPage() {
 
     confirm.update(
       t('debts.increaseUpdateTitle'),
-      t('debts.increaseUpdateMsg', { amount }),
+      t('debts.increaseUpdateMsg', { amount: bn(amount) }),
       () => {
         // Delete old increase and add updated increase
         deleteDebtIncrease(editingIncrease.debtId, editingIncrease.increase.id).then(() => {
