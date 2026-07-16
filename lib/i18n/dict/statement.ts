@@ -24,6 +24,12 @@ export const statement: Dict = {
   'statement.borrowed': { bn: 'ধার নিয়েছি', en: 'Borrowed' },
   'statement.repaid': { bn: 'ফেরত দিয়েছি', en: 'Repaid' },
 
+  // Expenses (personal spending) toggle + section
+  'statement.includeExpenses': { bn: 'খরচ যোগ করুন', en: 'Include expenses' },
+  'statement.includeExpensesHint': { bn: 'ব্যক্তিগত খরচ স্টেটমেন্টে দেখাবে ও মোট খরচে যোগ হবে', en: 'Show personal spending and add it to money out' },
+  'statement.expensesTitle': { bn: 'খরচের বিবরণ', en: 'Spending breakdown' },
+  'statement.expensesLabel': { bn: 'খরচ', en: 'Expenses' },
+
   // Per-person table
   'statement.person': { bn: 'ব্যক্তি', en: 'Person' },
   'statement.perPersonTitle': { bn: 'ব্যক্তি অনুযায়ী', en: 'By person' },

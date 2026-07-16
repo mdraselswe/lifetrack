@@ -1,6 +1,6 @@
-import { getDebts, getLoans } from './storage'
+import { getDebts, getLoans, getExpenses } from './storage'
 import { round2 } from './format'
-import type { Debt, Loan } from './types'
+import type { Debt, Loan, Expense, ExpenseCategory } from './types'
 
 // A statement summarises money movement over a custom date range, grouped by
 // person. Four flows are tracked per person:
@@ -30,11 +30,25 @@ export interface PersonStatement {
   events: StatementEvent[]
 }
 
+// Personal spending in the range — not tied to a person, so it lives outside
+// the person table and (when included) folds into moneyOut / net.
+export interface ExpenseCategoryTotal {
+  category: ExpenseCategory
+  amount: number
+}
+
+export interface ExpensesStatement {
+  total: number
+  byCategory: ExpenseCategoryTotal[] // largest first
+  count: number
+}
+
 export interface StatementSummary {
   lent: number
   received: number
   borrowed: number
   repaid: number
+  expenses: number // personal spending in range (0 when not included)
   moneyIn: number
   moneyOut: number
   net: number
@@ -46,6 +60,7 @@ export interface Statement {
   from: string // YYYY-MM-DD
   to: string // YYYY-MM-DD
   persons: PersonStatement[]
+  expenses?: ExpensesStatement // present only when expenses are included
   summary: StatementSummary
 }
 
@@ -114,8 +129,29 @@ const addLoan = (acc: Acc, l: Loan, inRange: (s?: string) => boolean) => {
   })
 }
 
-export async function buildStatement(from: string, to: string): Promise<Statement> {
-  const [debts, loans] = await Promise.all([getDebts(), getLoans()])
+// Sum in-range expenses into a total + per-category breakdown (largest first).
+const buildExpenses = (expenses: Expense[], inRange: (s?: string) => boolean): ExpensesStatement => {
+  const byCat: Record<string, number> = {}
+  let total = 0
+  let count = 0
+  expenses.forEach((e) => {
+    if (!inRange(e.date) || !e.amount) return
+    byCat[e.category] = round2((byCat[e.category] || 0) + e.amount)
+    total = round2(total + e.amount)
+    count++
+  })
+  const byCategory = Object.entries(byCat)
+    .map(([category, amount]) => ({ category: category as ExpenseCategory, amount }))
+    .sort((a, b) => b.amount - a.amount)
+  return { total, byCategory, count }
+}
+
+export async function buildStatement(from: string, to: string, includeExpenses = true): Promise<Statement> {
+  const [debts, loans, expenses] = await Promise.all([
+    getDebts(),
+    getLoans(),
+    includeExpenses ? getExpenses() : Promise.resolve([] as Expense[]),
+  ])
   const inRange = makeRangeTest(from, to)
 
   const acc: Acc = {}
@@ -134,6 +170,8 @@ export async function buildStatement(from: string, to: string): Promise<Statemen
     // Largest absolute movement first.
     .sort((a, b) => Math.abs(b.net) - Math.abs(a.net) || a.person.localeCompare(b.person))
 
+  const expenseStmt = includeExpenses ? buildExpenses(expenses, inRange) : undefined
+
   const summary: StatementSummary = persons.reduce<StatementSummary>(
     (s, p) => {
       s.lent = round2(s.lent + p.lent)
@@ -143,11 +181,13 @@ export async function buildStatement(from: string, to: string): Promise<Statemen
       s.eventCount += p.events.length
       return s
     },
-    { lent: 0, received: 0, borrowed: 0, repaid: 0, moneyIn: 0, moneyOut: 0, net: 0, personCount: persons.length, eventCount: 0 }
+    { lent: 0, received: 0, borrowed: 0, repaid: 0, expenses: 0, moneyIn: 0, moneyOut: 0, net: 0, personCount: persons.length, eventCount: 0 }
   )
+  summary.expenses = expenseStmt?.total || 0
   summary.moneyIn = round2(summary.received + summary.borrowed)
-  summary.moneyOut = round2(summary.lent + summary.repaid)
+  // Personal spending is real money out, so it folds into moneyOut and net.
+  summary.moneyOut = round2(summary.lent + summary.repaid + summary.expenses)
   summary.net = round2(summary.moneyIn - summary.moneyOut)
 
-  return { from, to, persons, summary }
+  return { from, to, persons, expenses: expenseStmt, summary }
 }

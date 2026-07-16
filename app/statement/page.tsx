@@ -46,6 +46,8 @@ export default function StatementPage() {
   // disallowed during the prerender of a Client Component (Cache Components).
   const [range, setRange] = useState<{ from: string; to: string } | null>(null)
   const [data, setData] = useState<Statement | null>(null)
+  // Personal spending is included by default; the user can opt out per statement.
+  const [includeExpenses, setIncludeExpenses] = useState(true)
   const [busy, setBusy] = useState(false)
   const [exporting, setExporting] = useState(false)
   const [generatedAt, setGeneratedAt] = useState<Date | null>(null)
@@ -70,12 +72,12 @@ export default function StatementPage() {
     if (!user || !range || !rangeValid) return
     let cancelled = false
     setBusy(true)
-    buildStatement(range.from, range.to)
+    buildStatement(range.from, range.to, includeExpenses)
       .then((s) => { if (!cancelled) { setData(s); setGeneratedAt(new Date()) } })
       .catch(() => { if (!cancelled) toast.error(t('statement.loadError')) })
       .finally(() => { if (!cancelled) setBusy(false) })
     return () => { cancelled = true }
-  }, [user, range, rangeValid])
+  }, [user, range, rangeValid, includeExpenses])
 
   // Recomputed each render so labels track the active language.
   const presets: { key: PresetKey; label: string }[] = [
@@ -115,6 +117,10 @@ export default function StatementPage() {
   if (!user || !range) return null
 
   const s = data
+  const hasExpenses = !!(s?.expenses && s.expenses.count > 0)
+  // A statement is non-empty if it has person activity OR (opted-in) spending.
+  const hasData = !!s && (s.persons.length > 0 || hasExpenses)
+  const catLabel = (c: string) => t(`expenses.cat.${c}`)
   const periodLabel = `${fmtDate(range.from)} — ${fmtDate(range.to)}`
 
   return (
@@ -161,9 +167,22 @@ export default function StatementPage() {
 
           {!rangeValid && <p className="text-xs text-negative">{t('statement.rangeError')}</p>}
 
+          <label className="flex items-center justify-between gap-3 card py-3 cursor-pointer">
+            <span className="min-w-0">
+              <span className="block text-sm font-medium text-content">{t('statement.includeExpenses')}</span>
+              <span className="block text-xs text-muted">{t('statement.includeExpensesHint')}</span>
+            </span>
+            <input
+              type="checkbox"
+              checked={includeExpenses}
+              onChange={(e) => setIncludeExpenses(e.target.checked)}
+              className="w-5 h-5 rounded accent-[color:var(--accent)] flex-shrink-0"
+            />
+          </label>
+
           <button
             onClick={handleDownload}
-            disabled={!s || s.persons.length === 0 || exporting}
+            disabled={!hasData || exporting}
             className="btn btn-primary w-full disabled:opacity-50"
           >
             <FileTextIcon className="w-5 h-5" /> {exporting ? t('statement.generating') : t('statement.download')}
@@ -182,14 +201,14 @@ export default function StatementPage() {
 
           {busy && !s && <div className="card text-center text-muted text-sm">…</div>}
 
-          {s && s.persons.length === 0 && (
+          {s && !hasData && (
             <div className="card text-center py-10">
               <p className="text-sm text-muted">{t('statement.empty')}</p>
               <p className="text-xs text-muted mt-1">{periodLabel}</p>
             </div>
           )}
 
-          {s && s.persons.length > 0 && (
+          {s && hasData && (
             <>
               {/* Summary */}
               <div className="card space-y-3">
@@ -211,15 +230,17 @@ export default function StatementPage() {
                     </p>
                   </div>
                 </div>
-                <div className="grid grid-cols-4 gap-2 pt-1 border-t border-line text-center">
+                <div className={`grid ${hasExpenses ? 'grid-cols-5' : 'grid-cols-4'} gap-2 pt-1 border-t border-line text-center`}>
                   <div><p className="text-[10px] text-muted">{t('statement.lent')}</p><p className="text-xs font-semibold tabular-nums">{money(s.summary.lent)}</p></div>
                   <div><p className="text-[10px] text-muted">{t('statement.received')}</p><p className="text-xs font-semibold tabular-nums">{money(s.summary.received)}</p></div>
                   <div><p className="text-[10px] text-muted">{t('statement.borrowed')}</p><p className="text-xs font-semibold tabular-nums">{money(s.summary.borrowed)}</p></div>
                   <div><p className="text-[10px] text-muted">{t('statement.repaid')}</p><p className="text-xs font-semibold tabular-nums">{money(s.summary.repaid)}</p></div>
+                  {hasExpenses && <div><p className="text-[10px] text-muted">{t('statement.expensesLabel')}</p><p className="text-xs font-semibold tabular-nums text-negative print-neg">{money(s.summary.expenses)}</p></div>}
                 </div>
               </div>
 
               {/* Per-person breakdown */}
+              {s.persons.length > 0 && (
               <div className="card">
                 <p className="text-sm font-semibold text-content mb-3">
                   {t('statement.perPersonTitle')} · {fmtNum(s.summary.personCount)}
@@ -265,6 +286,25 @@ export default function StatementPage() {
                   </table>
                 </div>
               </div>
+              )}
+
+              {/* Personal spending breakdown (only when included and non-empty) */}
+              {hasExpenses && s.expenses && (
+                <div className="card">
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-sm font-semibold text-content">{t('statement.expensesTitle')}</p>
+                    <p className="text-base font-bold text-negative print-neg tabular-nums">{money(s.expenses.total)}</p>
+                  </div>
+                  <div className="space-y-2">
+                    {s.expenses.byCategory.map((c) => (
+                      <div key={c.category} className="flex items-center justify-between text-xs border-t border-line pt-2 first:border-t-0 first:pt-0">
+                        <span className="text-content">{catLabel(c.category)}</span>
+                        <span className="font-semibold tabular-nums">{money(c.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -274,7 +314,7 @@ export default function StatementPage() {
           needs layout) with ONLY hardcoded light inline styles: no theme classes,
           no CSS variables, so the exported PDF is always light regardless of the
           app theme. This is the node handleDownload captures. */}
-      {s && s.persons.length > 0 && (
+      {s && hasData && (
         // Off-screen positioning lives on this WRAPPER, not on the captured node:
         // html-to-image clones the node with its inline styles, so a fixed
         // left:-10000px on the node itself would render off-canvas → blank PDF.
@@ -316,9 +356,12 @@ export default function StatementPage() {
             <div style={{ flex: 1 }}>{t('statement.received')}: <b>{money(s.summary.received)}</b></div>
             <div style={{ flex: 1 }}>{t('statement.borrowed')}: <b>{money(s.summary.borrowed)}</b></div>
             <div style={{ flex: 1 }}>{t('statement.repaid')}: <b>{money(s.summary.repaid)}</b></div>
+            {hasExpenses && <div style={{ flex: 1 }}>{t('statement.expensesLabel')}: <b>{money(s.summary.expenses)}</b></div>}
           </div>
 
           {/* Per-person table */}
+          {s.persons.length > 0 && (
+          <>
           <div style={{ fontSize: 14, fontWeight: 700, marginTop: 24, marginBottom: 8 }}>
             {t('statement.perPersonTitle')} · {fmtNum(s.summary.personCount)}
           </div>
@@ -355,6 +398,34 @@ export default function StatementPage() {
               </tr>
             </tfoot>
           </table>
+          </>
+          )}
+
+          {/* Personal spending breakdown */}
+          {hasExpenses && s.expenses && (
+          <>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', fontSize: 14, fontWeight: 700, marginTop: 24, marginBottom: 8 }}>
+            <span>{t('statement.expensesTitle')}</span>
+            <span style={{ color: '#b91c1c' }}>{money(s.expenses.total)}</span>
+          </div>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+            <tbody>
+              {s.expenses.byCategory.map((c) => (
+                <tr key={c.category}>
+                  <td style={{ border: '1px solid #d1d5db', padding: '6px 8px' }}>{catLabel(c.category)}</td>
+                  <td style={{ border: '1px solid #d1d5db', padding: '6px 8px', textAlign: 'right', fontWeight: 600 }}>{money(c.amount)}</td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td style={{ border: '1px solid #d1d5db', padding: '6px 8px', fontWeight: 700, background: '#f7f8fa' }}>{t('statement.expensesLabel')}</td>
+                <td style={{ border: '1px solid #d1d5db', padding: '6px 8px', textAlign: 'right', fontWeight: 700, background: '#f7f8fa', color: '#b91c1c' }}>{money(s.expenses.total)}</td>
+              </tr>
+            </tfoot>
+          </table>
+          </>
+          )}
         </div>
         </div>
       )}
