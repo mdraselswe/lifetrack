@@ -119,8 +119,9 @@ export async function buildStatement(from: string, to: string): Promise<Statemen
   const inRange = makeRangeTest(from, to)
 
   const acc: Acc = {}
-  debts.forEach((d) => addDebt(acc, d, inRange))
-  loans.forEach((l) => addLoan(acc, l, inRange))
+  // Trashed (soft-deleted) records are excluded from statements.
+  debts.filter((d) => !d.deletedAt).forEach((d) => addDebt(acc, d, inRange))
+  loans.filter((l) => !l.deletedAt).forEach((l) => addLoan(acc, l, inRange))
 
   const persons = Object.values(acc)
     // Drop people with no activity in the window.

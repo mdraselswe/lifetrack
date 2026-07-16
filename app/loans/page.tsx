@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, type FormEvent } from 'react'
-import { getLoans, saveLoan, updateLoan, deleteLoan, deleteRemindersForSource, getRemindersForSource, updateReminder, deleteReminder, addLoanPayment, deleteLoanPayment, addLoanIncrease, deleteLoanIncrease, subscribeToLoans, saveReminder } from '@/lib/storage'
+import { getLoans, saveLoan, updateLoan, softDeleteLoan, restoreLoan, purgeLoan, deleteRemindersForSource, getRemindersForSource, updateReminder, deleteReminder, addLoanPayment, deleteLoanPayment, addLoanIncrease, deleteLoanIncrease, subscribeToLoans, saveReminder } from '@/lib/storage'
 import type { Loan, Payment, AmountIncrease, Reminder } from '@/lib/types'
 import { round2, toMillis } from '@/lib/format'
 import { t, useLang, fmtNum, fmtDate, fmtInt } from '@/lib/i18n'
@@ -10,9 +10,11 @@ import { confirm } from '@/lib/confirm'
 import Modal, { ActionButton } from '@/components/Modal'
 import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
-import { ArrowDownLeftIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, SearchIcon, SortIcon, ShareIcon, ChevronDownIcon } from '@/components/Icons'
+import { ArrowDownLeftIcon, WalletIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, SearchIcon, SortIcon, ShareIcon, ChevronDownIcon, PhoneIcon, WhatsAppIcon } from '@/components/Icons'
+import { waLink } from '@/lib/phone'
 import { shareOrCopy } from '@/lib/share'
 import { LEAD_OPTIONS, dueReminderTime, type LeadKey } from '@/lib/reminder-lead'
 import { MoneyIllustration, NoResultsIllustration } from '@/components/Illustrations'
@@ -37,11 +39,17 @@ export default function LoansPage() {
   const [showForm, setShowForm] = useState(false)
   const [dataLoading, setDataLoading] = useState(true)
   const [personName, setPersonName] = useState('')
+  const [personPhone, setPersonPhone] = useState('')
   const [amount, setAmount] = useState('')
   const [reason, setReason] = useState('')
   const [date, setDate] = useState('')
   const [dueDate, setDueDate] = useState('')
+  const [promiseDate, setPromiseDate] = useState('')
   const [reminderLead, setReminderLead] = useState<LeadKey>('onTime')
+  // কিস্তি: optionally split repayment into N installments, every M days
+  const [instCount, setInstCount] = useState('')
+  const [instIntervalDays, setInstIntervalDays] = useState('30')
+  const [showTrash, setShowTrash] = useState(false)
   const [mounted, setMounted] = useState(false)
   const { user, loading } = useAuth()
   const router = useRouter()
@@ -51,10 +59,12 @@ export default function LoansPage() {
   const [paymentNote, setPaymentNote] = useState('')
   const [editingLoan, setEditingLoan] = useState<Loan | null>(null)
   const [editPersonName, setEditPersonName] = useState('')
+  const [editPersonPhone, setEditPersonPhone] = useState('')
   const [editAmount, setEditAmount] = useState('')
   const [editReason, setEditReason] = useState('')
   const [editDate, setEditDate] = useState('')
   const [editDueDate, setEditDueDate] = useState('')
+  const [editPromiseDate, setEditPromiseDate] = useState('')
   const [editReminderLead, setEditReminderLead] = useState<LeadKey>('onTime')
   const [editingPayment, setEditingPayment] = useState<{loanId: string, payment: Payment} | null>(null)
   const [editPaymentAmount, setEditPaymentAmount] = useState('')
@@ -164,10 +174,12 @@ export default function LoansPage() {
     const loan: Loan = {
       id: '', // Will be set by Firebase
       personName,
+      ...(personPhone.trim() && { personPhone: personPhone.trim() }),
       amount: parsedAmount,
       reason,
       date,
       ...(dueDate && { dueDate }),
+      ...(promiseDate && { promiseDate }),
       returned: false,
       createdAt: new Date().toISOString(),
       payments: [],
@@ -175,7 +187,10 @@ export default function LoansPage() {
     }
 
     const capturedDueDate = dueDate
+    const capturedPromise = promiseDate
     const capturedLead = reminderLead
+    const capturedInstCount = parseInt(instCount, 10) || 0
+    const capturedInstInterval = Math.max(1, parseInt(instIntervalDays, 10) || 30)
     saveLoan(loan).then((newId) => {
       if (capturedDueDate) {
         saveReminder({
@@ -187,7 +202,47 @@ export default function LoansPage() {
           createdAt: new Date().toISOString(),
           sourceId: newId,
           sourceType: 'loan',
+          reminderKind: 'due',
         }).then(() => toast.info(t('loans.dueReminderCreated'))).catch(console.error)
+      }
+      // Promise-date follow-up: "কথা দিয়েছি X তারিখ দেব" → remind at 9am that day.
+      if (capturedPromise) {
+        saveReminder({
+          id: crypto.randomUUID(),
+          title: t('loans.promiseReminderTitle', { name: loan.personName }),
+          description: t('loans.promiseReminderDesc', { name: loan.personName, amount: bn(parsedAmount) }),
+          scheduledTime: `${capturedPromise}T09:00`,
+          dismissed: false,
+          createdAt: new Date().toISOString(),
+          sourceId: newId,
+          sourceType: 'loan',
+          reminderKind: 'promise',
+        }).catch(console.error)
+      }
+      // কিস্তি plan: N reminders, one per installment, every M days from the
+      // due date (or from the loan date when no due date is set).
+      if (capturedInstCount > 1) {
+        const per = round2(parsedAmount / capturedInstCount)
+        const start = new Date(capturedDueDate || loan.date)
+        if (!isNaN(start.getTime())) {
+          for (let i = 0; i < capturedInstCount; i++) {
+            const at = new Date(start)
+            at.setDate(at.getDate() + i * capturedInstInterval)
+            const local = new Date(at.getTime() - at.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
+            saveReminder({
+              id: crypto.randomUUID(),
+              title: t('loans.instReminderTitle', { name: loan.personName, i: fmtInt(i + 1), n: fmtInt(capturedInstCount) }),
+              description: t('loans.instReminderDesc', { name: loan.personName, amount: bn(per) }),
+              scheduledTime: `${local}T09:00`,
+              dismissed: false,
+              createdAt: new Date().toISOString(),
+              sourceId: newId,
+              sourceType: 'loan',
+              reminderKind: 'installment',
+            }).catch(console.error)
+          }
+          toast.info(t('loans.instCreated', { n: fmtInt(capturedInstCount) }))
+        }
       }
     }).catch((error) => {
       console.error('Error saving loan:', error)
@@ -196,10 +251,14 @@ export default function LoansPage() {
 
     // Optimistic close — Firestore applies locally now, syncs when online.
     setPersonName('')
+    setPersonPhone('')
     setAmount('')
     setReason('')
     setDate(localDatetimeValue())
     setDueDate('')
+    setPromiseDate('')
+    setInstCount('')
+    setInstIntervalDays('30')
     setReminderLead('onTime')
     setShowForm(false)
     savingRef.current = false
@@ -269,7 +328,8 @@ export default function LoansPage() {
       t('loans.deleteTitle'),
       t('loans.deleteMessage', { name: loan.personName, amount: bn(round2(loan.amount + (loan.increases?.reduce((s, i) => s + i.amount, 0) || 0))) }),
       () => {
-        deleteLoan(id).then(() => {
+        // Soft delete → Trash (restorable); linked reminders are removed now.
+        softDeleteLoan(id).then(() => {
           deleteRemindersForSource(id) // remove the linked due-date reminder, if any
           loadLoans().catch(console.error)
           toast.success(t('loans.deleteSuccess'))
@@ -279,6 +339,22 @@ export default function LoansPage() {
         })
       }
     )
+  }
+
+  const handleRestore = (id: string) => {
+    restoreLoan(id).then(() => {
+      loadLoans().catch(console.error)
+      toast.success(t('common.trashRestored'))
+    }).catch(() => toast.error(t('loans.deleteError')))
+  }
+
+  const handlePurge = (id: string) => {
+    confirm.delete(t('common.trashPurgeTitle'), t('common.trashPurgeMsg'), () => {
+      purgeLoan(id).then(() => {
+        loadLoans().catch(console.error)
+        toast.success(t('common.trashPurged'))
+      }).catch(() => toast.error(t('loans.deleteError')))
+    })
   }
 
   const handleAddPayment = (loanId: string) => {
@@ -494,10 +570,12 @@ export default function LoansPage() {
   const handleEdit = (loan: Loan) => {
     setEditingLoan(loan)
     setEditPersonName(loan.personName)
+    setEditPersonPhone(loan.personPhone || '')
     setEditAmount(loan.amount.toString())
     setEditReason(getInitialReason(loan))
     setEditDate(loan.date)
     setEditDueDate(loan.dueDate || '')
+    setEditPromiseDate(loan.promiseDate || '')
     setEditReminderLead('onTime')
   }
 
@@ -539,14 +617,21 @@ export default function LoansPage() {
         const dueLead = editReminderLead
         updateLoan(sourceId, {
           personName: editPersonName,
+          personPhone: editPersonPhone.trim(),
           amount: newAmount,
           reason: editReason,
           date: editDate,
           dueDate: editDueDate || '',
+          promiseDate: editPromiseDate || '',
           returned: shouldBeReturned,
         }).then(() => {
           // Keep the linked due-date reminder in sync (update / create / delete).
-          getRemindersForSource(sourceId).then((linked) => {
+          getRemindersForSource(sourceId).then((all) => {
+            // Only touch the due-date reminder — promise-date and installment
+            // reminders share the same sourceId and must survive a due-date
+            // edit untouched. Older reminders predate reminderKind, so an
+            // undefined kind is treated as "due" (the original single-reminder shape).
+            const linked = all.filter((r) => !r.reminderKind || r.reminderKind === 'due')
             if (dueVal) {
               const patch = {
                 title: t('loans.dueReminderTitle', { name: dueName }),
@@ -559,7 +644,7 @@ export default function LoansPage() {
                 saveReminder({
                   id: crypto.randomUUID(), ...patch,
                   dismissed: false, createdAt: new Date().toISOString(),
-                  sourceId, sourceType: 'loan',
+                  sourceId, sourceType: 'loan', reminderKind: 'due',
                 }).then(() => toast.info(t('loans.dueReminderCreated'))).catch(console.error)
               }
             } else if (linked.length) {
@@ -789,7 +874,7 @@ export default function LoansPage() {
       t('select.delete'),
       t('select.bulkDeleteConfirm', { count: fmtInt(ids.length) }),
       () => {
-        Promise.all(ids.map((id) => deleteLoan(id).then(() => deleteRemindersForSource(id))))
+        Promise.all(ids.map((id) => softDeleteLoan(id).then(() => deleteRemindersForSource(id))))
           .then(() => {
             setSelectedIds(new Set())
             loadLoans().catch(console.error)
@@ -807,8 +892,11 @@ export default function LoansPage() {
     return null
   }
 
-  const activeLoans = loans.filter(l => !l.returned)
-  const returnedLoans = loans.filter(l => l.returned)
+  // Trash: soft-deleted docs are hidden from every live list, restorable below.
+  const trashedLoans = loans.filter(l => !!l.deletedAt)
+  const liveLoans = loans.filter(l => !l.deletedAt)
+  const activeLoans = liveLoans.filter(l => !l.returned)
+  const returnedLoans = liveLoans.filter(l => l.returned)
   
   // Calculate remaining amounts after payments
   const totalActive = round2(activeLoans.reduce((sum, l) => {
@@ -953,6 +1041,11 @@ export default function LoansPage() {
               >
                 {t('view.byPerson')}
               </button>
+              {trashedLoans.length > 0 && (
+                <button type="button" className="chip flex-shrink-0" onClick={() => setShowTrash(true)}>
+                  <TrashIcon className="w-3.5 h-3.5 inline-block mr-1" />{t('common.trash')} · {fmtInt(trashedLoans.length)}
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -1026,21 +1119,35 @@ export default function LoansPage() {
                             <CheckIcon className="w-4 h-4" />
                           </button>
                           <div className="min-w-0">
-                            <h3 className="font-semibold text-content truncate">{loan.personName}</h3>
+                            <Link href={`/person/${encodeURIComponent(loan.personName)}`} className="font-semibold text-content truncate block hover:text-accent transition-colors">{loan.personName}</Link>
                             <p className="text-xs text-muted">{bnDate(loan.date)}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
+                          {loan.personPhone && (
+                            <>
+                              <a className="icon-btn" href={`tel:${loan.personPhone}`} title={t('common.call')}><PhoneIcon className="w-5 h-5" /></a>
+                              <a
+                                className="icon-btn"
+                                href={waLink(loan.personPhone, t('loans.waNudge', { name: loan.personName, amount: bn(remaining) }))}
+                                target="_blank" rel="noopener noreferrer"
+                                title={t('common.whatsapp')}
+                              ><WhatsAppIcon className="w-5 h-5" /></a>
+                            </>
+                          )}
                           <button className="icon-btn" onClick={() => handleShareLoan(loan)} title={t('share.action')} aria-label={t('share.action')}><ShareIcon className="w-5 h-5" /></button>
                           <button className="icon-btn" onClick={() => handleEdit(loan)} title={t('common.edit')}><EditIcon className="w-5 h-5" /></button>
                           <button className="icon-btn" onClick={() => handleDelete(loan.id)} title={t('common.delete')}><TrashIcon className="w-5 h-5" /></button>
                         </div>
                       </div>
 
-                      {loan.dueDate && (
+                      {(loan.dueDate || loan.promiseDate) && (
                         <div className="flex items-center gap-2 flex-wrap -mt-2">
                           {dueBadge(loan.dueDate)}
-                          <span className="text-xs text-muted whitespace-nowrap">{t('due.on', { date: bnDate(loan.dueDate) })}</span>
+                          {loan.dueDate && <span className="text-xs text-muted whitespace-nowrap">{t('due.on', { date: bnDate(loan.dueDate) })}</span>}
+                          {loan.promiseDate && (
+                            <span className="chip tint-warn text-caution text-[11px]">{t('loans.promiseChip', { date: bnDate(loan.promiseDate) })}</span>
+                          )}
                         </div>
                       )}
 
@@ -1221,6 +1328,33 @@ export default function LoansPage() {
         </button>
       )}
 
+      {/* Trash: soft-deleted loans — restore or purge permanently */}
+      <Modal
+        isOpen={showTrash}
+        onClose={() => setShowTrash(false)}
+        title={t('common.trash')}
+        footerActions={<ActionButton onClick={() => setShowTrash(false)} variant="secondary">{t('common.close')}</ActionButton>}
+      >
+        {trashedLoans.length === 0 ? (
+          <p className="text-sm text-muted text-center py-6">{t('common.trashEmpty')}</p>
+        ) : (
+          <div className="space-y-2">
+            {trashedLoans.map((l) => (
+              <div key={l.id} className="flex items-center justify-between rounded-xl bg-surface-2 px-3 py-2 gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-content truncate">{l.personName} — ৳{bn(round2(l.amount + (l.increases?.reduce((s, i) => s + i.amount, 0) || 0)))}</p>
+                  <p className="text-xs text-muted">{l.deletedAt ? bnDate(l.deletedAt) : ''}</p>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button className="icon-btn w-8 h-8" onClick={() => handleRestore(l.id)} title={t('common.trashRestore')}><RotateIcon className="w-4 h-4" /></button>
+                  <button className="icon-btn w-8 h-8 text-negative" onClick={() => handlePurge(l.id)} title={t('common.trashPurge')}><TrashIcon className="w-4 h-4" /></button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </Modal>
+
       {/* Add loan */}
       <Modal
         isOpen={showForm}
@@ -1259,6 +1393,28 @@ export default function LoansPage() {
               {LEAD_OPTIONS.map((o) => <option key={o} value={o}>{t(`lead.${o}`)}</option>)}
             </select>
           </div>
+          )}
+          <div>
+            <label className="label">{t('common.phoneOptional')}</label>
+            <input type="tel" inputMode="tel" value={personPhone} onChange={(e) => setPersonPhone(e.target.value)} className="input" placeholder="01XXXXXXXXX" />
+          </div>
+          <div>
+            <label className="label">{t('loans.promiseDateOptional')}</label>
+            <input type="date" value={promiseDate} onChange={(e) => setPromiseDate(e.target.value)} className="input" />
+          </div>
+          {/* কিস্তি: split into N installments with a reminder per installment */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">{t('loans.instCountLabel')}</label>
+              <input type="text" inputMode="numeric" value={instCount} onChange={(e) => setInstCount(e.target.value.replace(/\D/g, ''))} className="input" placeholder={t('loans.instCountPlaceholder')} />
+            </div>
+            <div>
+              <label className="label">{t('loans.instIntervalLabel')}</label>
+              <input type="text" inputMode="numeric" value={instIntervalDays} onChange={(e) => setInstIntervalDays(e.target.value.replace(/\D/g, ''))} className="input" />
+            </div>
+          </div>
+          {parseInt(instCount, 10) > 1 && amount && (
+            <p className="text-xs text-muted -mt-2">{t('loans.instPreview', { n: fmtInt(parseInt(instCount, 10)), per: bn(round2((parseFloat(amount) || 0) / parseInt(instCount, 10))) })}</p>
           )}
         </form>
       </Modal>
@@ -1302,6 +1458,14 @@ export default function LoansPage() {
             </select>
           </div>
           )}
+          <div>
+            <label className="label">{t('common.phoneOptional')}</label>
+            <input type="tel" inputMode="tel" value={editPersonPhone} onChange={(e) => setEditPersonPhone(e.target.value)} className="input" placeholder="01XXXXXXXXX" />
+          </div>
+          <div>
+            <label className="label">{t('loans.promiseDateOptional')}</label>
+            <input type="date" value={editPromiseDate} onChange={(e) => setEditPromiseDate(e.target.value)} className="input" />
+          </div>
         </form>
       </Modal>
 

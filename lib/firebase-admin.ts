@@ -43,7 +43,15 @@ export function getAdminDb(): Firestore {
   const db = getFirestore(getAdminApp())
   // Force REST transport. The default gRPC transport hangs on Vercel/serverless
   // (HTTP/2 keep-alive never settles), causing the function to time out.
-  db.settings({ preferRest: true })
+  // Guarded: in dev, Next re-executes this module (resetting the local
+  // `cachedDb` variable) while the underlying Firestore instance persists via
+  // the Firebase SDK's own app registry — calling settings() on it again
+  // throws "Firestore has already been initialized". Swallow only that.
+  try {
+    db.settings({ preferRest: true })
+  } catch (e) {
+    if (!(e instanceof Error) || !e.message.includes('already been initialized')) throw e
+  }
   cachedDb = db
   return cachedDb
 }

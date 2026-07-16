@@ -115,4 +115,22 @@ export const debts: Dict = {
   'debts.increaseUpdateSuccess': { bn: 'পরিমাণ বৃদ্ধি সফলভাবে আপডেট করা হয়েছে', en: 'Amount increase updated successfully' },
   'debts.increaseUpdateError': { bn: 'পরিমাণ বৃদ্ধি আপডেট করতে সমস্যা হয়েছে', en: 'Failed to update amount increase' },
   'debts.errOverpay': { bn: 'বাকির চেয়ে বেশি দেওয়া যাবে না (বাকি ৳{remaining})', en: 'Cannot exceed the remaining amount (৳{remaining} due)' },
+
+  // Promise date (কথা দিয়েছে X তারিখ দেবে)
+  'debts.promiseDateOptional': { bn: 'প্রতিশ্রুতির তারিখ (ঐচ্ছিক)', en: 'Promised date (optional)' },
+  'debts.promiseChip': { bn: 'কথা দিয়েছে: {date}', en: 'Promised: {date}' },
+  'debts.promiseReminderTitle': { bn: '{name} এর প্রতিশ্রুতির দিন', en: "{name}'s promised day" },
+  'debts.promiseReminderDesc': { bn: '{name} আজ ৳{amount} দেওয়ার কথা', en: '{name} promised to pay ৳{amount} today' },
+
+  // WhatsApp তাগাদা
+  'debts.waNudge': { bn: 'আসসালামু আলাইকুম {name}, আপনার কাছে আমার ৳{amount} পাওনা আছে। সুবিধামতো ফেরত দিলে উপকার হয়। ধন্যবাদ।', en: 'Hi {name}, a friendly reminder that ৳{amount} is due to me. Please repay when convenient. Thanks.' },
+
+  // কিস্তি (installments)
+  'debts.instCountLabel': { bn: 'কিস্তি সংখ্যা (ঐচ্ছিক)', en: 'Installments (optional)' },
+  'debts.instCountPlaceholder': { bn: 'যেমন: ৪', en: 'e.g., 4' },
+  'debts.instIntervalLabel': { bn: 'কত দিন পরপর', en: 'Every N days' },
+  'debts.instPreview': { bn: '{n}টি কিস্তি × ৳{per}', en: '{n} installments × ৳{per}' },
+  'debts.instReminderTitle': { bn: '{name} — কিস্তি {i}/{n}', en: '{name} — installment {i}/{n}' },
+  'debts.instReminderDesc': { bn: '{name} এর কাছ থেকে কিস্তি ৳{amount} নেওয়ার দিন', en: 'Collect installment of ৳{amount} from {name}' },
+  'debts.instCreated': { bn: '{n}টি কিস্তির রিমাইন্ডার তৈরি হয়েছে', en: '{n} installment reminders created' },
 }

@@ -102,4 +102,8 @@ export const reminders: Dict = {
   'reminders.finishConfirm': { bn: 'শেষ করুন', en: 'Finish' },
   'reminders.finished': { bn: 'রিমাইন্ডার শেষ করা হয়েছে', en: 'Reminder finished' },
   'reminders.finishError': { bn: 'শেষ করতে সমস্যা হয়েছে', en: 'Could not finish reminder' },
+
+  // Voice input
+  'reminders.voiceInput': { bn: 'ভয়েস দিয়ে লিখুন', en: 'Voice input' },
+  'reminders.voiceError': { bn: 'ভয়েস শোনা যায়নি — আবার চেষ্টা করুন', en: 'Could not hear you — try again' },
 }

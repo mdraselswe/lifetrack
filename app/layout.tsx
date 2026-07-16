@@ -21,6 +21,7 @@ const inter = Inter({
   display: 'swap',
 })
 import PWARegistration from '@/components/PWARegistration'
+import AppLock from '@/components/AppLock'
 import OfflineIndicator from '@/components/OfflineIndicator'
 import CelebrationContainer from '@/components/Celebration'
 import ToastContainer from '@/components/Toast'
@@ -136,6 +137,7 @@ export default function RootLayout({
           <CelebrationContainer />
           <ToastContainer />
           <ConfirmToastContainer />
+          <AppLock />
           <ConditionalLayout>
             {children}
           </ConditionalLayout>

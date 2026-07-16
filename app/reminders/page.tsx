@@ -12,10 +12,21 @@ import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
 import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
-import { ClockIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, HistoryIcon } from '@/components/Icons'
+import { ClockIcon, PlusIcon, EditIcon, TrashIcon, CheckIcon, RotateIcon, HistoryIcon, MicIcon } from '@/components/Icons'
 import { t, useLang, fmtInt, fmtDate, fmtRelative } from '@/lib/i18n'
 import { haptic } from '@/lib/haptics'
 import { BellIllustration } from '@/components/Illustrations'
+
+// Minimal Web Speech API surface we use (lib.dom has no SpeechRecognition types).
+interface SpeechRecognitionLike {
+  lang: string
+  interimResults: boolean
+  maxAlternatives: number
+  onresult: ((event: { results?: { [i: number]: { [j: number]: { transcript?: string } } } }) => void) | null
+  onend: (() => void) | null
+  onerror: (() => void) | null
+  start: () => void
+}
 
 // datetime-local expects a LOCAL time string; toISOString() is UTC, so we
 // shift by the timezone offset before slicing to avoid an off-by-hours default.
@@ -67,7 +78,43 @@ export default function RemindersPage() {
   const [pushState, setPushState] = useState<'unknown' | 'prompt' | 'granted' | 'denied' | 'unsupported'>('unknown')
   const [nowTick, setNowTick] = useState(0)
   const [saving, setSaving] = useState(false)
+  const [listening, setListening] = useState(false)
+  const [voiceSupported, setVoiceSupported] = useState(false)
   const savingRef = useRef(false) // guard against double-submit
+
+  // Web Speech API voice input (Chrome/Android; Bengali first, falls back to typing)
+  useEffect(() => {
+    const w = window as unknown as { SpeechRecognition?: unknown; webkitSpeechRecognition?: unknown }
+    setVoiceSupported(!!(w.SpeechRecognition || w.webkitSpeechRecognition))
+  }, [])
+
+  const handleVoiceInput = () => {
+    const w = window as unknown as {
+      SpeechRecognition?: new () => SpeechRecognitionLike
+      webkitSpeechRecognition?: new () => SpeechRecognitionLike
+    }
+    const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition
+    if (!Ctor) return
+    const rec = new Ctor()
+    rec.lang = 'bn-BD'
+    rec.interimResults = false
+    rec.maxAlternatives = 1
+    setListening(true)
+    rec.onresult = (event) => {
+      const text = event.results?.[0]?.[0]?.transcript
+      if (text) setTitle((prev) => (prev ? `${prev} ${text}` : text))
+    }
+    rec.onend = () => setListening(false)
+    rec.onerror = () => {
+      setListening(false)
+      toast.error(t('reminders.voiceError'))
+    }
+    try {
+      rec.start()
+    } catch {
+      setListening(false)
+    }
+  }
 
   // Live countdown chips — refresh every minute
   useEffect(() => {
@@ -700,7 +747,20 @@ export default function RemindersPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="label label-required">{t('reminders.fieldTitle')}</label>
-            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="input" placeholder={t('reminders.titlePlaceholder')} required />
+            <div className="flex gap-2">
+              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className="input flex-1" placeholder={t('reminders.titlePlaceholder')} required />
+              {voiceSupported && (
+                <button
+                  type="button"
+                  onClick={handleVoiceInput}
+                  className={`icon-btn flex-shrink-0 ${listening ? 'text-negative' : ''}`}
+                  title={t('reminders.voiceInput')}
+                  aria-label={t('reminders.voiceInput')}
+                >
+                  <MicIcon className="w-5 h-5" />
+                </button>
+              )}
+            </div>
           </div>
           <div>
             <label className="label">{t('reminders.fieldDescription')}</label>

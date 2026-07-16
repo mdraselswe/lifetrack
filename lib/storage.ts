@@ -1,5 +1,5 @@
-import type { Reminder, Debt, Loan, Payment, AmountIncrease } from './types'
-import { 
+import type { Reminder, Debt, Loan, Payment, AmountIncrease, Expense, UserPrefs } from './types'
+import {
   getDebts as getFirebaseDebts,
   saveDebt as saveFirebaseDebt,
   updateDebt as updateFirebaseDebt,
@@ -12,6 +12,12 @@ import {
   saveReminder as saveFirebaseReminder,
   updateReminder as updateFirebaseReminder,
   deleteReminder as deleteFirebaseReminder,
+  getExpenses as getFirebaseExpenses,
+  saveExpense as saveFirebaseExpense,
+  updateExpense as updateFirebaseExpense,
+  deleteExpense as deleteFirebaseExpense,
+  getUserPrefs as getFirebaseUserPrefs,
+  setUserPrefs as setFirebaseUserPrefs,
   subscribeToDebts,
   subscribeToLoans,
   subscribeToReminders
@@ -20,7 +26,7 @@ import { auth } from './firebase-app'
 import { round2, num } from './format'
 
 // Re-export realtime listeners so pages can subscribe for cross-device sync
-export { subscribeToDebts, subscribeToLoans, subscribeToReminders } from './firebase-db'
+export { subscribeToDebts, subscribeToLoans, subscribeToReminders, subscribeToExpenses } from './firebase-db'
 
 // Sum the `amount` field across a list of payments/increases (null-safe,
 // coerces each amount so a stray string/NaN can't collapse the total).
@@ -288,6 +294,66 @@ export const deleteLoan = async (id: string): Promise<void> => {
     throw error // Don't fallback to localStorage - force Firebase usage
   }
 }
+
+// ===== Expenses =====
+export const getExpenses = async (): Promise<Expense[]> => {
+  if (!isBrowser) return []
+  const userId = await resolveUserId()
+  if (!userId) {
+    console.warn('No user ID found - user must be logged in to access data')
+    return []
+  }
+  return await getFirebaseExpenses(userId)
+}
+
+export const saveExpense = async (expense: Expense): Promise<string> => {
+  if (!isBrowser) return ''
+  const userId = await resolveUserId()
+  if (!userId) throw new Error('User must be logged in to save data')
+  const { id, ...expenseWithoutId } = expense
+  return await saveFirebaseExpense(userId, expenseWithoutId)
+}
+
+export const updateExpense = async (id: string, updates: Partial<Expense>): Promise<void> => {
+  if (!isBrowser) return
+  const userId = await resolveUserId()
+  if (!userId) throw new Error('User must be logged in to update data')
+  await updateFirebaseExpense(userId, id, updates)
+}
+
+export const deleteExpense = async (id: string): Promise<void> => {
+  if (!isBrowser) return
+  const userId = await resolveUserId()
+  if (!userId) throw new Error('User must be logged in to delete data')
+  await deleteFirebaseExpense(userId, id)
+}
+
+// ===== User prefs (budget, PIN, …) =====
+export const getUserPrefs = async (): Promise<UserPrefs> => {
+  if (!isBrowser) return {}
+  const userId = await resolveUserId()
+  if (!userId) return {}
+  return await getFirebaseUserPrefs(userId)
+}
+
+export const setUserPrefs = async (updates: Partial<UserPrefs>): Promise<void> => {
+  if (!isBrowser) return
+  const userId = await resolveUserId()
+  if (!userId) throw new Error('User must be logged in to update settings')
+  await setFirebaseUserPrefs(userId, updates)
+}
+
+// ===== Soft delete (Trash) for debts/loans =====
+// Delete = stamp deletedAt; the doc stays for restore from Trash. Purge is the
+// real remove. Pages filter out deleted items from their live lists.
+export const softDeleteDebt = async (id: string): Promise<void> => updateDebt(id, { deletedAt: new Date().toISOString() })
+export const softDeleteLoan = async (id: string): Promise<void> => updateLoan(id, { deletedAt: new Date().toISOString() })
+// Restore writes null (NOT undefined — firebase-db's filterUndefined would
+// strip the key and the update would be a no-op). Checks use truthiness.
+export const restoreDebt = async (id: string): Promise<void> => updateDebt(id, { deletedAt: null } as unknown as Partial<Debt>)
+export const restoreLoan = async (id: string): Promise<void> => updateLoan(id, { deletedAt: null } as unknown as Partial<Loan>)
+export const purgeDebt = deleteDebt
+export const purgeLoan = deleteLoan
 
 // Payment management for Debts
 export const addDebtPayment = async (debtId: string, payment: Payment): Promise<void> => {

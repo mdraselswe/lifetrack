@@ -24,6 +24,7 @@ export const common: Dict = {
   'nav.reminders': { bn: 'রিমাইন্ডার', en: 'Reminders' },
   'nav.given': { bn: 'দিয়েছি', en: 'Given' },
   'nav.taken': { bn: 'নিয়েছি', en: 'Taken' },
+  'nav.expenses': { bn: 'খরচ', en: 'Expenses' },
 
   'profile.title': { bn: 'প্রোফাইল', en: 'Profile' },
   'profile.user': { bn: 'ব্যবহারকারী', en: 'User' },
@@ -94,4 +95,44 @@ export const common: Dict = {
   'lead.d2': { bn: '২ দিন আগে', en: '2 days before' },
   'lead.d3': { bn: '৩ দিন আগে', en: '3 days before' },
   'lead.w1': { bn: '১ সপ্তাহ আগে', en: '1 week before' },
+
+  // Contact actions
+  'common.call': { bn: 'কল করুন', en: 'Call' },
+  'common.whatsapp': { bn: 'হোয়াটসঅ্যাপ', en: 'WhatsApp' },
+  'common.phoneOptional': { bn: 'ফোন নম্বর (ঐচ্ছিক)', en: 'Phone number (optional)' },
+
+  // Trash (soft delete)
+  'common.trash': { bn: 'ট্র্যাশ', en: 'Trash' },
+  'common.trashEmpty': { bn: 'ট্র্যাশ খালি', en: 'Trash is empty' },
+  'common.trashRestore': { bn: 'ফিরিয়ে আনুন', en: 'Restore' },
+  'common.trashRestored': { bn: 'ফিরিয়ে আনা হয়েছে', en: 'Restored' },
+  'common.trashPurge': { bn: 'স্থায়ীভাবে মুছুন', en: 'Delete permanently' },
+  'common.trashPurged': { bn: 'স্থায়ীভাবে মুছে ফেলা হয়েছে', en: 'Permanently deleted' },
+  'common.trashPurgeTitle': { bn: 'স্থায়ীভাবে মুছবেন?', en: 'Delete permanently?' },
+  'common.trashPurgeMsg': { bn: 'এটি আর ফিরিয়ে আনা যাবে না।', en: 'This cannot be undone.' },
+
+  // App lock (PIN)
+  'lock.title': { bn: 'অ্যাপ লক', en: 'App lock' },
+  'lock.enter': { bn: 'পিন দিন', en: 'Enter PIN' },
+  'lock.wrong': { bn: 'ভুল পিন', en: 'Wrong PIN' },
+  'lock.setTitle': { bn: 'পিন সেট করুন', en: 'Set a PIN' },
+  'lock.setDesc': { bn: '৪ সংখ্যার পিন দিয়ে অ্যাপ লক করুন', en: 'Lock the app with a 4-digit PIN' },
+  'lock.newPin': { bn: 'নতুন পিন (৪ সংখ্যা)', en: 'New PIN (4 digits)' },
+  'lock.confirmPin': { bn: 'পিন আবার দিন', en: 'Confirm PIN' },
+  'lock.mismatch': { bn: 'পিন মিলছে না', en: 'PINs do not match' },
+  'lock.invalid': { bn: '৪ সংখ্যার পিন দিন', en: 'Enter a 4-digit PIN' },
+  'lock.enabled': { bn: 'অ্যাপ লক চালু হয়েছে', en: 'App lock enabled' },
+  'lock.disabled': { bn: 'অ্যাপ লক বন্ধ হয়েছে', en: 'App lock disabled' },
+  'lock.enable': { bn: 'চালু করুন', en: 'Enable' },
+  'lock.disable': { bn: 'বন্ধ করুন', en: 'Disable' },
+  'lock.disableConfirm': { bn: 'অ্যাপ লক বন্ধ করবেন?', en: 'Disable app lock?' },
+  'lock.saveError': { bn: 'পিন সংরক্ষণে সমস্যা হয়েছে', en: 'Could not save PIN' },
+
+  // Backup import
+  'import.action': { bn: 'ডেটা ইমপোর্ট (JSON)', en: 'Import data (JSON)' },
+  'import.importing': { bn: 'ইমপোর্ট হচ্ছে…', en: 'Importing…' },
+  'import.confirmTitle': { bn: 'ব্যাকআপ ইমপোর্ট করবেন?', en: 'Import backup?' },
+  'import.confirmMsg': { bn: 'ব্যাকআপের সব হিসাব নতুন করে যোগ হবে (বর্তমান ডেটা মুছবে না)।', en: 'All records from the backup will be added (existing data is kept).' },
+  'import.success': { bn: 'ইমপোর্ট সম্পন্ন: ধার {debts}, ঋণ {loans}, রিমাইন্ডার {reminders}, খরচ {expenses}', en: 'Imported: {debts} debts, {loans} loans, {reminders} reminders, {expenses} expenses' },
+  'import.error': { bn: 'ইমপোর্ট করা যায়নি — সঠিক LifeTrack ব্যাকআপ ফাইল দিন', en: 'Import failed — choose a valid LifeTrack backup file' },
 }

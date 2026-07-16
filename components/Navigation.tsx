@@ -4,13 +4,14 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useAuth } from '@/lib/firebase-auth'
 import { t, useLang } from '@/lib/i18n'
-import { HomeIcon, ClockIcon, ArrowUpRightIcon, ArrowDownLeftIcon } from './Icons'
+import { HomeIcon, ClockIcon, ArrowUpRightIcon, ArrowDownLeftIcon, WalletIcon } from './Icons'
 
 const navItems = [
   { href: '/', labelKey: 'nav.home', Icon: HomeIcon },
   { href: '/reminders', labelKey: 'nav.reminders', Icon: ClockIcon },
   { href: '/debts', labelKey: 'nav.given', Icon: ArrowUpRightIcon },
   { href: '/loans', labelKey: 'nav.taken', Icon: ArrowDownLeftIcon },
+  { href: '/expenses', labelKey: 'nav.expenses', Icon: WalletIcon },
 ]
 
 export default function Navigation() {

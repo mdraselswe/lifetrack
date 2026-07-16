@@ -10,10 +10,12 @@ import { loans } from './dict/loans'
 import { reminders } from './dict/reminders'
 import { auth } from './dict/auth'
 import { statement } from './dict/statement'
+import { expenses } from './dict/expenses'
+import { person } from './dict/person'
 
 export type Lang = 'bn' | 'en'
 
-const dict: Dict = { ...common, ...dashboard, ...debts, ...loans, ...reminders, ...auth, ...statement }
+const dict: Dict = { ...common, ...dashboard, ...debts, ...loans, ...reminders, ...auth, ...statement, ...expenses, ...person }
 
 // Module-level language store (same subscribe/notify pattern as toast/confirm).
 // Default is Bengali; initLang() applies the persisted choice after mount so

@@ -1,20 +1,21 @@
-import { 
-  collection, 
-  doc, 
-  getDocs, 
-  getDoc, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  query, 
-  where, 
+import {
+  collection,
+  doc,
+  getDocs,
+  getDoc,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  setDoc,
+  query,
+  where,
   orderBy,
   onSnapshot,
-  serverTimestamp 
+  serverTimestamp
 } from 'firebase/firestore'
 import { db } from './firebase'
 import { scheduleBackup } from './backup-trigger'
-import type { Debt, Loan, Reminder } from './types'
+import type { Debt, Loan, Reminder, Expense, UserPrefs } from './types'
 
 // Helper function to get user-specific collection path
 const getUserCollection = (userId: string, collectionName: string) => {
@@ -242,6 +243,88 @@ export const deleteReminder = async (userId: string, reminderId: string): Promis
     scheduleBackup()
   } catch (error) {
     console.error('Error deleting reminder:', error)
+    throw error
+  }
+}
+
+// ===== EXPENSE FUNCTIONS =====
+export const getExpenses = async (userId: string): Promise<Expense[]> => {
+  try {
+    const ref = getUserCollection(userId, 'expenses')
+    const q = query(ref, orderBy('createdAt', 'desc'))
+    const querySnapshot = await getDocs(q)
+    return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Expense[]
+  } catch (error) {
+    console.error('Error getting expenses:', error)
+    throw error
+  }
+}
+
+export const saveExpense = async (userId: string, expense: Omit<Expense, 'id'>): Promise<string> => {
+  try {
+    const ref = getUserCollection(userId, 'expenses')
+    const docRef = await addDoc(ref, filterUndefined({ ...expense, createdAt: serverTimestamp() }))
+    scheduleBackup()
+    return docRef.id
+  } catch (error) {
+    console.error('Error saving expense:', error)
+    throw error
+  }
+}
+
+export const updateExpense = async (userId: string, expenseId: string, updates: Partial<Expense>): Promise<void> => {
+  try {
+    const ref = getUserDoc(userId, 'expenses', expenseId)
+    await updateDoc(ref, filterUndefined({ ...updates, updatedAt: serverTimestamp() }))
+    scheduleBackup()
+  } catch (error) {
+    console.error('Error updating expense:', error)
+    throw error
+  }
+}
+
+export const deleteExpense = async (userId: string, expenseId: string): Promise<void> => {
+  try {
+    const ref = getUserDoc(userId, 'expenses', expenseId)
+    await deleteDoc(ref)
+    scheduleBackup()
+  } catch (error) {
+    console.error('Error deleting expense:', error)
+    throw error
+  }
+}
+
+export const subscribeToExpenses = (userId: string, callback: (expenses: Expense[]) => void) => {
+  const ref = getUserCollection(userId, 'expenses')
+  const q = query(ref, orderBy('createdAt', 'desc'))
+  return onSnapshot(q, (querySnapshot) => {
+    const expenses = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Expense[]
+    callback(expenses)
+  }, (error) => {
+    // Log only. Do NOT callback([]) — a transient error would otherwise wipe
+    // the last-known-good data from the UI. Leave existing state in place.
+    console.error('Expenses subscription error:', error)
+  })
+}
+
+// ===== USER PREFS (users/{uid}/meta/prefs) =====
+export const getUserPrefs = async (userId: string): Promise<UserPrefs> => {
+  try {
+    const ref = doc(db, 'users', userId, 'meta', 'prefs')
+    const snap = await getDoc(ref)
+    return (snap.exists() ? snap.data() : {}) as UserPrefs
+  } catch (error) {
+    console.error('Error getting prefs:', error)
+    throw error
+  }
+}
+
+export const setUserPrefs = async (userId: string, updates: Partial<UserPrefs>): Promise<void> => {
+  try {
+    const ref = doc(db, 'users', userId, 'meta', 'prefs')
+    await setDoc(ref, filterUndefined(updates), { merge: true })
+  } catch (error) {
+    console.error('Error setting prefs:', error)
     throw error
   }
 }

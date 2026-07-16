@@ -54,4 +54,20 @@ export const dashboard: Dict = {
   'dashboard.yesterday': { bn: 'গতকাল', en: 'Yesterday' },
   'dashboard.thisWeek': { bn: 'এই সপ্তাহ', en: 'This week' },
   'dashboard.earlier': { bn: 'আগে', en: 'Earlier' },
+
+  // Global search
+  'dashboard.searchTitle': { bn: 'খুঁজুন', en: 'Search' },
+  'dashboard.searchPeople': { bn: 'ব্যক্তি', en: 'People' },
+
+  // Insights
+  'dashboard.insightsTitle': { bn: 'ইনসাইট', en: 'Insights' },
+  'dashboard.insightTopDebtor': { bn: 'সবচেয়ে বেশি পাওনা: {name}', en: 'Largest receivable: {name}' },
+  'dashboard.insightOverdue': { bn: 'মেয়াদোত্তীর্ণ ধার: {count}টি', en: 'Overdue debts: {count}' },
+
+  // Year in review
+  'dashboard.yearTitle': { bn: '{year} সালের সারাংশ', en: '{year} at a glance' },
+  'dashboard.yearLent': { bn: 'ধার দিয়েছি', en: 'Lent' },
+  'dashboard.yearReceived': { bn: 'ফেরত পেয়েছি', en: 'Received back' },
+  'dashboard.yearBorrowed': { bn: 'ধার নিয়েছি', en: 'Borrowed' },
+  'dashboard.yearRepaid': { bn: 'ফেরত দিয়েছি', en: 'Repaid' },
 }

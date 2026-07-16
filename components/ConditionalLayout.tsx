@@ -17,6 +17,7 @@ const navItems = [
   { href: '/reminders', label: 'রিমাইন্ডার' },
   { href: '/debts', label: 'ধার দিয়েছি' },
   { href: '/loans', label: 'ধার নিয়েছি' },
+  { href: '/expenses', label: 'খরচ' },
 ]
 
 export default function ConditionalLayout({ children }: ConditionalLayoutProps) {

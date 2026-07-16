@@ -43,12 +43,75 @@ export async function GET(request: Request) {
       due.push({ uid, ref: docSnap.ref, r })
     })
 
-    if (due.length === 0) {
+    // ---- Monthly report: on the 1st of each month at 09:00 (Asia/Dhaka) send
+    // every user a summary push of last month's money movement. Deduped per
+    // month via users/{uid}.monthlyReportFor. Runs at most in the 09:xx hour
+    // of day 1, so the extra collection reads happen ~60 cron hits per month.
+    const DHAKA = 6 * 60 * 60 * 1000
+    const dhakaNow = new Date(now + DHAKA)
+    const monthlyWindow = dhakaNow.getUTCDate() === 1 && dhakaNow.getUTCHours() === 9
+    type MonthlyReport = { uid: string; lent: number; received: number; borrowed: number; repaid: number }
+    const monthly: MonthlyReport[] = []
+    if (monthlyWindow) {
+      // Previous month range in Dhaka wall clock.
+      const mStart = Date.UTC(dhakaNow.getUTCFullYear(), dhakaNow.getUTCMonth() - 1, 1) - DHAKA
+      const mEnd = Date.UTC(dhakaNow.getUTCFullYear(), dhakaNow.getUTCMonth(), 1) - DHAKA
+      const monthKey = new Date(mStart + DHAKA).toISOString().slice(0, 7)
+      const inMonth = (v?: string) => {
+        if (!v) return false
+        const ms = new Date(v).getTime()
+        return Number.isFinite(ms) && ms >= mStart && ms < mEnd
+      }
+      const acc = new Map<string, MonthlyReport>()
+      const bump = (uid: string, k: 'lent' | 'received' | 'borrowed' | 'repaid', amt: number) => {
+        if (!amt) return
+        const rec = acc.get(uid) || { uid, lent: 0, received: 0, borrowed: 0, repaid: 0 }
+        rec[k] += amt
+        acc.set(uid, rec)
+      }
+      type MoneyDoc = { amount?: number; date?: string; deletedAt?: string; payments?: { amount?: number; date?: string }[]; increases?: { amount?: number; date?: string }[] }
+      const [debtsSnap, loansSnap] = await Promise.all([
+        db.collectionGroup('debts').get(),
+        db.collectionGroup('loans').get(),
+      ])
+      debtsSnap.docs.forEach((docSnap) => {
+        const uid = docSnap.ref.parent.parent?.id
+        if (!uid) return
+        const d = docSnap.data() as MoneyDoc
+        if (d.deletedAt) return
+        if (inMonth(d.date)) bump(uid, 'lent', d.amount || 0)
+        ;(d.increases || []).forEach((i) => { if (inMonth(i.date)) bump(uid, 'lent', i.amount || 0) })
+        ;(d.payments || []).forEach((p) => { if (inMonth(p.date)) bump(uid, 'received', p.amount || 0) })
+      })
+      loansSnap.docs.forEach((docSnap) => {
+        const uid = docSnap.ref.parent.parent?.id
+        if (!uid) return
+        const l = docSnap.data() as MoneyDoc
+        if (l.deletedAt) return
+        if (inMonth(l.date)) bump(uid, 'borrowed', l.amount || 0)
+        ;(l.increases || []).forEach((i) => { if (inMonth(i.date)) bump(uid, 'borrowed', i.amount || 0) })
+        ;(l.payments || []).forEach((p) => { if (inMonth(p.date)) bump(uid, 'repaid', p.amount || 0) })
+      })
+      // Dedupe: only users not yet reported for this month.
+      const candidates = Array.from(acc.values()).filter((r) => r.lent || r.received || r.borrowed || r.repaid)
+      const checks = await Promise.all(
+        candidates.map(async (r) => {
+          const uSnap = await db.doc(`users/${r.uid}`).get()
+          const sentFor = (uSnap.data() as { monthlyReportFor?: string } | undefined)?.monthlyReportFor
+          return sentFor === monthKey ? null : r
+        })
+      )
+      checks.forEach((r) => { if (r) monthly.push(r) })
+      // Stamp immediately so a crash mid-send doesn't re-spam next minute.
+      await Promise.all(monthly.map((r) => db.doc(`users/${r.uid}`).set({ monthlyReportFor: monthKey }, { merge: true }).catch(() => {})))
+    }
+
+    if (due.length === 0 && monthly.length === 0) {
       return NextResponse.json({ ok: true, due: 0, sent: 0 })
     }
 
     // Load push subscriptions for the affected users only.
-    const uids = Array.from(new Set(due.map((d) => d.uid)))
+    const uids = Array.from(new Set([...due.map((d) => d.uid), ...monthly.map((m) => m.uid)]))
     const subsByUid = new Map<string, { ref: DocumentReference; endpoint: string; keys: Record<string, string> }[]>()
     await Promise.all(
       uids.map(async (uid) => {
@@ -113,7 +176,36 @@ export async function GET(request: Request) {
       await item.ref.update(updates).catch(() => {})
     }
 
-    return NextResponse.json({ ok: true, due: due.length, sent, expired })
+    // Monthly report pushes (already deduped + stamped above).
+    const fmtT = (n: number) => `৳${Math.round(n).toLocaleString('en-IN')}`
+    for (const m of monthly) {
+      const subs = subsByUid.get(m.uid) || []
+      const payload = JSON.stringify({
+        title: 'গত মাসের হিসাব — LifeTrack',
+        body: `দিয়েছি ${fmtT(m.lent)} · ফেরত পেয়েছি ${fmtT(m.received)} · নিয়েছি ${fmtT(m.borrowed)} · ফেরত দিয়েছি ${fmtT(m.repaid)}`,
+        tag: `monthly-report`,
+        data: { url: '/statement' },
+      })
+      await Promise.all(
+        subs.map(async (sub) => {
+          try {
+            await webpush.sendNotification(
+              { endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } },
+              payload
+            )
+            sent++
+          } catch (err) {
+            const status = (err as { statusCode?: number }).statusCode
+            if (status === 404 || status === 410) {
+              expired++
+              await sub.ref.delete().catch(() => {})
+            }
+          }
+        })
+      )
+    }
+
+    return NextResponse.json({ ok: true, due: due.length, monthly: monthly.length, sent, expired })
   } catch (error) {
     const message = error instanceof Error ? error.message : 'notify failed'
     console.error('Notify failed:', error)

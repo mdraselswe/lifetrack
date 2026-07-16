@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   updateProfile,
@@ -19,7 +19,10 @@ import { confirm } from '@/lib/confirm'
 import AppBar from '@/components/AppBar'
 import Modal, { ActionButton } from '@/components/Modal'
 import { UserIcon, KeyIcon } from '@/components/Icons'
-import { t, useLang } from '@/lib/i18n'
+import { t, useLang, fmtInt } from '@/lib/i18n'
+import { getUserPrefs, setUserPrefs } from '@/lib/storage'
+import { importMyData } from '@/lib/export'
+import { hashPin } from '@/components/AppLock'
 
 // Map Firebase reauth/update errors to scrubbed Bengali/English messages.
 function reauthErrorMessage(code: string): string {
@@ -61,6 +64,16 @@ export default function SettingsPage() {
   const [deletePassword, setDeletePassword] = useState('')
   const [deleting, setDeleting] = useState(false)
 
+  // App lock (PIN)
+  const [pinEnabled, setPinEnabled] = useState(false)
+  const [pin1, setPin1] = useState('')
+  const [pin2, setPin2] = useState('')
+  const [savingPin, setSavingPin] = useState(false)
+
+  // Backup import
+  const [importing, setImporting] = useState(false)
+  const importInputRef = useRef<HTMLInputElement>(null)
+
   useEffect(() => {
     if (loading) return
     if (!user) {
@@ -68,7 +81,56 @@ export default function SettingsPage() {
       return
     }
     setDisplayName(user.displayName || '')
+    getUserPrefs().then((p) => setPinEnabled(!!p.pinHash)).catch(() => {})
   }, [user, loading, router])
+
+  const handleEnablePin = async () => {
+    if (!/^\d{4}$/.test(pin1)) { toast.error(t('lock.invalid')); return }
+    if (pin1 !== pin2) { toast.error(t('lock.mismatch')); return }
+    setSavingPin(true)
+    try {
+      await setUserPrefs({ pinHash: await hashPin(pin1) })
+      try { sessionStorage.setItem('lifetrack-unlocked', '1') } catch { /* ignore */ }
+      setPinEnabled(true)
+      setPin1('')
+      setPin2('')
+      toast.success(t('lock.enabled'))
+    } catch {
+      toast.error(t('lock.saveError'))
+    } finally {
+      setSavingPin(false)
+    }
+  }
+
+  const handleDisablePin = () => {
+    confirm.custom(t('lock.title'), t('lock.disableConfirm'), async () => {
+      try {
+        // null (not undefined) so the write isn't stripped by filterUndefined.
+        await setUserPrefs({ pinHash: null as unknown as string })
+        setPinEnabled(false)
+        toast.success(t('lock.disabled'))
+      } catch {
+        toast.error(t('lock.saveError'))
+      }
+    }, { confirmText: t('lock.disable'), cancelText: t('common.cancel'), type: 'warning' })
+  }
+
+  const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = '' // allow re-picking the same file
+    if (!file) return
+    confirm.custom(t('import.confirmTitle'), t('import.confirmMsg'), async () => {
+      setImporting(true)
+      try {
+        const res = await importMyData(file)
+        toast.success(t('import.success', { debts: fmtInt(res.debts), loans: fmtInt(res.loans), reminders: fmtInt(res.reminders), expenses: fmtInt(res.expenses) }))
+      } catch {
+        toast.error(t('import.error'))
+      } finally {
+        setImporting(false)
+      }
+    }, { confirmText: t('import.action'), cancelText: t('common.cancel'), type: 'info' })
+  }
 
   if (loading || !user) return null
 
@@ -252,6 +314,51 @@ export default function SettingsPage() {
           ) : (
             <p className="text-sm text-muted">{t('settings.googleNoPassword')}</p>
           )}
+        </section>
+
+        {/* App lock (PIN) */}
+        <section className="card space-y-4">
+          <h2 className="text-base font-semibold text-content">{t('lock.title')}</h2>
+          <p className="text-sm text-muted">{t('lock.setDesc')}</p>
+          {pinEnabled ? (
+            <div className="flex justify-end">
+              <button type="button" className="btn btn-secondary" onClick={handleDisablePin}>{t('lock.disable')}</button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="label">{t('lock.newPin')}</label>
+                  <input type="password" inputMode="numeric" maxLength={4} value={pin1} onChange={(e) => setPin1(e.target.value.replace(/\D/g, ''))} className="input" autoComplete="new-password" />
+                </div>
+                <div>
+                  <label className="label">{t('lock.confirmPin')}</label>
+                  <input type="password" inputMode="numeric" maxLength={4} value={pin2} onChange={(e) => setPin2(e.target.value.replace(/\D/g, ''))} className="input" autoComplete="new-password" />
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button type="button" className="btn btn-primary" onClick={handleEnablePin} disabled={savingPin}>{t('lock.enable')}</button>
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Backup import */}
+        <section className="card space-y-4">
+          <h2 className="text-base font-semibold text-content">{t('import.action')}</h2>
+          <p className="text-sm text-muted">{t('import.confirmMsg')}</p>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={handleImportFile}
+          />
+          <div className="flex justify-end">
+            <button type="button" className="btn btn-secondary" onClick={() => importInputRef.current?.click()} disabled={importing}>
+              {importing ? t('import.importing') : t('import.action')}
+            </button>
+          </div>
         </section>
 
         {/* Delete account */}

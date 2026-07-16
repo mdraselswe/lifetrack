@@ -120,4 +120,22 @@ export const loans: Dict = {
   'loans.increaseUpdateMessage': { bn: '{amount} টাকার পরিমাণ বৃদ্ধি আপডেট করবেন?', en: 'Update the increase of ৳{amount}?' },
   'loans.increaseUpdateSuccess': { bn: 'পরিমাণ বৃদ্ধি সফলভাবে আপডেট করা হয়েছে', en: 'Amount increase updated successfully' },
   'loans.increaseUpdateError': { bn: 'পরিমাণ বৃদ্ধি আপডেট করতে সমস্যা হয়েছে', en: 'Failed to update amount increase' },
+
+  // Promise date (কথা দিয়েছি X তারিখ দেব)
+  'loans.promiseDateOptional': { bn: 'প্রতিশ্রুতির তারিখ (ঐচ্ছিক)', en: 'Promised date (optional)' },
+  'loans.promiseChip': { bn: 'কথা দিয়েছি: {date}', en: 'Promised: {date}' },
+  'loans.promiseReminderTitle': { bn: '{name} কে দেওয়ার প্রতিশ্রুতির দিন', en: 'Promised day to pay {name}' },
+  'loans.promiseReminderDesc': { bn: '{name} কে আজ ৳{amount} দেওয়ার কথা', en: 'You promised to pay {name} ৳{amount} today' },
+
+  // WhatsApp
+  'loans.waNudge': { bn: 'আসসালামু আলাইকুম {name}, আপনার ৳{amount} শীঘ্রই ফেরত দেব ইনশাআল্লাহ। ধন্যবাদ।', en: 'Hi {name}, I will repay your ৳{amount} soon. Thanks for your patience.' },
+
+  // কিস্তি (installments)
+  'loans.instCountLabel': { bn: 'কিস্তি সংখ্যা (ঐচ্ছিক)', en: 'Installments (optional)' },
+  'loans.instCountPlaceholder': { bn: 'যেমন: ৪', en: 'e.g., 4' },
+  'loans.instIntervalLabel': { bn: 'কত দিন পরপর', en: 'Every N days' },
+  'loans.instPreview': { bn: '{n}টি কিস্তি × ৳{per}', en: '{n} installments × ৳{per}' },
+  'loans.instReminderTitle': { bn: '{name} — কিস্তি {i}/{n}', en: '{name} — installment {i}/{n}' },
+  'loans.instReminderDesc': { bn: '{name} কে কিস্তি ৳{amount} দেওয়ার দিন', en: 'Pay installment of ৳{amount} to {name}' },
+  'loans.instCreated': { bn: '{n}টি কিস্তির রিমাইন্ডার তৈরি হয়েছে', en: '{n} installment reminders created' },
 }

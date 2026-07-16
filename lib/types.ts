@@ -9,6 +9,10 @@ export interface Reminder {
   // reminder if that debt/loan is deleted.
   sourceId?: string
   sourceType?: 'debt' | 'loan'
+  // Distinguishes which auto-created reminder this is when a debt/loan links
+  // more than one (due date + promise date + installments all share sourceId).
+  // Undefined on older reminders means "due" (the original single-reminder shape).
+  reminderKind?: 'due' | 'promise' | 'installment'
   // Repetitive reminder fields
   isRepetitive?: boolean
   repeatInterval?: number // number of days/weeks/months
@@ -47,26 +51,54 @@ export interface AmountIncrease {
 export interface Debt {
   id: string
   personName: string
+  personPhone?: string // for call / WhatsApp nudge
   amount: number
   reason?: string
   date: string
   dueDate?: string
+  // "কথা দিয়েছে X তারিখ দেবে" — a promised repayment date to follow up on.
+  promiseDate?: string
   returned: boolean
   createdAt: string
   payments?: Payment[]
   increases?: AmountIncrease[]
+  // Soft delete: set instead of removing the doc; purged manually from Trash.
+  deletedAt?: string
 }
 
 export interface Loan {
   id: string
   personName: string
+  personPhone?: string // for call / WhatsApp nudge
   amount: number
   reason?: string
   date: string
   dueDate?: string
+  // "কথা দিয়েছি X তারিখ দেব" — a promised repayment date to follow up on.
+  promiseDate?: string
   returned: boolean
   createdAt: string
   payments?: Payment[]
   increases?: AmountIncrease[]
+  // Soft delete: set instead of removing the doc; purged manually from Trash.
+  deletedAt?: string
+}
+
+// ===== Expenses (daily spending tracker) =====
+export type ExpenseCategory = 'food' | 'transport' | 'bills' | 'shopping' | 'health' | 'education' | 'other'
+
+export interface Expense {
+  id: string
+  amount: number
+  category: ExpenseCategory
+  note?: string
+  date: string // YYYY-MM-DD
+  createdAt: string
+}
+
+// Per-user preferences stored at users/{uid}/meta/prefs.
+export interface UserPrefs {
+  monthlyBudget?: number // expense budget in ৳
+  pinHash?: string // SHA-256 of the app-lock PIN; absent = lock off
 }
 

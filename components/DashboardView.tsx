@@ -21,6 +21,7 @@ import { toast } from '@/lib/toast'
 import {
   ClockIcon, ArrowUpRightIcon, ArrowDownLeftIcon, WalletIcon,
   RotateIcon, PlusCircleIcon, ChartIcon, PlusIcon, CloseIcon, CheckIcon,
+  SearchIcon,
 } from '@/components/Icons'
 
 // datetime-local expects a LOCAL wall-clock string; toISOString() is UTC.
@@ -120,6 +121,8 @@ export default function Dashboard() {
   const startY = useRef<number | null>(null)
   // Home tabs + quick-add (FAB) + quick-payment state
   const [homeTab, setHomeTab] = useState<'debts' | 'loans'>('debts')
+  const [showSearch, setShowSearch] = useState(false)
+  const [searchQ, setSearchQ] = useState('')
   const [fabOpen, setFabOpen] = useState(false)
   const [addType, setAddType] = useState<'debt' | 'loan' | 'reminder' | null>(null)
   const [fName, setFName] = useState('')
@@ -160,8 +163,9 @@ export default function Dashboard() {
       if (seen.has('d') && seen.has('l')) setDataLoading(false)
     }
     const unsubs = [
-      subscribeToDebts(user.uid, (d) => { setDebts(d); arrived('d') }),
-      subscribeToLoans(user.uid, (l) => { setLoans(l); arrived('l') }),
+      // Soft-deleted (trashed) docs are excluded from every dashboard figure.
+      subscribeToDebts(user.uid, (d) => { setDebts(d.filter((x) => !x.deletedAt)); arrived('d') }),
+      subscribeToLoans(user.uid, (l) => { setLoans(l.filter((x) => !x.deletedAt)); arrived('l') }),
       subscribeToReminders(user.uid, (r) => { setReminders(r); arrived('r') }),
     ]
     return () => unsubs.forEach((u) => u())
@@ -418,9 +422,50 @@ export default function Dashboard() {
   const toneText = { pos: 'text-positive', neg: 'text-negative', warn: 'text-caution' } as const
   const toneTint = { pos: 'tint-pos', neg: 'tint-neg', warn: 'tint-warn' } as const
 
+  // ---- Global search (people + reminders) ----
+  const gq = searchQ.trim().toLowerCase()
+  const allPersons = Array.from(new Set([...debts, ...loans].map((x) => x.personName).filter(Boolean)))
+  const searchPersons = gq ? allPersons.filter((n) => n.toLowerCase().includes(gq)).slice(0, 8) : []
+  const searchReminders = gq
+    ? reminders.filter((r) => !r.dismissed && r.title.toLowerCase().includes(gq)).slice(0, 8)
+    : []
+
+  // ---- Insights ----
+  const nowMs = Date.now()
+  const overdueDebts = debts.filter((d) => !d.returned && d.dueDate && new Date(d.dueDate).getTime() < nowMs)
+  const overdueTotal = round2(overdueDebts.reduce((s, d) => s + remainingOf(d), 0))
+  const topDebtor = topDebts[0] // largest outstanding receivable
+
+  // ---- Year in review (current calendar year) ----
+  const yearStart = new Date(new Date().getFullYear(), 0, 1).getTime()
+  const inYear = (v?: string) => {
+    if (!v) return false
+    const ms = new Date(v).getTime()
+    return Number.isFinite(ms) && ms >= yearStart
+  }
+  const yr = {
+    lent: round2(
+      debts.reduce((s, d) => s + (inYear(d.date) ? d.amount || 0 : 0) + (d.increases || []).reduce((a, i) => a + (inYear(i.date) ? i.amount || 0 : 0), 0), 0)
+    ),
+    received: round2(debts.reduce((s, d) => s + (d.payments || []).reduce((a, p) => a + (inYear(p.date) ? p.amount || 0 : 0), 0), 0)),
+    borrowed: round2(
+      loans.reduce((s, l) => s + (inYear(l.date) ? l.amount || 0 : 0) + (l.increases || []).reduce((a, i) => a + (inYear(i.date) ? i.amount || 0 : 0), 0), 0)
+    ),
+    repaid: round2(loans.reduce((s, l) => s + (l.payments || []).reduce((a, p) => a + (inYear(p.date) ? p.amount || 0 : 0), 0), 0)),
+  }
+  const hasYearData = yr.lent > 0 || yr.received > 0 || yr.borrowed > 0 || yr.repaid > 0
+
   return (
     <div className="min-h-full">
-      <AppBar title={<Wordmark size="sm" />} subtitle={`${greeting()}, ${firstName}`} />
+      <AppBar
+        title={<Wordmark size="sm" />}
+        subtitle={`${greeting()}, ${firstName}`}
+        action={
+          <button className="icon-btn" onClick={() => { setShowSearch(true); setSearchQ('') }} aria-label={t('dashboard.searchTitle')}>
+            <SearchIcon className="w-5 h-5" />
+          </button>
+        }
+      />
 
       {/* Pull-to-refresh indicator */}
       <div
@@ -535,6 +580,25 @@ export default function Dashboard() {
                   <p className="text-lg font-bold text-negative">৳{bn(paidThisMonth)}</p>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Insights — quick reads computed from live data */}
+          {(topDebtor || overdueDebts.length > 0) && (
+            <div className="card space-y-2">
+              <p className="text-sm font-semibold text-content">{t('dashboard.insightsTitle')}</p>
+              {topDebtor && (
+                <Link href={`/person/${encodeURIComponent(topDebtor.name)}`} className="flex items-center justify-between text-sm py-1">
+                  <span className="text-muted">{t('dashboard.insightTopDebtor', { name: topDebtor.name })}</span>
+                  <span className="font-semibold text-positive tabular-nums">৳{bn(topDebtor.amount)}</span>
+                </Link>
+              )}
+              {overdueDebts.length > 0 && (
+                <Link href="/debts" className="flex items-center justify-between text-sm py-1">
+                  <span className="text-muted">{t('dashboard.insightOverdue', { count: fmtInt(overdueDebts.length) })}</span>
+                  <span className="font-semibold text-negative tabular-nums">৳{bn(overdueTotal)}</span>
+                </Link>
+              )}
             </div>
           )}
 
@@ -657,6 +721,19 @@ export default function Dashboard() {
             </div>
           )}
 
+          {/* Year in review */}
+          {hasYearData && (
+            <div className="card">
+              <p className="text-sm font-semibold text-content mb-3">{t('dashboard.yearTitle', { year: fmtInt(new Date().getFullYear()) })}</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div><p className="text-xs text-muted mb-0.5">{t('dashboard.yearLent')}</p><p className="text-sm font-bold text-content tabular-nums">৳{bn(yr.lent)}</p></div>
+                <div><p className="text-xs text-muted mb-0.5">{t('dashboard.yearReceived')}</p><p className="text-sm font-bold text-positive tabular-nums">৳{bn(yr.received)}</p></div>
+                <div><p className="text-xs text-muted mb-0.5">{t('dashboard.yearBorrowed')}</p><p className="text-sm font-bold text-content tabular-nums">৳{bn(yr.borrowed)}</p></div>
+                <div><p className="text-xs text-muted mb-0.5">{t('dashboard.yearRepaid')}</p><p className="text-sm font-bold text-negative tabular-nums">৳{bn(yr.repaid)}</p></div>
+              </div>
+            </div>
+          )}
+
           {/* Recent activity feed */}
           {recent.length > 0 && (
             <div className="card">
@@ -705,6 +782,69 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Global search: people across debts/loans + active reminders */}
+      <Modal
+        isOpen={showSearch}
+        onClose={() => setShowSearch(false)}
+        title={t('dashboard.searchTitle')}
+        footerActions={<ActionButton onClick={() => setShowSearch(false)} variant="secondary">{t('common.close')}</ActionButton>}
+      >
+        <div className="space-y-3">
+          <div className="relative">
+            <SearchIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted pointer-events-none" />
+            <input
+              type="text"
+              value={searchQ}
+              onChange={(e) => setSearchQ(e.target.value)}
+              className="input pl-9"
+              placeholder={t('search.placeholder')}
+              autoFocus
+            />
+          </div>
+          {gq && searchPersons.length === 0 && searchReminders.length === 0 && (
+            <p className="text-sm text-muted text-center py-4">{t('search.noResults')}</p>
+          )}
+          {searchPersons.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-muted">{t('dashboard.searchPeople')}</p>
+              {searchPersons.map((n) => (
+                <Link
+                  key={n}
+                  href={`/person/${encodeURIComponent(n)}`}
+                  onClick={() => setShowSearch(false)}
+                  className="flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-sm font-medium text-content"
+                >
+                  <span
+                    className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
+                    style={{ backgroundColor: avatarColor(n).bg, color: avatarColor(n).fg }}
+                  >
+                    {n.charAt(0)}
+                  </span>
+                  {n}
+                </Link>
+              ))}
+            </div>
+          )}
+          {searchReminders.length > 0 && (
+            <div className="space-y-1">
+              <p className="text-xs font-semibold text-muted">{t('nav.reminders')}</p>
+              {searchReminders.map((r) => (
+                <Link
+                  key={r.id}
+                  href="/reminders"
+                  onClick={() => setShowSearch(false)}
+                  className="flex items-center gap-2 rounded-xl bg-surface-2 px-3 py-2 text-sm text-content"
+                >
+                  <ClockIcon className="w-4 h-4 text-accent flex-shrink-0" />
+                  <span className="min-w-0 truncate">{r.title}</span>
+                  <span className="text-xs text-muted ml-auto whitespace-nowrap">{fmtDate(r.scheduledTime)}</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </Modal>
 
       {/* FAB speed-dial — add debt / loan / reminder without leaving home */}
       {fabOpen && <div className="fixed inset-0 z-40" onClick={() => setFabOpen(false)} />}
