@@ -75,7 +75,10 @@ export default function CelebrationContainer() {
       {banner && (
         <div className="absolute left-1/2 top-[30%] -translate-x-1/2 celebrate-banner">
           <div className="rounded-2xl px-5 py-3 shadow-pop text-center max-w-[80vw]" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
-            <p className="text-2xl mb-0.5" aria-hidden="true">🎉</p>
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="mx-auto mb-1" aria-hidden="true">
+              <circle className="check-ring" cx="12" cy="12" r="10" stroke="var(--positive)" strokeWidth="2" strokeLinecap="round" />
+              <path className="check-draw" d="M7.5 12.5l3 3 6-6.5" stroke="var(--positive)" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
             <p className="text-sm font-semibold text-content">{banner.text}</p>
           </div>
         </div>

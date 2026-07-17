@@ -587,7 +587,7 @@ export default function Dashboard() {
           {overdue.length > 0 ? (
             <Link href="/reminders" className="card card-interactive bar-neg flex items-center gap-3 py-3">
               <span className="tint-neg text-negative w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0">
-                <ClockIcon className="w-5 h-5" />
+                <ClockIcon className="w-5 h-5 bell-wiggle" />
               </span>
               <span className="text-sm text-content flex-1">
                 {t('dashboard.overdueReminders', { count: fmtInt(overdue.length) })}
@@ -699,7 +699,7 @@ export default function Dashboard() {
           {/* Empty state */}
           {isEmpty && (
             <div className="card flex flex-col items-center text-center py-8 gap-3">
-              <MoneyIllustration className="w-52 h-36" />
+              <MoneyIllustration className="w-52 h-36 ill-float" />
               <div>
                 <p className="text-base font-semibold text-content">{t('dashboard.noRecords')}</p>
                 <p className="text-sm text-muted mt-1">{t('dashboard.startHint')}</p>
@@ -1030,7 +1030,7 @@ export default function Dashboard() {
           aria-label={t('common.add')}
           aria-expanded={fabOpen}
         >
-          {fabOpen ? <CloseIcon className="w-6 h-6" /> : <PlusIcon className="w-6 h-6" />}
+          <PlusIcon className={`w-6 h-6 transition-transform duration-200 ${fabOpen ? 'rotate-45' : ''}`} />
         </button>
       </div>
 

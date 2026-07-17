@@ -460,7 +460,7 @@ export default function ExpensesPage() {
           <ListSkeleton count={3} />
         ) : monthExpenses.length === 0 ? (
           <div className="text-center py-16">
-            <MoneyIllustration className="w-56 h-40 mx-auto mb-2" />
+            <MoneyIllustration className="w-56 h-40 mx-auto mb-2 ill-float" />
             <h3 className="text-base font-semibold text-content mb-1">{t('expenses.emptyTitle')}</h3>
             <p className="text-sm text-muted mb-5">{t('expenses.emptyDesc')}</p>
             <button onClick={openAddForm} className="btn btn-primary mx-auto">

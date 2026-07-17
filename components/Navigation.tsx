@@ -47,7 +47,7 @@ export default function Navigation() {
                 className="flex items-center justify-center h-8 w-16 rounded-full transition-colors duration-200"
                 style={isActive ? { backgroundColor: 'color-mix(in srgb, var(--accent) 15%, transparent)' } : undefined}
               >
-                <Icon className="w-6 h-6" />
+                <Icon className={`w-6 h-6 ${isActive ? 'nav-pop' : ''}`} />
               </span>
               <span className={`text-[11px] leading-none ${isActive ? 'font-semibold' : 'font-medium'}`}>{t(labelKey)}</span>
             </Link>

@@ -1416,7 +1416,7 @@ export default function LoansPage() {
           <ListSkeleton count={3} />
         ) : loans.length === 0 ? (
           <div className="text-center py-16">
-            <MoneyIllustration tone="neg" className="w-56 h-40 mx-auto mb-2" />
+            <MoneyIllustration tone="neg" className="w-56 h-40 mx-auto mb-2 ill-float" />
             <h3 className="text-base font-semibold text-content mb-1">{t('loans.emptyTitle')}</h3>
             <p className="text-sm text-muted mb-5">{t('loans.emptyDesc')}</p>
             <button onClick={() => setShowForm(true)} className="btn btn-primary mx-auto">
