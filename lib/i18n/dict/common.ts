@@ -134,7 +134,7 @@ export const common: Dict = {
   'lock.saveError': { bn: 'পিন সংরক্ষণে সমস্যা হয়েছে', en: 'Could not save PIN' },
   'lock.forgot': { bn: 'পিন ভুলে গেছেন? লগআউট করুন', en: 'Forgot PIN? Log out' },
   'lock.forgotTitle': { bn: 'লগআউট করবেন?', en: 'Log out?' },
-  'lock.forgotMsg': { bn: 'পিন ভুলে গেলে লগআউট করে আবার লগইন করুন, তারপর সেটিংস থেকে পিন পরিবর্তন বা বন্ধ করুন। আপনার ডেটা নিরাপদ থাকবে।', en: 'If you forgot your PIN, log out and sign back in, then change or disable the PIN from Settings. Your data stays safe.' },
+  'lock.forgotMsg': { bn: 'অ্যাপ লক বন্ধ করে লগআউট করা হবে। আবার লগইন করলে পিন চাইবে না — চাইলে সেটিংস থেকে নতুন পিন সেট করতে পারবেন। আপনার ডেটা নিরাপদ থাকবে।', en: 'This turns off the app lock and logs you out. You will not be asked for a PIN on next login — set a new one from Settings if you want. Your data stays safe.' },
 
   // Backup import
   'import.action': { bn: 'ডেটা ইমপোর্ট (JSON)', en: 'Import data (JSON)' },

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '@/lib/firebase-auth'
-import { getUserPrefs } from '@/lib/storage'
+import { getUserPrefs, setUserPrefs } from '@/lib/storage'
 import { t, useLang } from '@/lib/i18n'
 import { haptic } from '@/lib/haptics'
 import { confirm } from '@/lib/confirm'
@@ -70,16 +70,19 @@ export default function AppLock() {
     }
   }
 
-  // Escape hatch for a forgotten PIN: the gate covers the whole app (incl.
-  // Settings/Logout), so without this the user would be locked out entirely.
-  // Logging out clears the session and returns to /login, where they can sign
-  // back in and reset or disable the PIN from Settings.
+  // Escape hatch for a forgotten PIN. The gate covers the whole app (incl.
+  // Settings/Logout), and the pinHash lives in Firebase — so just logging out
+  // would re-lock on the next login (an inescapable loop). We DISABLE the lock
+  // (clear pinHash) first, then log out. Security is unaffected: the real
+  // boundary is the account password required to log back in; the PIN is only a
+  // convenience gate. After re-login the user can set a new PIN in Settings.
   const handleForgot = () => {
     confirm.custom(
       t('lock.forgotTitle'),
       t('lock.forgotMsg'),
       async () => {
         try {
+          await setUserPrefs({ pinHash: null as unknown as string })
           try { sessionStorage.removeItem(UNLOCK_KEY) } catch { /* ignore */ }
           await logout()
           setLocked(false)
