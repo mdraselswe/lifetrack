@@ -22,7 +22,7 @@ import { UserIcon, KeyIcon } from '@/components/Icons'
 import { t, useLang, fmtInt } from '@/lib/i18n'
 import { getUserPrefs, setUserPrefs } from '@/lib/storage'
 import { importMyData } from '@/lib/export'
-import { hashPin } from '@/components/AppLock'
+import { hashPin, PIN_HASH_KEY } from '@/components/AppLock'
 import PinInput from '@/components/PinInput'
 
 // Map Firebase reauth/update errors to scrubbed Bengali/English messages.
@@ -94,8 +94,11 @@ export default function SettingsPage() {
     if (pin1 !== confirmPin) { toast.error(t('lock.mismatch')); return }
     setSavingPin(true)
     try {
-      await setUserPrefs({ pinHash: await hashPin(pin1) })
+      const hash = await hashPin(pin1)
+      await setUserPrefs({ pinHash: hash })
       try { sessionStorage.setItem('lifetrack-unlocked', '1') } catch { /* ignore */ }
+      // Cache the hint so the gate can show instantly on next open (no flash).
+      try { localStorage.setItem(PIN_HASH_KEY, hash) } catch { /* ignore */ }
       setPinEnabled(true)
       setPin1('')
       setPin2('')
@@ -112,6 +115,7 @@ export default function SettingsPage() {
       try {
         // null (not undefined) so the write isn't stripped by filterUndefined.
         await setUserPrefs({ pinHash: null as unknown as string })
+        try { localStorage.removeItem(PIN_HASH_KEY) } catch { /* ignore */ }
         setPinEnabled(false)
         toast.success(t('lock.disabled'))
       } catch {

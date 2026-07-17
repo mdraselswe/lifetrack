@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import { useAuth } from '@/lib/firebase-auth'
 import { getUserPrefs, setUserPrefs } from '@/lib/storage'
 import { t, useLang } from '@/lib/i18n'
@@ -17,6 +17,11 @@ export const hashPin = async (pin: string): Promise<string> => {
 }
 
 const UNLOCK_KEY = 'lifetrack-unlocked'
+// A lightweight "a PIN is set" hint cached locally so the gate can show BEFORE
+// the async Firebase prefs load — otherwise the app content (dashboard) flashes
+// for a moment before the lock appears. It's just the hash (already stored in
+// Firebase); the real secret is the PIN itself. Kept in sync on enable/disable.
+export const PIN_HASH_KEY = 'lifetrack-pin-hash'
 
 // Full-screen PIN gate. Shows when the signed-in user has a pinHash in prefs
 // and this browser session hasn't been unlocked yet. Session-scoped: closing
@@ -29,8 +34,25 @@ export default function AppLock() {
   const [pin, setPin] = useState('')
   const [error, setError] = useState(false)
 
+  // Optimistic lock BEFORE first paint (no dashboard flash): if a PIN hint is
+  // cached and this session isn't unlocked, show the gate immediately. The async
+  // effect below reconciles with Firebase (and unlocks if there's no user or the
+  // PIN was disabled elsewhere). Runs client-only, so no SSR/localStorage issue.
+  useLayoutEffect(() => {
+    try {
+      const hash = localStorage.getItem(PIN_HASH_KEY)
+      const unlocked = sessionStorage.getItem(UNLOCK_KEY) === '1'
+      if (hash && !unlocked) {
+        setExpected(hash)
+        setLocked(true)
+      }
+    } catch { /* ignore */ }
+  }, [])
+
   useEffect(() => {
     if (!user) {
+      // Logged out (e.g. login page) — never gate; the cached hint applies only
+      // once signed back in and re-synced below.
       setLocked(false)
       return
     }
@@ -39,13 +61,19 @@ export default function AppLock() {
       .then((prefs) => {
         if (cancelled) return
         const unlocked = sessionStorage.getItem(UNLOCK_KEY) === '1'
-        if (prefs.pinHash && !unlocked) {
+        if (prefs.pinHash) {
+          try { localStorage.setItem(PIN_HASH_KEY, prefs.pinHash) } catch { /* ignore */ }
           setExpected(prefs.pinHash)
-          setLocked(true)
+          setLocked(!unlocked)
+        } else {
+          // PIN disabled (possibly on another device) — clear the stale hint.
+          try { localStorage.removeItem(PIN_HASH_KEY) } catch { /* ignore */ }
+          setExpected(null)
+          setLocked(false)
         }
       })
       .catch(() => {
-        // Prefs unreadable (offline first launch) — don't lock the user out.
+        // Prefs unreadable (offline) — keep whatever the cached hint decided.
       })
     return () => { cancelled = true }
   }, [user])
@@ -80,6 +108,7 @@ export default function AppLock() {
         try {
           await setUserPrefs({ pinHash: null as unknown as string })
           try { sessionStorage.removeItem(UNLOCK_KEY) } catch { /* ignore */ }
+          try { localStorage.removeItem(PIN_HASH_KEY) } catch { /* ignore */ }
           await logout()
           setLocked(false)
         } catch {
