@@ -23,6 +23,7 @@ import { t, useLang, fmtInt } from '@/lib/i18n'
 import { getUserPrefs, setUserPrefs } from '@/lib/storage'
 import { importMyData } from '@/lib/export'
 import { hashPin } from '@/components/AppLock'
+import PinInput from '@/components/PinInput'
 
 // Map Firebase reauth/update errors to scrubbed Bengali/English messages.
 function reauthErrorMessage(code: string): string {
@@ -325,16 +326,14 @@ export default function SettingsPage() {
               <button type="button" className="btn btn-secondary" onClick={handleDisablePin}>{t('lock.disable')}</button>
             </div>
           ) : (
-            <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="label">{t('lock.newPin')}</label>
-                  <input type="password" inputMode="numeric" maxLength={4} value={pin1} onChange={(e) => setPin1(e.target.value.replace(/\D/g, ''))} className="input" autoComplete="new-password" />
-                </div>
-                <div>
-                  <label className="label">{t('lock.confirmPin')}</label>
-                  <input type="password" inputMode="numeric" maxLength={4} value={pin2} onChange={(e) => setPin2(e.target.value.replace(/\D/g, ''))} className="input" autoComplete="new-password" />
-                </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <label className="label">{t('lock.newPin')}</label>
+                <PinInput value={pin1} onChange={setPin1} ariaLabel={t('lock.newPin')} />
+              </div>
+              <div className="space-y-2">
+                <label className="label">{t('lock.confirmPin')}</label>
+                <PinInput value={pin2} onChange={setPin2} onComplete={() => handleEnablePin()} ariaLabel={t('lock.confirmPin')} />
               </div>
               <div className="flex justify-end">
                 <button type="button" className="btn btn-primary" onClick={handleEnablePin} disabled={savingPin}>{t('lock.enable')}</button>

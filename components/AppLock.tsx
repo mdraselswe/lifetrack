@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/firebase-auth'
 import { getUserPrefs, setUserPrefs } from '@/lib/storage'
 import { t, useLang } from '@/lib/i18n'
@@ -8,6 +8,7 @@ import { haptic } from '@/lib/haptics'
 import { confirm } from '@/lib/confirm'
 import { toast } from '@/lib/toast'
 import Wordmark from '@/components/Wordmark'
+import PinInput from '@/components/PinInput'
 
 // SHA-256 hex of a PIN string (WebCrypto — no deps).
 export const hashPin = async (pin: string): Promise<string> => {
@@ -27,7 +28,6 @@ export default function AppLock() {
   const [expected, setExpected] = useState<string | null>(null)
   const [pin, setPin] = useState('')
   const [error, setError] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!user) {
@@ -49,10 +49,6 @@ export default function AppLock() {
       })
     return () => { cancelled = true }
   }, [user])
-
-  useEffect(() => {
-    if (locked) setTimeout(() => inputRef.current?.focus(), 50)
-  }, [locked])
 
   const tryUnlock = async (value: string) => {
     if (!expected || value.length < 4) return
@@ -100,21 +96,13 @@ export default function AppLock() {
     <div className="fixed inset-0 z-[10050] flex flex-col items-center justify-center gap-6 p-6" style={{ backgroundColor: 'var(--bg)' }}>
       <Wordmark size="lg" />
       <p className="text-sm text-muted">{t('lock.enter')}</p>
-      <input
-        ref={inputRef}
-        type="password"
-        inputMode="numeric"
-        autoComplete="off"
-        maxLength={4}
+      <PinInput
         value={pin}
-        onChange={(e) => {
-          const v = e.target.value.replace(/\D/g, '')
-          setPin(v)
-          setError(false)
-          if (v.length === 4) tryUnlock(v)
-        }}
-        className={`input text-center text-2xl tracking-[0.5em] w-44 ${error ? 'input-error' : ''}`}
-        aria-label={t('lock.enter')}
+        onChange={(v) => { setPin(v); setError(false) }}
+        onComplete={(v) => tryUnlock(v)}
+        error={error}
+        autoFocus
+        ariaLabel={t('lock.enter')}
       />
       {error && <p className="text-sm text-negative">{t('lock.wrong')}</p>}
       <button onClick={handleForgot} className="text-sm text-muted underline underline-offset-2 mt-2">
