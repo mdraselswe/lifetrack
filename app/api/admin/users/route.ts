@@ -77,20 +77,22 @@ export async function GET(request: Request) {
 
     // Firestore usage counts per uid (admin SDK bypasses rules; preferRest set).
     const db = getAdminDb()
-    const usage = new Map<string, { debts: number; loans: number; reminders: number }>()
-    const bump = (uid: string, k: 'debts' | 'loans' | 'reminders') => {
-      const u = usage.get(uid) || { debts: 0, loans: 0, reminders: 0 }
+    const usage = new Map<string, { debts: number; loans: number; reminders: number; expenses: number }>()
+    const bump = (uid: string, k: 'debts' | 'loans' | 'reminders' | 'expenses') => {
+      const u = usage.get(uid) || { debts: 0, loans: 0, reminders: 0, expenses: 0 }
       u[k]++
       usage.set(uid, u)
     }
-    const [debtsSnap, loansSnap, remindersSnap] = await Promise.all([
+    const [debtsSnap, loansSnap, remindersSnap, expensesSnap] = await Promise.all([
       db.collectionGroup('debts').get(),
       db.collectionGroup('loans').get(),
       db.collectionGroup('reminders').get(),
+      db.collectionGroup('expenses').get(),
     ])
     debtsSnap.docs.forEach((d) => { const uid = d.ref.parent.parent?.id; if (uid) bump(uid, 'debts') })
     loansSnap.docs.forEach((d) => { const uid = d.ref.parent.parent?.id; if (uid) bump(uid, 'loans') })
     remindersSnap.docs.forEach((d) => { const uid = d.ref.parent.parent?.id; if (uid) bump(uid, 'reminders') })
+    expensesSnap.docs.forEach((d) => { const uid = d.ref.parent.parent?.id; if (uid) bump(uid, 'expenses') })
 
     const list = users
       .map((u) => ({
@@ -102,7 +104,7 @@ export async function GET(request: Request) {
         provider: u.providerUserInfo?.[0]?.providerId || 'password',
         createdAt: Number(u.createdAt || 0),
         lastLoginAt: Number(u.lastLoginAt || 0),
-        counts: usage.get(u.localId) || { debts: 0, loans: 0, reminders: 0 },
+        counts: usage.get(u.localId) || { debts: 0, loans: 0, reminders: 0, expenses: 0 },
       }))
       .sort((a, b) => b.lastLoginAt - a.lastLoginAt)
 

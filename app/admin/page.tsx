@@ -23,7 +23,7 @@ type AdminUser = {
   provider: string
   createdAt: number
   lastLoginAt: number
-  counts: { debts: number; loans: number; reminders: number }
+  counts: { debts: number; loans: number; reminders: number; expenses: number }
 }
 
 export default function AdminPage() {
@@ -241,10 +241,11 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 text-[11px] text-muted">
+                  <div className="flex items-center gap-2 flex-wrap text-[11px] text-muted">
                     <span className="chip">{t('nav.given')} {fmtInt(u.counts.debts)}</span>
                     <span className="chip">{t('nav.taken')} {fmtInt(u.counts.loans)}</span>
                     <span className="chip">{t('nav.reminders')} {fmtInt(u.counts.reminders)}</span>
+                    <span className="chip">{t('nav.expenses')} {fmtInt(u.counts.expenses)}</span>
                   </div>
                 </div>
               ))}
