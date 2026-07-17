@@ -131,12 +131,12 @@ export const loans: Dict = {
   'loans.intervalMonthly': { bn: 'মাসিক', en: 'Monthly' },
   'loans.intervalCustom': { bn: 'কাস্টম', en: 'Custom' },
 
-  // "আবার মনে করিয়ে দিন" — follow-up promise reminder (card action, not a form field)
-  'loans.promiseCta': { bn: 'আবার মনে করিয়ে দিন', en: 'Remind me again' },
-  'loans.promiseChip': { bn: 'মনে করাবে: {date}', en: 'Reminder: {date}' },
-  'loans.promiseModalTitle': { bn: 'আবার কবে মনে করাব?', en: 'Remind again when?' },
-  'loans.promiseModalLabel': { bn: 'তারিখ', en: 'Date' },
-  'loans.promiseModalHelp': { bn: 'আপনি নতুন করে যে দিন-সময় দেবেন বলেছেন, ঠিক তখন মনে করিয়ে দেব', en: "We'll remind you at the date & time you now promise" },
+  // Follow-up reminder for when the money is due to repay (card action, not a form field)
+  'loans.promiseCta': { bn: 'পরিশোধের রিমাইন্ডার', en: 'Repayment reminder' },
+  'loans.promiseChip': { bn: 'মনে করাব: {date}', en: 'Reminder: {date}' },
+  'loans.promiseModalTitle': { bn: 'কবে মনে করিয়ে দেব?', en: 'When should I remind you?' },
+  'loans.promiseModalLabel': { bn: 'তারিখ ও সময়', en: 'Date & time' },
+  'loans.promiseModalHelp': { bn: 'যে দিন-সময়ে ফেরত দেওয়ার কথা, ঠিক তখন মনে করিয়ে দেব', en: "We'll remind you exactly when you need to repay" },
   'loans.promiseSave': { bn: 'সেট করুন', en: 'Set' },
   'loans.promiseSet': { bn: 'মনে করানোর তারিখ সেট হয়েছে', en: 'Reminder date set' },
   'loans.promiseClear': { bn: 'মুছুন', en: 'Clear' },
