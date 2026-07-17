@@ -85,9 +85,13 @@ export default function SettingsPage() {
     getUserPrefs().then((p) => setPinEnabled(!!p.pinHash)).catch(() => {})
   }, [user, loading, router])
 
-  const handleEnablePin = async () => {
+  // confirmValue lets the confirm field's onComplete pass its just-typed value
+  // directly — reading pin2 from state here would be stale (setPin2 hasn't
+  // re-rendered yet when onComplete fires on the 4th digit).
+  const handleEnablePin = async (confirmValue?: string) => {
+    const confirmPin = confirmValue ?? pin2
     if (!/^\d{4}$/.test(pin1)) { toast.error(t('lock.invalid')); return }
-    if (pin1 !== pin2) { toast.error(t('lock.mismatch')); return }
+    if (pin1 !== confirmPin) { toast.error(t('lock.mismatch')); return }
     setSavingPin(true)
     try {
       await setUserPrefs({ pinHash: await hashPin(pin1) })
@@ -333,10 +337,10 @@ export default function SettingsPage() {
               </div>
               <div className="space-y-2">
                 <label className="label">{t('lock.confirmPin')}</label>
-                <PinInput value={pin2} onChange={setPin2} onComplete={() => handleEnablePin()} ariaLabel={t('lock.confirmPin')} />
+                <PinInput value={pin2} onChange={setPin2} onComplete={(v) => handleEnablePin(v)} ariaLabel={t('lock.confirmPin')} />
               </div>
               <div className="flex justify-end">
-                <button type="button" className="btn btn-primary" onClick={handleEnablePin} disabled={savingPin}>{t('lock.enable')}</button>
+                <button type="button" className="btn btn-primary" onClick={() => handleEnablePin()} disabled={savingPin}>{t('lock.enable')}</button>
               </div>
             </div>
           )}
