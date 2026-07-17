@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState, useRef, type ComponentType } from 'react'
-import { subscribeToDebts, subscribeToLoans, subscribeToReminders, saveDebt, saveLoan, saveReminder, addDebtPayment, addLoanPayment, deleteRemindersForSource } from '@/lib/storage'
-import type { Debt, Loan, Reminder, Payment } from '@/lib/types'
+import { subscribeToDebts, subscribeToLoans, subscribeToReminders, saveDebt, saveLoan, saveReminder, saveExpense, addDebtPayment, addLoanPayment, deleteRemindersForSource } from '@/lib/storage'
+import type { Debt, Loan, Reminder, Payment, Expense, ExpenseCategory } from '@/lib/types'
+import { CATEGORY_COLORS, CATEGORIES } from '@/lib/expense-categories'
 import Link from 'next/link'
 import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
@@ -27,6 +28,8 @@ import {
 // datetime-local expects a LOCAL wall-clock string; toISOString() is UTC.
 const localDatetimeValue = (d = new Date()) =>
   new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+const localDateValue = (d = new Date()) =>
+  new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10)
 
 const bn = (n: number) => fmtNum(round2(n))
 
@@ -123,7 +126,7 @@ export default function Dashboard() {
   const [showSearch, setShowSearch] = useState(false)
   const [searchQ, setSearchQ] = useState('')
   const [fabOpen, setFabOpen] = useState(false)
-  const [addType, setAddType] = useState<'debt' | 'loan' | 'reminder' | null>(null)
+  const [addType, setAddType] = useState<'debt' | 'loan' | 'reminder' | 'expense' | null>(null)
   const [fName, setFName] = useState('')
   const [fAmount, setFAmount] = useState('')
   const [fReason, setFReason] = useState('')
@@ -133,6 +136,11 @@ export default function Dashboard() {
   const [rTitle, setRTitle] = useState('')
   const [rDesc, setRDesc] = useState('')
   const [rTime, setRTime] = useState('')
+  // Expense quick-add
+  const [eAmount, setEAmount] = useState('')
+  const [eCategory, setECategory] = useState<ExpenseCategory | null>(null)
+  const [eNote, setENote] = useState('')
+  const [eDate, setEDate] = useState('')
   const [payFor, setPayFor] = useState<{ kind: 'debt' | 'loan'; id: string } | null>(null)
   const [payAmount, setPayAmount] = useState('')
   const [payDate, setPayDate] = useState('')
@@ -199,16 +207,37 @@ export default function Dashboard() {
     if (/^\d*\.?\d*$/.test(v)) setter(v)
   }
 
-  const openAdd = (type: 'debt' | 'loan' | 'reminder') => {
+  const openAdd = (type: 'debt' | 'loan' | 'reminder' | 'expense') => {
     setFabOpen(false)
     setFName(''); setFAmount(''); setFReason(''); setFDueDate(''); setFReminderLead('onTime')
     setFDate(localDatetimeValue())
     setRTitle(''); setRDesc(''); setRTime(localDatetimeValue())
+    setEAmount(''); setECategory(null); setENote(''); setEDate(localDateValue())
     setAddType(type)
   }
 
   const handleQuickAdd = () => {
     if (savingRef.current) return
+    if (addType === 'expense') {
+      const amt = parseFloat(eAmount)
+      if (!Number.isFinite(amt) || amt <= 0) { toast.error(t('expenses.errAmount')); return }
+      if (!eCategory) { toast.error(t('expenses.errCategory')); return }
+      if (!eDate) { toast.error(t('expenses.errDate')); return }
+      savingRef.current = true; setSaving(true)
+      const expense: Expense = {
+        id: '',
+        amount: round2(amt),
+        category: eCategory,
+        note: eNote || undefined,
+        date: eDate,
+        createdAt: new Date().toISOString(),
+      }
+      saveExpense(expense).catch((e) => { console.error(e); toast.error(t('expenses.addError')) })
+      setAddType(null)
+      savingRef.current = false; setSaving(false)
+      toast.success(t('expenses.addSuccess'))
+      return
+    }
     if (addType === 'reminder') {
       if (!rTitle || !rTime) { toast.error(t('reminders.titleTimeRequired')); return }
       savingRef.current = true; setSaving(true)
@@ -827,6 +856,9 @@ export default function Dashboard() {
       <div className="fixed z-50 flex flex-col items-end gap-2" style={{ right: '1.25rem', bottom: 'calc(5rem + env(safe-area-inset-bottom))' }}>
         {fabOpen && (
           <>
+            <button className="btn btn-secondary shadow-pop dial-item" onClick={() => openAdd('expense')}>
+              <WalletIcon className="w-4 h-4 text-negative" /> {t('nav.expenses')}
+            </button>
             <button className="btn btn-secondary shadow-pop dial-item" onClick={() => openAdd('reminder')}>
               <ClockIcon className="w-4 h-4 text-accent" /> {t('nav.reminders')}
             </button>
@@ -912,6 +944,48 @@ export default function Dashboard() {
           <div>
             <label className="label label-required">{t('reminders.fieldTime')}</label>
             <input type="datetime-local" value={rTime} onChange={(e) => setRTime(e.target.value)} className="input" />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Quick add: expense */}
+      <Modal
+        isOpen={addType === 'expense'}
+        onClose={() => setAddType(null)}
+        title={t('expenses.addNew')}
+        footerActions={<>
+          <ActionButton onClick={() => setAddType(null)} variant="secondary">{t('common.cancel')}</ActionButton>
+          <ActionButton onClick={handleQuickAdd} variant="primary" loading={saving}>{t('common.save')}</ActionButton>
+        </>}
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="label label-required">{t('expenses.amountLabel')}</label>
+            <input type="text" inputMode="decimal" value={eAmount} onChange={numChange(setEAmount)} className="input" placeholder={t('expenses.zeroPlaceholder')} />
+          </div>
+          <div>
+            <label className="label label-required">{t('expenses.categoryLabel')}</label>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORIES.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setECategory(c)}
+                  className={`chip ${eCategory === c ? 'chip-accent' : ''}`}
+                >
+                  <span className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle" style={{ backgroundColor: CATEGORY_COLORS[c] }} aria-hidden="true" />
+                  {t(`expenses.cat.${c}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className="label">{t('expenses.noteOptional')}</label>
+            <input type="text" value={eNote} onChange={(e) => setENote(e.target.value)} className="input" placeholder={t('expenses.notePlaceholder')} />
+          </div>
+          <div>
+            <label className="label label-required">{t('common.date')}</label>
+            <input type="date" value={eDate} onChange={(e) => setEDate(e.target.value)} className="input" />
           </div>
         </div>
       </Modal>

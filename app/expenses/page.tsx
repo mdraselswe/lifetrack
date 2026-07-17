@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef, type FormEvent } from 'react'
 import { subscribeToExpenses, saveExpense, updateExpense, deleteExpense, getUserPrefs, setUserPrefs } from '@/lib/storage'
 import type { Expense, ExpenseCategory } from '@/lib/types'
+import { CATEGORY_COLORS, CATEGORIES } from '@/lib/expense-categories'
 import { t, useLang, fmtNum, fmtInt, fmtDate } from '@/lib/i18n'
 import { toast } from '@/lib/toast'
 import { confirm } from '@/lib/confirm'
@@ -16,21 +17,6 @@ import { MoneyIllustration } from '@/components/Illustrations'
 
 const bn = (n: number) => fmtNum(n)
 
-// 7 distinct category colors (dots, bars)
-const CATEGORY_COLORS: Record<ExpenseCategory, string> = {
-  food: '#f97316', // orange
-  groceries: '#84cc16', // lime
-  transport: '#3b82f6', // blue
-  bills: '#eab308', // yellow
-  rent: '#14b8a6', // teal
-  mobile: '#06b6d4', // cyan
-  shopping: '#ec4899', // pink
-  health: '#10b981', // emerald
-  education: '#8b5cf6', // violet
-  entertainment: '#d946ef', // fuchsia
-  other: '#64748b', // slate
-}
-const CATEGORIES = Object.keys(CATEGORY_COLORS) as ExpenseCategory[]
 const catLabel = (c: ExpenseCategory) => t(`expenses.cat.${c}`)
 
 // Local (not UTC) YYYY-MM-DD — <input type="date"> expects a local wall-clock value.
