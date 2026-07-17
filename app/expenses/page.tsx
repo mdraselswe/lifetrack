@@ -11,7 +11,7 @@ import { useAuth } from '@/lib/firebase-auth'
 import { useRouter } from 'next/navigation'
 import { ListSkeleton } from '@/components/SkeletonLoader'
 import AppBar from '@/components/AppBar'
-import { WalletIcon, ChartIcon, PlusIcon, EditIcon, TrashIcon } from '@/components/Icons'
+import { WalletIcon, ChartIcon, PlusIcon, EditIcon, TrashIcon, ChevronDownIcon } from '@/components/Icons'
 import { MoneyIllustration } from '@/components/Illustrations'
 
 const bn = (n: number) => fmtNum(n)
@@ -52,6 +52,7 @@ export default function ExpensesPage() {
   const [view, setView] = useState<'month' | 'year'>('month')
   const [budget, setBudget] = useState<number | null>(null)
   const [filterCat, setFilterCat] = useState<'all' | ExpenseCategory>('all')
+  const [showAnalytics, setShowAnalytics] = useState(false) // trend + breakdown collapsed by default
 
   // Add/edit modal state
   const [showForm, setShowForm] = useState(false)
@@ -310,8 +311,7 @@ export default function ExpensesPage() {
     .sort((a, b) => b.total - a.total)
   const breakdownMax = breakdown.length > 0 ? breakdown[0].total : 0
 
-  // ---- Insight line: top category + biggest single expense ----
-  const topCat = breakdown[0] || null
+  // ---- Biggest single expense (shown in the summary card) ----
   const biggest = monthExpenses.reduce<Expense | null>((max, e) => (!max || e.amount > max.amount ? e : max), null)
 
   // Budget tile numbers (monthly budget → only meaningful in month view)
@@ -444,69 +444,31 @@ export default function ExpensesPage() {
           )}
         </div>
 
-        {/* Metrics strip: daily average, month-end projection, budget pace */}
+        {/* Compact summary: daily avg · projection · budget pace + biggest expense.
+            (Top category isn't shown here — it's the first row of the breakdown.) */}
         {monthExpenses.length > 0 && (
-          <div className="card flex flex-wrap items-center gap-x-4 gap-y-1.5 py-3 text-xs">
-            {view === 'month' && (
-              <span className="text-muted">{t('expenses.dailyAvg')}: <span className="font-semibold text-content tabular-nums">৳{bn(dailyAvg)}</span></span>
-            )}
-            {projection !== null && (
-              <span className="text-muted">{t(view === 'year' ? 'expenses.projectedYear' : 'expenses.projected')}: <span className="font-semibold text-content tabular-nums">৳{bn(projection)}</span></span>
-            )}
-            {budgetActive && isCurrentPeriod && (
-              <span className={burningFast ? 'text-negative font-medium' : 'text-muted'}>
-                {t('expenses.pace', { elapsed: fmtInt(monthElapsedPct), spent: fmtInt(budgetRawPct) })}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Insight line: biggest category + biggest single expense */}
-        {monthExpenses.length > 0 && (topCat || biggest) && (
-          <div className="card py-2.5 space-y-1">
-            {topCat && (
-              <button onClick={() => setFilterCat(topCat.category)} className="flex items-center justify-between w-full text-xs">
-                <span className="text-muted">{t('expenses.topCategory')}</span>
-                <span className="font-medium text-content flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: CATEGORY_COLORS[topCat.category] }} aria-hidden="true" />
-                  {catLabel(topCat.category)} · ৳{bn(topCat.total)}
+          <div className="card py-3 space-y-2 text-xs">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+              {view === 'month' && (
+                <span className="text-muted">{t('expenses.dailyAvg')}: <span className="font-semibold text-content tabular-nums">৳{bn(dailyAvg)}</span></span>
+              )}
+              {projection !== null && (
+                <span className="text-muted">{t(view === 'year' ? 'expenses.projectedYear' : 'expenses.projected')}: <span className="font-semibold text-content tabular-nums">৳{bn(projection)}</span></span>
+              )}
+              {budgetActive && isCurrentPeriod && (
+                <span className={burningFast ? 'text-negative font-medium' : 'text-muted'}>
+                  {t('expenses.pace', { elapsed: fmtInt(monthElapsedPct), spent: fmtInt(budgetRawPct) })}
                 </span>
-              </button>
-            )}
+              )}
+            </div>
             {biggest && (
-              <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center justify-between border-t border-line pt-2">
                 <span className="text-muted">{t('expenses.biggestExpense')}</span>
                 <span className="font-medium text-content truncate ml-2">{biggest.note || catLabel(biggest.category)} · ৳{bn(biggest.amount)}</span>
               </div>
             )}
           </div>
         )}
-
-        {/* Category filter chips */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <button
-            type="button"
-            onClick={() => setFilterCat('all')}
-            className={`chip ${filterCat === 'all' ? 'chip-accent' : ''}`}
-          >
-            {t('expenses.filterAll')}
-          </button>
-          {CATEGORIES.map((c) => (
-            <button
-              key={c}
-              type="button"
-              onClick={() => setFilterCat(c)}
-              className={`chip ${filterCat === c ? 'chip-accent' : ''}`}
-            >
-              <span
-                className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle"
-                style={{ backgroundColor: CATEGORY_COLORS[c] }}
-                aria-hidden="true"
-              />
-              {catLabel(c)}
-            </button>
-          ))}
-        </div>
 
         {dataLoading ? (
           <ListSkeleton count={3} />
@@ -521,6 +483,21 @@ export default function ExpensesPage() {
           </div>
         ) : (
           <>
+            {/* Analytics (trend + breakdown) — collapsed by default so the default
+                view stays clean; expand to see the chart and per-category split. */}
+            {(breakdown.length > 0 || (view === 'month' && trendMax > 0)) && (
+              <button
+                type="button"
+                onClick={() => setShowAnalytics((v) => !v)}
+                className="card w-full flex items-center justify-between py-3"
+                aria-expanded={showAnalytics}
+              >
+                <span className="text-sm font-semibold text-content">{t('common.details')}</span>
+                <ChevronDownIcon className={`w-5 h-5 text-muted transition-transform ${showAnalytics ? 'rotate-180' : ''}`} />
+              </button>
+            )}
+            {showAnalytics && (
+            <>
             {/* Last 6 months trend chart (month view) — spending rising or falling */}
             {view === 'month' && trendMax > 0 && (
               <div className="card">
@@ -582,6 +559,17 @@ export default function ExpensesPage() {
                   })}
                 </div>
               </div>
+            )}
+            </>
+            )}
+
+            {/* Active category filter — the breakdown that sets it lives in the
+                collapsible analytics above, so keep a visible way to clear it. */}
+            {filterCat !== 'all' && (
+              <button type="button" onClick={() => setFilterCat('all')} className="chip chip-accent">
+                <span className="inline-block w-2 h-2 rounded-full mr-1.5 align-middle" style={{ backgroundColor: CATEGORY_COLORS[filterCat] }} aria-hidden="true" />
+                {catLabel(filterCat)} ✕
+              </button>
             )}
 
             {/* Expense list grouped by date */}
