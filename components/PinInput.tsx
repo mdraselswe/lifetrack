@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, type KeyboardEvent, type ClipboardEvent } from 'react'
+import { useEffect, useRef, type KeyboardEvent, type ClipboardEvent } from 'react'
 
 interface PinInputProps {
   value: string
@@ -25,7 +25,17 @@ export default function PinInput({
   ariaLabel,
 }: PinInputProps) {
   const refs = useRef<(HTMLInputElement | null)[]>([])
+  const prevLen = useRef(value.length)
   const digits = Array.from({ length }, (_, i) => value[i] || '')
+
+  // When the value is cleared after being filled (e.g. a wrong PIN blanks the
+  // boxes), return focus to the first box so the user can retype immediately.
+  useEffect(() => {
+    if (value.length === 0 && prevLen.current > 0) {
+      refs.current[0]?.focus()
+    }
+    prevLen.current = value.length
+  }, [value])
 
   const focusBox = (i: number) => {
     const el = refs.current[i]
