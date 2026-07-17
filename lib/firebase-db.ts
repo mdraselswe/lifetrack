@@ -377,6 +377,18 @@ export const setUserPrefs = async (userId: string, updates: Partial<UserPrefs>):
   }
 }
 
+// Permanently delete every document this user owns — all collections plus the
+// prefs doc. Used by account deletion; must run while the user is still
+// authenticated so Firestore rules permit the writes.
+export const deleteAllUserData = async (userId: string): Promise<void> => {
+  const cols = ['debts', 'loans', 'reminders', 'expenses', 'pushSubscriptions']
+  for (const c of cols) {
+    const snap = await getDocs(getUserCollection(userId, c))
+    await Promise.all(snap.docs.map((d) => deleteDoc(d.ref).catch(() => {})))
+  }
+  await deleteDoc(doc(db, 'users', userId, 'meta', 'prefs')).catch(() => {})
+}
+
 // ===== REALTIME LISTENERS =====
 export const subscribeToDebts = (userId: string, callback: (debts: Debt[]) => void) => {
   const debtsRef = getUserCollection(userId, 'debts')

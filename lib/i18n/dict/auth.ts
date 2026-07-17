@@ -115,13 +115,13 @@ export const auth: Dict = {
   },
   'settings.deleteAccount': { bn: 'অ্যাকাউন্ট মুছে ফেলুন', en: 'Delete account' },
   'settings.deleteNote': {
-    bn: 'এটি শুধুমাত্র আপনার লগইন অ্যাকাউন্ট মুছে ফেলবে। আপনার সংরক্ষিত ডেটা (দেনা, পাওনা, রিমাইন্ডার) আলাদাভাবে মুছতে হবে — মুছে ফেলার আগে ডেটা এক্সপোর্ট করে রাখুন।',
-    en: 'This only deletes your login account. Your saved data (debts, loans, reminders) must be removed separately — export your data before deleting.',
+    bn: 'এটি আপনার অ্যাকাউন্ট এবং সব সংরক্ষিত ডেটা (পাওনা, দেনা, রিমাইন্ডার, খরচ) স্থায়ীভাবে মুছে ফেলবে। এটি ফিরিয়ে আনা যাবে না — মুছে ফেলার আগে অবশ্যই ডেটা এক্সপোর্ট করে রাখুন।',
+    en: 'This permanently deletes your account and all saved data (debts, loans, reminders, expenses). It cannot be undone — export your data first.',
   },
   'settings.deleteConfirmTitle': { bn: 'অ্যাকাউন্ট মুছবেন?', en: 'Delete account?' },
   'settings.deleteConfirmMsg': {
-    bn: 'এই কাজটি ফিরিয়ে আনা যাবে না। আপনি কি নিশ্চিত যে অ্যাকাউন্ট মুছে ফেলতে চান?',
-    en: 'This action cannot be undone. Are you sure you want to delete your account?',
+    bn: 'আপনার অ্যাকাউন্ট ও সব ডেটা স্থায়ীভাবে মুছে যাবে — এটি ফিরিয়ে আনা যাবে না। আপনি কি নিশ্চিত?',
+    en: 'Your account and all your data will be permanently deleted — this cannot be undone. Are you sure?',
   },
   'settings.deleteReauthMsg': {
     bn: 'নিরাপত্তার জন্য অ্যাকাউন্ট মুছতে আপনার বর্তমান পাসওয়ার্ড নিশ্চিত করুন।',

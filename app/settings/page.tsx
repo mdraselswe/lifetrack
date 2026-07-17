@@ -20,7 +20,7 @@ import AppBar from '@/components/AppBar'
 import Modal, { ActionButton } from '@/components/Modal'
 import { UserIcon, KeyIcon } from '@/components/Icons'
 import { t, useLang, fmtInt, fmtDate } from '@/lib/i18n'
-import { getUserPrefs, setUserPrefs } from '@/lib/storage'
+import { getUserPrefs, setUserPrefs, deleteAllMyData } from '@/lib/storage'
 import { importMyData } from '@/lib/export'
 import { hashPin, PIN_HASH_KEY } from '@/components/AppLock'
 import PinInput from '@/components/PinInput'
@@ -237,9 +237,15 @@ export default function SettingsPage() {
     }
   }
 
-  // After successful reauth, actually delete the auth user, then log out.
+  // After successful reauth: wipe all Firestore data (while still authenticated),
+  // clear local hints, then delete the auth user and log out.
   const finishDelete = async () => {
     if (!auth.currentUser) return
+    // Delete data FIRST — after deleteUser there's no auth to satisfy the rules,
+    // which would leave the data orphaned forever.
+    try { await deleteAllMyData() } catch { /* best-effort; still delete the account */ }
+    try { sessionStorage.removeItem('lifetrack-unlocked') } catch { /* ignore */ }
+    try { localStorage.removeItem(PIN_HASH_KEY) } catch { /* ignore */ }
     await deleteUser(auth.currentUser)
     toast.success(t('settings.accountDeleted'))
     await logout()

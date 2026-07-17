@@ -20,6 +20,7 @@ import {
   deleteExpense as deleteFirebaseExpense,
   getUserPrefs as getFirebaseUserPrefs,
   setUserPrefs as setFirebaseUserPrefs,
+  deleteAllUserData as deleteFirebaseAllUserData,
   subscribeToDebts,
   subscribeToLoans,
   subscribeToReminders
@@ -351,6 +352,15 @@ export const setUserPrefs = async (updates: Partial<UserPrefs>): Promise<void> =
   const userId = await resolveUserId()
   if (!userId) throw new Error('User must be logged in to update settings')
   await setFirebaseUserPrefs(userId, updates)
+}
+
+// Permanently delete ALL of the current user's stored data. Call while still
+// authenticated (e.g. right before deleting the auth account).
+export const deleteAllMyData = async (): Promise<void> => {
+  if (!isBrowser) return
+  const userId = await resolveUserId()
+  if (!userId) return
+  await deleteFirebaseAllUserData(userId)
 }
 
 // ===== Soft delete (Trash) for debts/loans =====
