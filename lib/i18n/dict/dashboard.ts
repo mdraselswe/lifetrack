@@ -59,6 +59,14 @@ export const dashboard: Dict = {
   'dashboard.searchTitle': { bn: 'খুঁজুন', en: 'Search' },
   'dashboard.searchPeople': { bn: 'ব্যক্তি', en: 'People' },
 
+  // First-run checklist
+  'dashboard.checklistTitle': { bn: 'শুরু করুন', en: 'Get started' },
+  'dashboard.checklistProgress': { bn: '{done}/{total} সম্পন্ন', en: '{done}/{total} done' },
+  'dashboard.checkRecord': { bn: 'প্রথম হিসাব যোগ করুন', en: 'Add your first record' },
+  'dashboard.checkExpense': { bn: 'প্রথম খরচ যোগ করুন', en: 'Add your first expense' },
+  'dashboard.checkBudget': { bn: 'মাসিক বাজেট সেট করুন', en: 'Set a monthly budget' },
+  'dashboard.checkNotif': { bn: 'নোটিফিকেশন চালু করুন', en: 'Enable notifications' },
+
   // Smart nudge (single prioritized tip)
   'dashboard.nudgeOverBudget': { bn: 'বাজেটের চেয়ে ৳{amount} বেশি খরচ হয়েছে — খরচ দেখুন', en: 'You are ৳{amount} over budget — review spending' },
   'dashboard.nudgeOverdue': { bn: '{count}টি পাওনা মেয়াদোত্তীর্ণ (৳{amount}) — তাগাদা দিন', en: '{count} receivables overdue (৳{amount}) — follow up' },

@@ -118,6 +118,8 @@ export default function Dashboard() {
   const [reminders, setReminders] = useState<Reminder[]>([])
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [budget, setBudget] = useState<number | null>(null)
+  const [notifGranted, setNotifGranted] = useState(true) // assume ok until checked (avoids flash)
+  const [checklistDismissed, setChecklistDismissed] = useState(true)
   const [mounted, setMounted] = useState(false)
   const [dataLoading, setDataLoading] = useState(true)
   const [pull, setPull] = useState(0)
@@ -179,6 +181,10 @@ export default function Dashboard() {
       subscribeToExpenses(user.uid, (e) => setExpenses(e)),
     ]
     getUserPrefs().then((p) => setBudget(p.monthlyBudget ?? null)).catch(() => {})
+    try {
+      setNotifGranted(typeof Notification !== 'undefined' && Notification.permission === 'granted')
+      setChecklistDismissed(localStorage.getItem('lifetrack-checklist-done') === '1')
+    } catch { /* ignore */ }
     return () => unsubs.forEach((u) => u())
   }, [user, loading, router])
 
@@ -500,6 +506,20 @@ export default function Dashboard() {
     return null
   })()
 
+  // ---- First-run checklist: guide new users through the core setup ----
+  const checklist = [
+    { key: 'record', done: debts.length > 0 || loans.length > 0, label: t('dashboard.checkRecord'), action: () => openAdd('debt') },
+    { key: 'expense', done: expenses.length > 0, label: t('dashboard.checkExpense'), action: () => openAdd('expense') },
+    { key: 'budget', done: budget != null, label: t('dashboard.checkBudget'), action: () => router.push('/expenses') },
+    { key: 'notif', done: notifGranted, label: t('dashboard.checkNotif'), action: () => router.push('/reminders') },
+  ]
+  const checklistDone = checklist.filter((c) => c.done).length
+  const showChecklist = !checklistDismissed && checklistDone < checklist.length
+  const dismissChecklist = () => {
+    setChecklistDismissed(true)
+    try { localStorage.setItem('lifetrack-checklist-done', '1') } catch { /* ignore */ }
+  }
+
   // ---- Year in review (current calendar year) ----
   const yearStart = new Date(new Date().getFullYear(), 0, 1).getTime()
   const yearEnd = new Date(new Date().getFullYear() + 1, 0, 1).getTime()
@@ -623,6 +643,40 @@ export default function Dashboard() {
               <span className="text-sm text-content flex-1 min-w-0">{nudge.text}</span>
               <span className="text-muted flex-shrink-0" aria-hidden="true">›</span>
             </Link>
+          )}
+
+          {/* First-run checklist — guides new users; dismissable, auto-hides when done */}
+          {showChecklist && (
+            <div className="card space-y-3">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-content">{t('dashboard.checklistTitle')}</p>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted tabular-nums">{t('dashboard.checklistProgress', { done: fmtInt(checklistDone), total: fmtInt(checklist.length) })}</span>
+                  <button onClick={dismissChecklist} className="icon-btn w-7 h-7" aria-label={t('common.close')}>
+                    <CloseIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                <div className="h-full rounded-full bg-accent transition-all" style={{ width: `${Math.round((checklistDone / checklist.length) * 100)}%` }} />
+              </div>
+              <div className="space-y-1">
+                {checklist.map((c) => (
+                  <button
+                    key={c.key}
+                    onClick={c.done ? undefined : c.action}
+                    disabled={c.done}
+                    className={`w-full flex items-center gap-3 py-2 text-left text-sm ${c.done ? 'text-muted' : 'text-content'}`}
+                  >
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${c.done ? 'bg-positive text-white' : 'border-2 border-line'}`}>
+                      {c.done && <CheckIcon className="w-3.5 h-3.5" />}
+                    </span>
+                    <span className={`flex-1 min-w-0 ${c.done ? 'line-through' : ''}`}>{c.label}</span>
+                    {!c.done && <span className="text-muted flex-shrink-0" aria-hidden="true">›</span>}
+                  </button>
+                ))}
+              </div>
+            </div>
           )}
 
           {/* Empty state */}
