@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useRef, type ComponentType } from 'react'
-import { subscribeToDebts, subscribeToLoans, subscribeToReminders, saveDebt, saveLoan, saveReminder, saveExpense, addDebtPayment, addLoanPayment, deleteRemindersForSource } from '@/lib/storage'
+import { subscribeToDebts, subscribeToLoans, subscribeToReminders, subscribeToExpenses, getUserPrefs, saveDebt, saveLoan, saveReminder, saveExpense, addDebtPayment, addLoanPayment, deleteRemindersForSource } from '@/lib/storage'
 import type { Debt, Loan, Reminder, Payment, Expense, ExpenseCategory } from '@/lib/types'
 import { CATEGORY_COLORS, CATEGORIES } from '@/lib/expense-categories'
 import Link from 'next/link'
@@ -116,6 +116,8 @@ export default function Dashboard() {
   const [debts, setDebts] = useState<Debt[]>([])
   const [loans, setLoans] = useState<Loan[]>([])
   const [reminders, setReminders] = useState<Reminder[]>([])
+  const [expenses, setExpenses] = useState<Expense[]>([])
+  const [budget, setBudget] = useState<number | null>(null)
   const [mounted, setMounted] = useState(false)
   const [dataLoading, setDataLoading] = useState(true)
   const [pull, setPull] = useState(0)
@@ -174,7 +176,9 @@ export default function Dashboard() {
       subscribeToDebts(user.uid, (d) => { setDebts(d.filter((x) => !x.deletedAt)); arrived('d') }),
       subscribeToLoans(user.uid, (l) => { setLoans(l.filter((x) => !x.deletedAt)); arrived('l') }),
       subscribeToReminders(user.uid, (r) => { setReminders(r); arrived('r') }),
+      subscribeToExpenses(user.uid, (e) => setExpenses(e)),
     ]
+    getUserPrefs().then((p) => setBudget(p.monthlyBudget ?? null)).catch(() => {})
     return () => unsubs.forEach((u) => u())
   }, [user, loading, router])
 
@@ -465,6 +469,17 @@ export default function Dashboard() {
   const overdueTotal = round2(overdueDebts.reduce((s, d) => s + remainingOf(d), 0))
   const topDebtor = topDebts[0] // largest outstanding receivable
 
+  // ---- This-month expenses (compact home card) ----
+  const nowDate = new Date()
+  const monthPrefix = `${nowDate.getFullYear()}-${String(nowDate.getMonth() + 1).padStart(2, '0')}`
+  const prevD = new Date(nowDate.getFullYear(), nowDate.getMonth() - 1, 1)
+  const prevMonthPrefix = `${prevD.getFullYear()}-${String(prevD.getMonth() + 1).padStart(2, '0')}`
+  const expThisMonth = round2(expenses.filter((e) => e.date?.startsWith(monthPrefix)).reduce((s, e) => s + (e.amount || 0), 0))
+  const expPrevMonth = round2(expenses.filter((e) => e.date?.startsWith(prevMonthPrefix)).reduce((s, e) => s + (e.amount || 0), 0))
+  const expTrendPct = expPrevMonth > 0 ? Math.round(((expThisMonth - expPrevMonth) / expPrevMonth) * 100) : null
+  const expBudgetPct = budget && budget > 0 ? Math.min(100, Math.round((expThisMonth / budget) * 100)) : null
+  const expBudgetOver = budget != null && budget > 0 && expThisMonth > budget
+
   // ---- Year in review (current calendar year) ----
   const yearStart = new Date(new Date().getFullYear(), 0, 1).getTime()
   const yearEnd = new Date(new Date().getFullYear() + 1, 0, 1).getTime()
@@ -664,6 +679,40 @@ export default function Dashboard() {
                 </div>
               </div>
             </div>
+          )}
+
+          {/* This month's spending — compact; taps through to the expenses page */}
+          {expThisMonth > 0 && (
+            <Link href="/expenses" className="card card-interactive flex items-center gap-3 py-3">
+              <span className="w-10 h-10 rounded-full tint-neg text-negative flex items-center justify-center flex-shrink-0">
+                <WalletIcon className="w-5 h-5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-sm text-muted">{t('expenses.title')} · {t('dashboard.thisMonth')}</span>
+                  <span className="text-base font-bold text-content tabular-nums">৳{bn(expThisMonth)}</span>
+                </div>
+                {expBudgetPct != null ? (
+                  <div className="mt-1.5">
+                    <div className="h-1.5 rounded-full bg-surface-2 overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${expBudgetOver ? 'bg-negative' : expBudgetPct >= 80 ? 'bg-caution' : 'bg-positive'}`}
+                        style={{ width: `${expBudgetPct}%` }}
+                      />
+                    </div>
+                    <p className={`text-[11px] mt-1 ${expBudgetOver ? 'text-negative font-medium' : 'text-muted'}`}>
+                      {expBudgetOver
+                        ? t('expenses.overBudget', { amount: bn(round2(expThisMonth - (budget || 0))) })
+                        : t('expenses.budgetUsed', { pct: fmtInt(expBudgetPct) })}
+                    </p>
+                  </div>
+                ) : expTrendPct !== null && expTrendPct !== 0 ? (
+                  <p className={`text-[11px] mt-1 font-medium ${expTrendPct > 0 ? 'text-negative' : 'text-positive'}`}>
+                    {expTrendPct > 0 ? '↑' : '↓'} {t('expenses.trendMonth', { pct: fmtInt(Math.abs(expTrendPct)) })}
+                  </p>
+                ) : null}
+              </div>
+            </Link>
           )}
 
           {/* Insights — quick reads computed from live data */}
