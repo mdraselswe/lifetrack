@@ -24,6 +24,7 @@ import { getUserPrefs, setUserPrefs, deleteAllMyData } from '@/lib/storage'
 import { importMyData } from '@/lib/export'
 import { hashPin, PIN_HASH_KEY } from '@/components/AppLock'
 import PinInput from '@/components/PinInput'
+import AccentPicker from '@/components/AccentPicker'
 import { runBackup, disconnectBackup, isBackupConfigured, preloadBackup } from '@/lib/google-backup'
 
 // Map Firebase reauth/update errors to scrubbed Bengali/English messages.
@@ -302,6 +303,12 @@ export default function SettingsPage() {
       <AppBar title={t('settings.title')} back />
 
       <main className="p-4 space-y-4 max-w-lg mx-auto w-full safe-area-bottom">
+        {/* Appearance — accent theme */}
+        <section className="card space-y-4">
+          <h2 className="text-base font-semibold text-content">{t('settings.themeColor')}</h2>
+          <AccentPicker />
+        </section>
+
         {/* Profile */}
         <section className="card space-y-4">
           <div className="flex items-center gap-2">

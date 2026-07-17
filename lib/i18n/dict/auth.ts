@@ -100,6 +100,7 @@ export const auth: Dict = {
 
   // ---- Settings / account management (app/settings/page.tsx) ----
   'settings.title': { bn: 'সেটিংস', en: 'Settings' },
+  'settings.themeColor': { bn: 'থিম রঙ', en: 'Theme color' },
   'settings.profile': { bn: 'প্রোফাইল', en: 'Profile' },
   'settings.displayName': { bn: 'নাম', en: 'Display name' },
   'settings.saveName': { bn: 'নাম সংরক্ষণ করুন', en: 'Save name' },
