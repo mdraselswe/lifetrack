@@ -238,6 +238,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
+      // Drop any in-memory Google backup token so the next user can't reuse it.
+      try { const { clearBackupToken } = await import('./google-backup'); clearBackupToken() } catch { /* ignore */ }
       await signOut(auth)
     } catch (error: any) {
       throw new Error(t('auth.error.logout'))

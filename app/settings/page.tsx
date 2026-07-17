@@ -243,8 +243,16 @@ export default function SettingsPage() {
   const finishDelete = async () => {
     if (!auth.currentUser) return
     // Delete data FIRST — after deleteUser there's no auth to satisfy the rules,
-    // which would leave the data orphaned forever.
-    try { await deleteAllMyData() } catch { /* best-effort; still delete the account */ }
+    // which would leave the data orphaned forever. If the wipe fails, ABORT (do
+    // NOT delete the account) so the user can retry rather than lose access to
+    // still-present data.
+    try {
+      await deleteAllMyData()
+    } catch (e) {
+      console.error('Data wipe failed; aborting account deletion:', e)
+      toast.error(t('settings.error.generic'))
+      return
+    }
     try { sessionStorage.removeItem('lifetrack-unlocked') } catch { /* ignore */ }
     try { localStorage.removeItem(PIN_HASH_KEY) } catch { /* ignore */ }
     await deleteUser(auth.currentUser)

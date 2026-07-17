@@ -28,8 +28,8 @@ export default function AccentPicker() {
             key={a.key}
             type="button"
             onClick={() => pick(a.key)}
-            className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform active:scale-90 ${active ? 'ring-2 ring-offset-2 ring-offset-[color:var(--surface)]' : ''}`}
-            style={{ backgroundColor: a.dot, ...(active ? { boxShadow: `0 0 0 2px ${a.dot}` } : {}) }}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-transform active:scale-90 ${active ? 'ring-2 ring-offset-2 ring-offset-[color:var(--surface)] ring-[color:var(--text)]' : ''}`}
+            style={{ backgroundColor: a.dot }}
             aria-label={lang === 'bn' ? a.labelBn : a.labelEn}
             aria-pressed={active}
             title={lang === 'bn' ? a.labelBn : a.labelEn}

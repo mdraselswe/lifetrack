@@ -30,7 +30,11 @@ interface TokenClient { requestAccessToken: (opts?: { prompt?: string }) => void
 let gisLoaded: Promise<void> | null = null
 let tokenClient: TokenClient | null = null
 let cached: { token: string; expiresAt: number } | null = null
+let consented = false // once the user has granted, refresh silently (no consent screen)
 let pending: { resolve: (t: string) => void; reject: (e: Error) => void } | null = null
+
+// Clear the in-memory token — call on logout so a different user can't reuse it.
+export const clearBackupToken = (): void => { cached = null; consented = false }
 
 const loadGis = (): Promise<void> => {
   if (gisLoaded) return gisLoaded
@@ -60,6 +64,7 @@ const ensureClient = async () => {
         pending?.reject(new Error(resp.error || 'No access token'))
       } else {
         cached = { token: resp.access_token, expiresAt: Date.now() + (resp.expires_in || 3600) * 1000 }
+        consented = true
         pending?.resolve(resp.access_token)
       }
       pending = null
@@ -89,7 +94,9 @@ const getToken = async (interactive: boolean): Promise<string> => {
   await ensureClient()
   return new Promise<string>((resolve, reject) => {
     pending = { resolve, reject }
-    tokenClient!.requestAccessToken({ prompt: 'consent' })
+    // First grant needs the consent screen; afterwards refresh silently so
+    // "Sync now" doesn't re-prompt every time.
+    tokenClient!.requestAccessToken({ prompt: consented ? '' : 'consent' })
   })
 }
 
@@ -100,7 +107,11 @@ const api = async (url: string, token: string, init?: RequestInit) => {
     ...init,
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json', ...(init?.headers || {}) },
   })
-  if (!res.ok) throw new Error(`Sheets API ${res.status}: ${await res.text().catch(() => '')}`)
+  if (!res.ok) {
+    const err = new Error(`Sheets API ${res.status}: ${await res.text().catch(() => '')}`) as Error & { status?: number }
+    err.status = res.status
+    throw err
+  }
   return res.json()
 }
 
@@ -164,13 +175,16 @@ export const runBackup = async (interactive: boolean): Promise<BackupResult> => 
 
   let sheetId = prefs.backupSheetId
   let sheetUrl = prefs.backupSheetUrl || ''
-  // Verify the stored sheet still exists (user may have deleted it); recreate if gone.
+  // Verify the stored sheet still exists (user may have deleted it); recreate
+  // ONLY on a definite 404. A transient 429/500/network error must NOT orphan
+  // the real sheet by pointing prefs at a fresh empty one — rethrow those.
   if (sheetId) {
     try {
       const meta = await api(`https://sheets.googleapis.com/v4/spreadsheets/${sheetId}?fields=spreadsheetUrl`, token)
       sheetUrl = meta.spreadsheetUrl || sheetUrl
-    } catch {
-      sheetId = undefined
+    } catch (e) {
+      if ((e as { status?: number }).status === 404) sheetId = undefined
+      else throw e
     }
   }
   if (!sheetId) {

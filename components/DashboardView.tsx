@@ -188,6 +188,21 @@ export default function Dashboard() {
     return () => unsubs.forEach((u) => u())
   }, [user, loading, router])
 
+  // The checklist is onboarding for NEW users only. The first time this build
+  // runs for an account that ALREADY has data (an upgrade), mark it done so
+  // established users never get the getting-started card.
+  useEffect(() => {
+    if (dataLoading) return
+    try {
+      if (localStorage.getItem('lifetrack-checklist-seen')) return
+      localStorage.setItem('lifetrack-checklist-seen', '1')
+      if (debts.length > 0 || loans.length > 0 || expenses.length > 0) {
+        localStorage.setItem('lifetrack-checklist-done', '1')
+        setChecklistDismissed(true)
+      }
+    } catch { /* ignore */ }
+  }, [dataLoading, debts.length, loans.length, expenses.length])
+
   // Pull-to-refresh (mobile) — only engages when scrolled to the very top.
   const onTouchStart = (e: React.TouchEvent) => {
     startY.current = window.scrollY <= 0 && !refreshing ? e.touches[0].clientY : null
@@ -242,10 +257,11 @@ export default function Dashboard() {
         date: eDate,
         createdAt: new Date().toISOString(),
       }
-      saveExpense(expense).catch((e) => { console.error(e); toast.error(t('expenses.addError')) })
-      setAddType(null)
+      saveExpense(expense)
+        .then(() => toast.success(t('expenses.addSuccess')))
+        .catch((e) => { console.error(e); toast.error(t('expenses.addError')) })
+      setAddType(null) // optimistic close
       savingRef.current = false; setSaving(false)
-      toast.success(t('expenses.addSuccess'))
       return
     }
     if (addType === 'reminder') {
@@ -494,14 +510,15 @@ export default function Dashboard() {
     const top = Object.entries(by).sort((a, b) => b[1] - a[1])[0]
     return top ? { category: top[0], total: round2(top[1]) } : null
   })()
+  // Over-budget and overdue already have dedicated cards (expense card turns red;
+  // insights lists overdue) — so the nudge only covers signals NOT shown elsewhere,
+  // to avoid echoing the same warning twice on one screen.
   const nudge: { text: string; href: string; tone: 'neg' | 'accent' } | null = (() => {
-    // 1) Over budget — most urgent money signal.
-    if (expBudgetOver) return { text: t('dashboard.nudgeOverBudget', { amount: bn(round2(expThisMonth - (budget || 0))) }), href: '/expenses', tone: 'neg' }
-    // 2) Overdue money to collect.
-    if (overdueDebts.length > 0) return { text: t('dashboard.nudgeOverdue', { count: fmtInt(overdueDebts.length), amount: bn(overdueTotal) }), href: '/debts', tone: 'neg' }
-    // 3) Budget burning faster than the month is passing.
-    if (expBudgetPct != null && monthElapsedPct > 0 && expBudgetPct > monthElapsedPct + 15) return { text: t('dashboard.nudgeBudgetPace', { spent: fmtInt(expBudgetPct), elapsed: fmtInt(monthElapsedPct) }), href: '/expenses', tone: 'neg' }
-    // 4) Where the money goes — gentle insight.
+    // Budget burning faster than the month is passing (only when not already over).
+    if (!expBudgetOver && expBudgetPct != null && monthElapsedPct > 0 && expBudgetPct > monthElapsedPct + 15) {
+      return { text: t('dashboard.nudgeBudgetPace', { spent: fmtInt(expBudgetPct), elapsed: fmtInt(monthElapsedPct) }), href: '/expenses', tone: 'neg' }
+    }
+    // Where the money goes — gentle insight.
     if (topSpendCat && expThisMonth > 0) return { text: t('dashboard.nudgeTopCat', { cat: t(`expenses.cat.${topSpendCat.category}`), amount: bn(topSpendCat.total) }), href: '/expenses', tone: 'accent' }
     return null
   })()

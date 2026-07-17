@@ -382,11 +382,13 @@ export const setUserPrefs = async (userId: string, updates: Partial<UserPrefs>):
 // authenticated so Firestore rules permit the writes.
 export const deleteAllUserData = async (userId: string): Promise<void> => {
   const cols = ['debts', 'loans', 'reminders', 'expenses', 'pushSubscriptions']
+  // Throw if ANY deletion fails — the caller must NOT delete the auth account
+  // when data remains, or the data is orphaned forever (rules need the auth).
   for (const c of cols) {
     const snap = await getDocs(getUserCollection(userId, c))
-    await Promise.all(snap.docs.map((d) => deleteDoc(d.ref).catch(() => {})))
+    await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)))
   }
-  await deleteDoc(doc(db, 'users', userId, 'meta', 'prefs')).catch(() => {})
+  await deleteDoc(doc(db, 'users', userId, 'meta', 'prefs'))
 }
 
 // ===== REALTIME LISTENERS =====
