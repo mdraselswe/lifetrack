@@ -19,11 +19,12 @@ import { confirm } from '@/lib/confirm'
 import AppBar from '@/components/AppBar'
 import Modal, { ActionButton } from '@/components/Modal'
 import { UserIcon, KeyIcon } from '@/components/Icons'
-import { t, useLang, fmtInt } from '@/lib/i18n'
+import { t, useLang, fmtInt, fmtDate } from '@/lib/i18n'
 import { getUserPrefs, setUserPrefs } from '@/lib/storage'
 import { importMyData } from '@/lib/export'
 import { hashPin, PIN_HASH_KEY } from '@/components/AppLock'
 import PinInput from '@/components/PinInput'
+import { runBackup, disconnectBackup, isBackupConfigured } from '@/lib/google-backup'
 
 // Map Firebase reauth/update errors to scrubbed Bengali/English messages.
 function reauthErrorMessage(code: string): string {
@@ -75,6 +76,11 @@ export default function SettingsPage() {
   const [importing, setImporting] = useState(false)
   const importInputRef = useRef<HTMLInputElement>(null)
 
+  // Google Sheet backup (user-owned)
+  const [backupUrl, setBackupUrl] = useState<string | null>(null)
+  const [lastBackupAt, setLastBackupAt] = useState<string | null>(null)
+  const [backupBusy, setBackupBusy] = useState(false)
+
   useEffect(() => {
     if (loading) return
     if (!user) {
@@ -82,8 +88,53 @@ export default function SettingsPage() {
       return
     }
     setDisplayName(user.displayName || '')
-    getUserPrefs().then((p) => setPinEnabled(!!p.pinHash)).catch(() => {})
+    getUserPrefs().then((p) => {
+      setPinEnabled(!!p.pinHash)
+      setBackupUrl(p.backupSheetId ? (p.backupSheetUrl || '') : null)
+      setLastBackupAt(p.lastBackupAt || null)
+    }).catch(() => {})
   }, [user, loading, router])
+
+  const handleConnectBackup = async () => {
+    setBackupBusy(true)
+    try {
+      const r = await runBackup(true) // interactive: shows the Google consent popup
+      setBackupUrl(r.url)
+      setLastBackupAt(r.at)
+      toast.success(t('gbackup.connected'))
+    } catch {
+      toast.error(t('gbackup.error'))
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  const handleSyncBackup = async () => {
+    setBackupBusy(true)
+    try {
+      const r = await runBackup(true)
+      setBackupUrl(r.url)
+      setLastBackupAt(r.at)
+      toast.success(t('gbackup.synced'))
+    } catch {
+      toast.error(t('gbackup.error'))
+    } finally {
+      setBackupBusy(false)
+    }
+  }
+
+  const handleDisconnectBackup = () => {
+    confirm.custom(t('gbackup.disconnectTitle'), t('gbackup.disconnectMsg'), async () => {
+      try {
+        await disconnectBackup()
+        setBackupUrl(null)
+        setLastBackupAt(null)
+        toast.success(t('gbackup.disconnected'))
+      } catch {
+        toast.error(t('gbackup.error'))
+      }
+    }, { confirmText: t('gbackup.disconnect'), cancelText: t('common.cancel'), type: 'warning' })
+  }
 
   // confirmValue lets the confirm field's onComplete pass its just-typed value
   // directly — reading pin2 from state here would be stale (setPin2 hasn't
@@ -367,6 +418,40 @@ export default function SettingsPage() {
             </button>
           </div>
         </section>
+
+        {/* Google Sheet backup (user-owned readable copy) */}
+        {isBackupConfigured() && (
+          <section className="card space-y-4">
+            <h2 className="text-base font-semibold text-content">{t('gbackup.title')}</h2>
+            <p className="text-sm text-muted">{t('gbackup.desc')}</p>
+            {backupUrl === null ? (
+              <div className="flex justify-end">
+                <button type="button" className="btn btn-primary" onClick={handleConnectBackup} disabled={backupBusy}>
+                  {backupBusy ? t('gbackup.working') : t('gbackup.connect')}
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {lastBackupAt && (
+                  <p className="text-xs text-muted">{t('gbackup.lastSynced', { time: fmtDate(lastBackupAt, true) })}</p>
+                )}
+                <div className="flex flex-wrap gap-2 justify-end">
+                  {backupUrl && (
+                    <a href={backupUrl} target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
+                      {t('gbackup.open')}
+                    </a>
+                  )}
+                  <button type="button" className="btn btn-secondary" onClick={handleSyncBackup} disabled={backupBusy}>
+                    {backupBusy ? t('gbackup.working') : t('gbackup.syncNow')}
+                  </button>
+                  <button type="button" className="btn btn-ghost text-negative" onClick={handleDisconnectBackup} disabled={backupBusy}>
+                    {t('gbackup.disconnect')}
+                  </button>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
 
         {/* Delete account */}
         <section className="card space-y-4">

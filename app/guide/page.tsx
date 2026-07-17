@@ -171,11 +171,13 @@ const SECTIONS: Section[] = [
     icon: <DownloadIcon className="w-5 h-5" />,
     title: { bn: 'ব্যাকআপ (এক্সপোর্ট/ইমপোর্ট)', en: 'Backup (export/import)' },
     intro: {
-      bn: 'সব ডেটা একটি JSON ফাইলে রাখুন বা ফিরিয়ে আনুন।',
-      en: 'Save all your data to a JSON file, or restore it.',
+      bn: 'আপনার ডেটার নিজস্ব কপি রাখুন — যাতে যেকোনো পরিস্থিতিতে ডেটা নিরাপদ থাকে।',
+      en: 'Keep your own copy of your data — so it stays safe no matter what.',
     },
     steps: [
-      { bn: 'প্রোফাইল মেনু → “ডেটা এক্সপোর্ট (JSON)” — ফাইলটি নিরাপদে রাখুন।', en: 'Profile menu → “Export data (JSON)” — keep the file somewhere safe.' },
+      { bn: 'সেটিংস → “গুগল শিট ব্যাকআপ” → “Google Drive যুক্ত করুন”। আপনার নিজের Drive-এ একটি পঠনযোগ্য শিট তৈরি হবে (পাওনা/দেনা/খরচ/রিমাইন্ডার আলাদা ট্যাব)।', en: 'Settings → “Google Sheet backup” → “Connect Google Drive”. A readable sheet is created in your own Drive (separate tabs for Lent/Borrowed/Expenses/Reminders).' },
+      { bn: 'অ্যাপ খোলা অবস্থায় শিটটি নিজে থেকেই আপডেট হয়; চাইলে “এখন সিঙ্ক করুন” চাপুন।', en: 'The sheet updates itself while the app is open; tap “Sync now” any time.' },
+      { bn: 'প্রোফাইল মেনু → “ডেটা এক্সপোর্ট (JSON)” — সম্পূর্ণ ব্যাকআপ ফাইল নামান।', en: 'Profile menu → “Export data (JSON)” — download a full backup file.' },
       { bn: 'সেটিংস → “ডেটা ইমপোর্ট (JSON)” দিয়ে ব্যাকআপ ফিরিয়ে আনুন (বর্তমান ডেটা মুছবে না)।', en: 'Settings → “Import data (JSON)” to restore a backup (existing data is kept).' },
     ],
   },

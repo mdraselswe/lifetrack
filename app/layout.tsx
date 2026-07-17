@@ -22,6 +22,7 @@ const inter = Inter({
 })
 import PWARegistration from '@/components/PWARegistration'
 import AppLock from '@/components/AppLock'
+import BackupAutoSync from '@/components/BackupAutoSync'
 import OfflineIndicator from '@/components/OfflineIndicator'
 import CelebrationContainer from '@/components/Celebration'
 import ToastContainer from '@/components/Toast'
@@ -138,6 +139,7 @@ export default function RootLayout({
           <ToastContainer />
           <ConfirmToastContainer />
           <AppLock />
+          <BackupAutoSync />
           {/* Wrapper hidden pre-paint by the inline script (html.app-locked) so
               app content never flashes before the PIN gate. Toasts/confirm/gate
               live OUTSIDE it so the lock screen + its forgot-PIN dialog show. */}

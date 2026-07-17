@@ -137,6 +137,22 @@ export const common: Dict = {
   'lock.forgotTitle': { bn: 'লগআউট করবেন?', en: 'Log out?' },
   'lock.forgotMsg': { bn: 'অ্যাপ লক বন্ধ করে লগআউট করা হবে। আবার লগইন করলে পিন চাইবে না — চাইলে সেটিংস থেকে নতুন পিন সেট করতে পারবেন। আপনার ডেটা নিরাপদ থাকবে।', en: 'This turns off the app lock and logs you out. You will not be asked for a PIN on next login — set a new one from Settings if you want. Your data stays safe.' },
 
+  // Google Sheet backup (user-owned)
+  'gbackup.title': { bn: 'গুগল শিট ব্যাকআপ', en: 'Google Sheet backup' },
+  'gbackup.desc': { bn: 'আপনার সব হিসাব আপনার নিজের Google Drive-এ একটি পঠনযোগ্য শিটে রাখুন। অ্যাপ খোলা অবস্থায় আপডেট হয় — অ্যাপের কিছু হলেও আপনার ডেটা নিরাপদ ও হাতের কাছে থাকবে।', en: "Keep a readable copy of all your records in your own Google Drive sheet. It updates while the app is open — so your data stays safe and accessible no matter what." },
+  'gbackup.connect': { bn: 'Google Drive যুক্ত করুন', en: 'Connect Google Drive' },
+  'gbackup.working': { bn: 'কাজ চলছে…', en: 'Working…' },
+  'gbackup.open': { bn: 'শিট খুলুন', en: 'Open sheet' },
+  'gbackup.syncNow': { bn: 'এখন সিঙ্ক করুন', en: 'Sync now' },
+  'gbackup.disconnect': { bn: 'সংযোগ বিচ্ছিন্ন', en: 'Disconnect' },
+  'gbackup.disconnectTitle': { bn: 'সংযোগ বিচ্ছিন্ন করবেন?', en: 'Disconnect backup?' },
+  'gbackup.disconnectMsg': { bn: 'অ্যাপ আর শিটে আপডেট পাঠাবে না। আপনার Drive-এর শিটটি মুছে যাবে না।', en: "The app will stop updating the sheet. Your existing sheet in Drive is not deleted." },
+  'gbackup.connected': { bn: 'সংযুক্ত হয়েছে — ব্যাকআপ তৈরি হলো', en: 'Connected — backup created' },
+  'gbackup.synced': { bn: 'ব্যাকআপ আপডেট হয়েছে', en: 'Backup updated' },
+  'gbackup.disconnected': { bn: 'সংযোগ বিচ্ছিন্ন হয়েছে', en: 'Disconnected' },
+  'gbackup.lastSynced': { bn: 'সর্বশেষ সিঙ্ক: {time}', en: 'Last synced: {time}' },
+  'gbackup.error': { bn: 'ব্যাকআপে সমস্যা হয়েছে — আবার চেষ্টা করুন', en: 'Backup failed — please try again' },
+
   // Backup import
   'import.action': { bn: 'ডেটা ইমপোর্ট (JSON)', en: 'Import data (JSON)' },
   'import.importing': { bn: 'ইমপোর্ট হচ্ছে…', en: 'Importing…' },

@@ -114,5 +114,9 @@ export interface Expense {
 export interface UserPrefs {
   monthlyBudget?: number // expense budget in ৳
   pinHash?: string // SHA-256 of the app-lock PIN; absent = lock off
+  // User-owned Google Sheet backup (readable copy in the user's own Drive).
+  backupSheetId?: string // Sheets file id; absent = not connected
+  backupSheetUrl?: string // direct link to open the sheet
+  lastBackupAt?: string // ISO timestamp of the last successful sync
 }
 
