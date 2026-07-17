@@ -15,6 +15,7 @@ export default function ProfileMenu() {
   useLang() // re-render on language switch
   const [open, setOpen] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [imgError, setImgError] = useState(false) // fall back to the initial if the photo fails
   const triggerRef = useRef<HTMLButtonElement>(null)
   const logoutRef = useRef<HTMLButtonElement>(null)
 
@@ -55,27 +56,50 @@ export default function ProfileMenu() {
   if (!user) return null
 
   const initial = (user.displayName || user.email || '?').charAt(0).toUpperCase()
+  // Google sign-in provides photoURL; show it when available, else the initial.
+  const showPhoto = !!user.photoURL && !imgError
 
   return (
     <div className="relative">
       <button
         ref={triggerRef}
         onClick={() => setOpen((v) => !v)}
-        className="w-9 h-9 rounded-full bg-accent text-accent-fg flex items-center justify-center font-semibold text-sm transition-transform active:scale-95"
+        className="w-9 h-9 rounded-full bg-accent text-accent-fg flex items-center justify-center font-semibold text-sm transition-transform active:scale-95 overflow-hidden"
         aria-label={t('profile.title')}
         aria-haspopup="menu"
         aria-expanded={open}
       >
-        {initial}
+        {showPhoto ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={user.photoURL as string}
+            alt=""
+            referrerPolicy="no-referrer"
+            className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
+          />
+        ) : (
+          initial
+        )}
       </button>
 
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div role="menu" className="absolute right-0 mt-2 w-56 rounded-2xl surface shadow-pop overflow-hidden z-50">
-            <div className="px-4 py-3 border-b border-line">
-              <p className="text-sm font-semibold text-content truncate">{user.displayName || t('profile.user')}</p>
-              <p className="text-xs text-muted truncate">{user.email}</p>
+            <div className="px-4 py-3 border-b border-line flex items-center gap-3">
+              <span className="w-9 h-9 rounded-full bg-accent text-accent-fg flex items-center justify-center font-semibold text-sm flex-shrink-0 overflow-hidden">
+                {showPhoto ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={user.photoURL as string} alt="" referrerPolicy="no-referrer" className="w-full h-full object-cover" onError={() => setImgError(true)} />
+                ) : (
+                  initial
+                )}
+              </span>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-content truncate">{user.displayName || t('profile.user')}</p>
+                <p className="text-xs text-muted truncate">{user.email}</p>
+              </div>
             </div>
             {user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase() && (
               <button
