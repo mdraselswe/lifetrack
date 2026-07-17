@@ -17,6 +17,7 @@ export default function BackupAutoSync() {
     if (!user || !isBackupConfigured()) return
     let cancelled = false
     let timer: ReturnType<typeof setTimeout> | undefined
+    let interval: ReturnType<typeof setInterval> | undefined
     let lastAt = 0
 
     const sync = () => {
@@ -25,12 +26,15 @@ export default function BackupAutoSync() {
       lastAt = Date.now()
       runBackup(false).catch(() => { lastAt = 0 })
     }
-    const onVis = () => { if (document.visibilityState === 'visible') sync() }
+    // Sync on both transitions: becoming hidden persists the changes made this
+    // session as the user leaves; becoming visible refreshes on return.
+    const onVis = () => sync()
 
     getUserPrefs()
       .then((p) => {
         if (cancelled || !p.backupSheetId) return
-        timer = setTimeout(sync, 4000) // let the app settle first
+        timer = setTimeout(sync, 4000) // initial, after the app settles
+        interval = setInterval(sync, 3 * 60 * 1000) // periodic while open (throttle guards it)
         document.addEventListener('visibilitychange', onVis)
       })
       .catch(() => {})
@@ -38,6 +42,7 @@ export default function BackupAutoSync() {
     return () => {
       cancelled = true
       if (timer) clearTimeout(timer)
+      if (interval) clearInterval(interval)
       document.removeEventListener('visibilitychange', onVis)
     }
   }, [user])
