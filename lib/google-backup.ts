@@ -81,10 +81,15 @@ export const preloadBackup = async (): Promise<void> => {
 const getToken = async (interactive: boolean): Promise<string> => {
   if (!CLIENT_ID) throw new Error('Backup not configured')
   if (cached && cached.expiresAt - 60_000 > Date.now()) return cached.token
+  // Background (non-interactive) sync must NEVER open UI. GIS can't guarantee a
+  // silent token — with multiple Google accounts it pops an account chooser even
+  // with prompt:'' — so if there's no valid cached token, skip quietly. The next
+  // interactive action (Connect / Sync now) re-primes the token for the session.
+  if (!interactive) throw new Error('No cached token for silent sync')
   await ensureClient()
   return new Promise<string>((resolve, reject) => {
     pending = { resolve, reject }
-    tokenClient!.requestAccessToken({ prompt: interactive ? 'consent' : '' })
+    tokenClient!.requestAccessToken({ prompt: 'consent' })
   })
 }
 
