@@ -11,18 +11,20 @@ type Burst = { id: number; particles: Particle[] }
 
 const COLORS = ['var(--accent)', 'var(--positive)', 'var(--caution)', '#f472b6', '#38bdf8']
 
+// A richer burst (48 particles) for the bigger moment.
 const makeBurst = (): Burst => {
-  const particles: Particle[] = Array.from({ length: 26 }, (_, i) => {
-    const angle = (Math.PI * 2 * i) / 26 + Math.random() * 0.5
-    const dist = 90 + Math.random() * 130
+  const N = 48
+  const particles: Particle[] = Array.from({ length: N }, (_, i) => {
+    const angle = (Math.PI * 2 * i) / N + Math.random() * 0.5
+    const dist = 110 + Math.random() * 170
     return {
       id: i,
       dx: Math.cos(angle) * dist,
-      dy: Math.sin(angle) * dist * 0.75 + 130, // drift downward
+      dy: Math.sin(angle) * dist * 0.75 + 150, // drift downward
       rot: (Math.random() - 0.5) * 540,
       color: COLORS[i % COLORS.length],
-      size: 6 + Math.random() * 6,
-      delay: Math.random() * 0.12,
+      size: 6 + Math.random() * 7,
+      delay: Math.random() * 0.14,
     }
   })
   return { id: Date.now() + Math.random(), particles }
@@ -30,17 +32,23 @@ const makeBurst = (): Burst => {
 
 export default function CelebrationContainer() {
   const [bursts, setBursts] = useState<Burst[]>([])
+  const [banner, setBanner] = useState<{ id: number; text: string } | null>(null)
 
   useEffect(() => {
-    return onCelebrate(() => {
+    return onCelebrate((message) => {
       if (typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
       const burst = makeBurst()
       setBursts((prev) => [...prev, burst])
-      setTimeout(() => setBursts((prev) => prev.filter((b) => b.id !== burst.id)), 1600)
+      setTimeout(() => setBursts((prev) => prev.filter((b) => b.id !== burst.id)), 1800)
+      if (message) {
+        const id = Date.now() + Math.random()
+        setBanner({ id, text: message })
+        setTimeout(() => setBanner((cur) => (cur && cur.id === id ? null : cur)), 2400)
+      }
     })
   }, [])
 
-  if (bursts.length === 0) return null
+  if (bursts.length === 0 && !banner) return null
 
   return (
     <div className="fixed inset-0 z-[100001] pointer-events-none overflow-hidden" aria-hidden="true">
@@ -64,6 +72,14 @@ export default function CelebrationContainer() {
           ))}
         </div>
       ))}
+      {banner && (
+        <div className="absolute left-1/2 top-[30%] -translate-x-1/2 celebrate-banner">
+          <div className="rounded-2xl px-5 py-3 shadow-pop text-center max-w-[80vw]" style={{ backgroundColor: 'var(--surface)', border: '1px solid var(--border)' }}>
+            <p className="text-2xl mb-0.5" aria-hidden="true">🎉</p>
+            <p className="text-sm font-semibold text-content">{banner.text}</p>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -82,6 +82,7 @@ export const debts: Dict = {
   'debts.statusMarkedReceived': { bn: 'ধার ফেরত পেয়েছেন হিসেবে চিহ্নিত করা হয়েছে', en: 'Debt marked as returned' },
   'debts.statusMarkedNotReceived': { bn: 'ধার ফেরত পাননি হিসেবে চিহ্নিত করা হয়েছে', en: 'Debt marked as not returned' },
   'debts.statusError': { bn: 'ধারের অবস্থা পরিবর্তন করতে সমস্যা হয়েছে', en: 'Failed to change debt status' },
+  'debts.celebratePaid': { bn: '{name} সব ফেরত দিয়েছে!', en: '{name} paid you back in full!' },
 
   // Update debt
   'debts.updateTitle': { bn: 'ধার আপডেট করুন', en: 'Update debt' },

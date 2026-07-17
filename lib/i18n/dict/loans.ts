@@ -78,6 +78,7 @@ export const loans: Dict = {
   'loans.toggleMessage': { bn: '{name} এর {amount} টাকার ধার {action} হিসেবে চিহ্নিত করবেন?', en: "Mark {name}'s loan of ৳{amount} as {action}?" },
   'loans.toggleSuccess': { bn: 'ধার {action} হিসেবে চিহ্নিত করা হয়েছে', en: 'Loan marked as {action}' },
   'loans.toggleError': { bn: 'ধারের অবস্থা পরিবর্তন করতে সমস্যা হয়েছে', en: 'Failed to change loan status' },
+  'loans.celebratePaid': { bn: '{name}-কে সব ফেরত দিলেন!', en: 'You fully repaid {name}!' },
   'loans.statusReturned': { bn: 'ফেরত দিয়েছেন', en: 'returned' },
   'loans.statusNotReturned': { bn: 'ফেরত দেননি', en: 'not returned' },
   'loans.confirmReturned': { bn: 'ফেরত দিয়েছি', en: 'Returned' },

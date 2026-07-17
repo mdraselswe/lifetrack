@@ -343,7 +343,7 @@ export default function DebtsPage() {
         }
         if (newStatus) {
           haptic([20, 40, 20])
-          celebrate()
+          celebrate(t('debts.celebratePaid', { name: debt.personName }))
           deleteRemindersForSource(debt.id) // settled → drop its due-date reminder
           // Mark paid: add a payment covering the balance (auto-flagged).
           const totalPaid = getTotalPaid(debt)

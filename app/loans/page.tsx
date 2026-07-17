@@ -343,7 +343,7 @@ export default function LoansPage() {
         }
         if (newStatus) {
           haptic([20, 40, 20])
-          celebrate()
+          celebrate(t('loans.celebratePaid', { name: loan.personName }))
           deleteRemindersForSource(loan.id) // settled → drop its due-date reminder
           const totalPaid = getTotalPaid(loan)
           if (totalPaid < totalAmount) {
