@@ -1,6 +1,6 @@
 // Service Worker for LifeTrack PWA - Next.js 16 Optimized
 
-const CACHE_VERSION = 'v12'
+const CACHE_VERSION = 'v13'
 const STATIC_CACHE = `lifetrack-static-${CACHE_VERSION}`
 const DYNAMIC_CACHE = `lifetrack-dynamic-${CACHE_VERSION}`
 const RUNTIME_CACHE = `lifetrack-runtime-${CACHE_VERSION}`
@@ -263,11 +263,18 @@ self.addEventListener('notificationclick', (event) => {
         }
         notification.close()
       } else {
-        // Default click - open the app
+        // Default click (or the "view" action): open the link the notification
+        // carries — admin broadcasts set data.url (e.g. /debts). Fall back to the
+        // reminders page when no url is present.
+        const target = (notification.data && notification.data.url) || '/reminders'
+        const openUrl = new URL(target, self.location.origin).href
         if (clientList.length > 0) {
-          clientList[0].focus()
+          const client = clientList[0]
+          client.focus()
+          // Navigate the existing tab to the link (focus alone wouldn't change route).
+          if (typeof client.navigate === 'function') client.navigate(openUrl).catch(() => {})
         } else {
-          clients.openWindow('/reminders')
+          clients.openWindow(openUrl)
         }
         notification.close()
       }
