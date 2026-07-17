@@ -223,6 +223,25 @@ export default function ExpensesPage() {
     }
   }
 
+  const handleRemoveBudget = async () => {
+    if (savingRef.current) return
+    savingRef.current = true
+    setSaving(true)
+    try {
+      // null (not undefined) so filterUndefined doesn't strip it — clears the field.
+      await setUserPrefs({ monthlyBudget: null as unknown as number })
+      setBudget(null)
+      setShowBudgetModal(false)
+      toast.success(t('expenses.budgetRemoved'))
+    } catch (error) {
+      console.error('Error removing budget:', error)
+      toast.error(t('expenses.budgetError'))
+    } finally {
+      savingRef.current = false
+      setSaving(false)
+    }
+  }
+
   if (!mounted || !month) {
     return null
   }
@@ -683,16 +702,23 @@ export default function ExpensesPage() {
           <ActionButton onClick={handleSaveBudget} variant="primary" loading={saving}>{t('common.save')}</ActionButton>
         </>}
       >
-        <div>
-          <label className="label label-required">{t('expenses.budgetLabel')}</label>
-          <input
-            type="text"
-            inputMode="decimal"
-            value={budgetInput}
-            onChange={numChange(setBudgetInput)}
-            className="input"
-            placeholder={t('expenses.zeroPlaceholder')}
-          />
+        <div className="space-y-3">
+          <div>
+            <label className="label label-required">{t('expenses.budgetLabel')}</label>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={budgetInput}
+              onChange={numChange(setBudgetInput)}
+              className="input"
+              placeholder={t('expenses.zeroPlaceholder')}
+            />
+          </div>
+          {budget != null && (
+            <button type="button" onClick={handleRemoveBudget} disabled={saving} className="btn btn-ghost text-negative w-full">
+              <TrashIcon className="w-4 h-4" /> {t('expenses.removeBudget')}
+            </button>
+          )}
         </div>
       </Modal>
     </div>

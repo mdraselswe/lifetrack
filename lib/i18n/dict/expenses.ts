@@ -36,6 +36,8 @@ export const expenses: Dict = {
   'expenses.editBudget': { bn: 'বাজেট সম্পাদনা', en: 'Edit budget' },
   'expenses.budgetLabel': { bn: 'মাসিক বাজেট (৳)', en: 'Monthly budget (৳)' },
   'expenses.budgetSaved': { bn: 'বাজেট সংরক্ষণ হয়েছে', en: 'Budget saved' },
+  'expenses.removeBudget': { bn: 'বাজেট মুছুন', en: 'Remove budget' },
+  'expenses.budgetRemoved': { bn: 'বাজেট মুছে ফেলা হয়েছে', en: 'Budget removed' },
   'expenses.budgetError': { bn: 'বাজেট সংরক্ষণ করা যায়নি', en: 'Could not save budget' },
   'expenses.errValidBudget': { bn: 'সঠিক বাজেট লিখুন', en: 'Enter a valid budget' },
 
