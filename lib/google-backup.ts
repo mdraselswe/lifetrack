@@ -67,6 +67,15 @@ const ensureClient = async () => {
   })
 }
 
+// Load the GIS script + init the token client ahead of any user click, so that
+// requestAccessToken can fire SYNCHRONOUSLY inside the click handler. If we only
+// loaded it after the click (awaiting the network), the browser would drop the
+// user-gesture and block the OAuth popup. Safe/idempotent — call on mount.
+export const preloadBackup = async (): Promise<void> => {
+  if (!CLIENT_ID) return
+  try { await ensureClient() } catch { /* ignore — retried on click */ }
+}
+
 // Get a valid access token. `interactive` shows the consent/account popup (needed
 // the first time); afterwards a silent request refreshes it without a popup.
 const getToken = async (interactive: boolean): Promise<string> => {

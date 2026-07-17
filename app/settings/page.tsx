@@ -24,7 +24,7 @@ import { getUserPrefs, setUserPrefs } from '@/lib/storage'
 import { importMyData } from '@/lib/export'
 import { hashPin, PIN_HASH_KEY } from '@/components/AppLock'
 import PinInput from '@/components/PinInput'
-import { runBackup, disconnectBackup, isBackupConfigured } from '@/lib/google-backup'
+import { runBackup, disconnectBackup, isBackupConfigured, preloadBackup } from '@/lib/google-backup'
 
 // Map Firebase reauth/update errors to scrubbed Bengali/English messages.
 function reauthErrorMessage(code: string): string {
@@ -93,6 +93,9 @@ export default function SettingsPage() {
       setBackupUrl(p.backupSheetId ? (p.backupSheetUrl || '') : null)
       setLastBackupAt(p.lastBackupAt || null)
     }).catch(() => {})
+    // Warm up Google Identity Services so the Connect click can open the OAuth
+    // popup synchronously (a post-click await would get the popup blocked).
+    if (isBackupConfigured()) preloadBackup()
   }, [user, loading, router])
 
   const handleConnectBackup = async () => {
