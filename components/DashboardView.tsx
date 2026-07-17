@@ -482,7 +482,6 @@ export default function Dashboard() {
   const prevMonthPrefix = `${prevD.getFullYear()}-${String(prevD.getMonth() + 1).padStart(2, '0')}`
   const expThisMonth = round2(expenses.filter((e) => e.date?.startsWith(monthPrefix)).reduce((s, e) => s + (e.amount || 0), 0))
   const expPrevMonth = round2(expenses.filter((e) => e.date?.startsWith(prevMonthPrefix)).reduce((s, e) => s + (e.amount || 0), 0))
-  const animExp = useCountUp(expThisMonth)
   const expTrendPct = expPrevMonth > 0 ? Math.round(((expThisMonth - expPrevMonth) / expPrevMonth) * 100) : null
   const expBudgetPct = budget && budget > 0 ? Math.min(100, Math.round((expThisMonth / budget) * 100)) : null
   const expBudgetOver = budget != null && budget > 0 && expThisMonth > budget
@@ -779,7 +778,7 @@ export default function Dashboard() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-sm text-muted">{t('expenses.title')} · {t('dashboard.thisMonth')}</span>
-                  <span className="text-base font-bold text-content tabular-nums">৳{bn(animExp)}</span>
+                  <span className="text-base font-bold text-content tabular-nums">৳{bn(expThisMonth)}</span>
                 </div>
                 {expBudgetPct != null ? (
                   <div className="mt-1.5">
