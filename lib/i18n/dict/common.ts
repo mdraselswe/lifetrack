@@ -132,6 +132,9 @@ export const common: Dict = {
   'lock.disable': { bn: 'বন্ধ করুন', en: 'Disable' },
   'lock.disableConfirm': { bn: 'অ্যাপ লক বন্ধ করবেন?', en: 'Disable app lock?' },
   'lock.saveError': { bn: 'পিন সংরক্ষণে সমস্যা হয়েছে', en: 'Could not save PIN' },
+  'lock.forgot': { bn: 'পিন ভুলে গেছেন? লগআউট করুন', en: 'Forgot PIN? Log out' },
+  'lock.forgotTitle': { bn: 'লগআউট করবেন?', en: 'Log out?' },
+  'lock.forgotMsg': { bn: 'পিন ভুলে গেলে লগআউট করে আবার লগইন করুন, তারপর সেটিংস থেকে পিন পরিবর্তন বা বন্ধ করুন। আপনার ডেটা নিরাপদ থাকবে।', en: 'If you forgot your PIN, log out and sign back in, then change or disable the PIN from Settings. Your data stays safe.' },
 
   // Backup import
   'import.action': { bn: 'ডেটা ইমপোর্ট (JSON)', en: 'Import data (JSON)' },

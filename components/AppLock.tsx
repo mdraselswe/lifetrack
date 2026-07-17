@@ -5,6 +5,8 @@ import { useAuth } from '@/lib/firebase-auth'
 import { getUserPrefs } from '@/lib/storage'
 import { t, useLang } from '@/lib/i18n'
 import { haptic } from '@/lib/haptics'
+import { confirm } from '@/lib/confirm'
+import { toast } from '@/lib/toast'
 import Wordmark from '@/components/Wordmark'
 
 // SHA-256 hex of a PIN string (WebCrypto — no deps).
@@ -20,7 +22,7 @@ const UNLOCK_KEY = 'lifetrack-unlocked'
 // the app relocks it; navigating within the session doesn't.
 export default function AppLock() {
   useLang()
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const [locked, setLocked] = useState(false)
   const [expected, setExpected] = useState<string | null>(null)
   const [pin, setPin] = useState('')
@@ -68,6 +70,27 @@ export default function AppLock() {
     }
   }
 
+  // Escape hatch for a forgotten PIN: the gate covers the whole app (incl.
+  // Settings/Logout), so without this the user would be locked out entirely.
+  // Logging out clears the session and returns to /login, where they can sign
+  // back in and reset or disable the PIN from Settings.
+  const handleForgot = () => {
+    confirm.custom(
+      t('lock.forgotTitle'),
+      t('lock.forgotMsg'),
+      async () => {
+        try {
+          try { sessionStorage.removeItem(UNLOCK_KEY) } catch { /* ignore */ }
+          await logout()
+          setLocked(false)
+        } catch {
+          toast.error(t('auth.error.logout'))
+        }
+      },
+      { confirmText: t('profile.logout'), cancelText: t('common.cancel'), type: 'warning' }
+    )
+  }
+
   if (!locked) return null
 
   return (
@@ -91,6 +114,9 @@ export default function AppLock() {
         aria-label={t('lock.enter')}
       />
       {error && <p className="text-sm text-negative">{t('lock.wrong')}</p>}
+      <button onClick={handleForgot} className="text-sm text-muted underline underline-offset-2 mt-2">
+        {t('lock.forgot')}
+      </button>
     </div>
   )
 }
