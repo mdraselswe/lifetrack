@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/firebase-auth'
-import { LogoutIcon, DownloadIcon, SettingsIcon, ScaleIcon, FileTextIcon } from './Icons'
+import { LogoutIcon, DownloadIcon, SettingsIcon, ScaleIcon, FileTextIcon, HelpIcon } from './Icons'
 import { ADMIN_EMAIL } from '@/lib/admin'
 import { exportMyData } from '@/lib/export'
 import { toast } from '@/lib/toast'
@@ -93,6 +93,13 @@ export default function ProfileMenu() {
               className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm font-medium text-content hover:bg-surface-2 transition-colors"
             >
               <FileTextIcon className="w-5 h-5" /> {t('statement.title')}
+            </button>
+            <button
+              role="menuitem"
+              onClick={() => { setOpen(false); router.push('/guide') }}
+              className="w-full flex items-center gap-2 px-4 py-3 text-left text-sm font-medium text-content hover:bg-surface-2 transition-colors"
+            >
+              <HelpIcon className="w-5 h-5" /> {t('profile.guide')}
             </button>
             <button
               role="menuitem"

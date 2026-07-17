@@ -34,6 +34,7 @@ export const common: Dict = {
   'profile.exportSuccess': { bn: 'ডেটা এক্সপোর্ট হয়েছে', en: 'Data exported' },
   'profile.exportError': { bn: 'এক্সপোর্ট করতে সমস্যা হয়েছে', en: 'Export failed' },
   'profile.logout': { bn: 'লগআউট', en: 'Log out' },
+  'profile.guide': { bn: 'ব্যবহার নির্দেশিকা', en: 'User guide' },
 
   'theme.light': { bn: 'লাইট মোড', en: 'Light mode' },
   'theme.dark': { bn: 'ডার্ক মোড', en: 'Dark mode' },
