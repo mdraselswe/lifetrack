@@ -49,7 +49,9 @@ export default function PinInput({
     }
     const joined = setDigit(i, d)
     if (i < length - 1) focusBox(i + 1)
-    if (joined.length === length && !joined.includes('') && joined.replace(/\D/g, '').length === length) {
+    // join('') drops empty boxes, so length === length means all boxes are filled
+    // contiguously. (Never test String.includes('') — it's always true.)
+    if (joined.length === length) {
       onComplete?.(joined)
     }
   }
