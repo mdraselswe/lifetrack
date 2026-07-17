@@ -480,6 +480,26 @@ export default function Dashboard() {
   const expBudgetPct = budget && budget > 0 ? Math.min(100, Math.round((expThisMonth / budget) * 100)) : null
   const expBudgetOver = budget != null && budget > 0 && expThisMonth > budget
 
+  // ---- Smart nudge: a single, most-relevant actionable tip (priority order) ----
+  const monthElapsedPct = Math.round((nowDate.getDate() / new Date(nowDate.getFullYear(), nowDate.getMonth() + 1, 0).getDate()) * 100)
+  const topSpendCat = (() => {
+    const by: Record<string, number> = {}
+    expenses.filter((e) => e.date?.startsWith(monthPrefix)).forEach((e) => { by[e.category] = (by[e.category] || 0) + (e.amount || 0) })
+    const top = Object.entries(by).sort((a, b) => b[1] - a[1])[0]
+    return top ? { category: top[0], total: round2(top[1]) } : null
+  })()
+  const nudge: { text: string; href: string; tone: 'neg' | 'accent' } | null = (() => {
+    // 1) Over budget — most urgent money signal.
+    if (expBudgetOver) return { text: t('dashboard.nudgeOverBudget', { amount: bn(round2(expThisMonth - (budget || 0))) }), href: '/expenses', tone: 'neg' }
+    // 2) Overdue money to collect.
+    if (overdueDebts.length > 0) return { text: t('dashboard.nudgeOverdue', { count: fmtInt(overdueDebts.length), amount: bn(overdueTotal) }), href: '/debts', tone: 'neg' }
+    // 3) Budget burning faster than the month is passing.
+    if (expBudgetPct != null && monthElapsedPct > 0 && expBudgetPct > monthElapsedPct + 15) return { text: t('dashboard.nudgeBudgetPace', { spent: fmtInt(expBudgetPct), elapsed: fmtInt(monthElapsedPct) }), href: '/expenses', tone: 'neg' }
+    // 4) Where the money goes — gentle insight.
+    if (topSpendCat && expThisMonth > 0) return { text: t('dashboard.nudgeTopCat', { cat: t(`expenses.cat.${topSpendCat.category}`), amount: bn(topSpendCat.total) }), href: '/expenses', tone: 'accent' }
+    return null
+  })()
+
   // ---- Year in review (current calendar year) ----
   const yearStart = new Date(new Date().getFullYear(), 0, 1).getTime()
   const yearEnd = new Date(new Date().getFullYear() + 1, 0, 1).getTime()
@@ -590,6 +610,20 @@ export default function Dashboard() {
               </div>
             )}
           </div>
+
+          {/* Smart nudge — one prioritized, actionable tip; taps through to act */}
+          {nudge && (
+            <Link
+              href={nudge.href}
+              className={`card card-interactive flex items-center gap-3 py-3 ${nudge.tone === 'neg' ? 'bar-neg' : 'bar-pos'}`}
+            >
+              <span className={`text-lg flex-shrink-0 ${nudge.tone === 'neg' ? 'text-negative' : 'text-accent'}`} aria-hidden="true">
+                {nudge.tone === 'neg' ? '⚠️' : '💡'}
+              </span>
+              <span className="text-sm text-content flex-1 min-w-0">{nudge.text}</span>
+              <span className="text-muted flex-shrink-0" aria-hidden="true">›</span>
+            </Link>
+          )}
 
           {/* Empty state */}
           {isEmpty && (

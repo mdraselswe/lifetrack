@@ -59,6 +59,12 @@ export const dashboard: Dict = {
   'dashboard.searchTitle': { bn: 'খুঁজুন', en: 'Search' },
   'dashboard.searchPeople': { bn: 'ব্যক্তি', en: 'People' },
 
+  // Smart nudge (single prioritized tip)
+  'dashboard.nudgeOverBudget': { bn: 'বাজেটের চেয়ে ৳{amount} বেশি খরচ হয়েছে — খরচ দেখুন', en: 'You are ৳{amount} over budget — review spending' },
+  'dashboard.nudgeOverdue': { bn: '{count}টি পাওনা মেয়াদোত্তীর্ণ (৳{amount}) — তাগাদা দিন', en: '{count} receivables overdue (৳{amount}) — follow up' },
+  'dashboard.nudgeBudgetPace': { bn: 'বাজেটের {spent}% শেষ, মাসের মাত্র {elapsed}% গেছে', en: '{spent}% of budget spent, only {elapsed}% of the month gone' },
+  'dashboard.nudgeTopCat': { bn: 'এই মাসে সবচেয়ে বেশি {cat}-এ (৳{amount})', en: 'Most spent on {cat} this month (৳{amount})' },
+
   // Insights
   'dashboard.insightsTitle': { bn: 'ইনসাইট', en: 'Insights' },
   'dashboard.insightTopDebtor': { bn: 'সবচেয়ে বেশি পাওনা: {name}', en: 'Largest receivable: {name}' },
