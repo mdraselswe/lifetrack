@@ -78,6 +78,15 @@ export default function AppLock() {
     return () => { cancelled = true }
   }, [user])
 
+  // Keep the <html>.app-locked class (added pre-paint by the inline script) in
+  // sync with React's lock state, so unlocking / determining "not locked" reveals
+  // the hidden #app-shell content.
+  useEffect(() => {
+    const el = document.documentElement
+    if (locked) el.classList.add('app-locked')
+    else el.classList.remove('app-locked')
+  }, [locked])
+
   const tryUnlock = async (value: string) => {
     if (!expected || value.length < 4) return
     const h = await hashPin(value)

@@ -126,7 +126,7 @@ export default function RootLayout({
         {/* Apply saved / system theme and language before paint to avoid a flash */}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');var l=localStorage.getItem('lifetrack-lang');if(l==='en'){document.documentElement.classList.add('lang-en');document.documentElement.classList.remove('lang-bn');}else{document.documentElement.classList.add('lang-bn');document.documentElement.classList.remove('lang-en');}}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem('theme');var d=t?t==='dark':window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');var l=localStorage.getItem('lifetrack-lang');if(l==='en'){document.documentElement.classList.add('lang-en');document.documentElement.classList.remove('lang-bn');}else{document.documentElement.classList.add('lang-bn');document.documentElement.classList.remove('lang-en');}var ph=localStorage.getItem('lifetrack-pin-hash');var un=sessionStorage.getItem('lifetrack-unlocked')==='1';if(ph&&!un)document.documentElement.classList.add('app-locked');}catch(e){}})();`,
           }}
         />
       </head>
@@ -138,9 +138,14 @@ export default function RootLayout({
           <ToastContainer />
           <ConfirmToastContainer />
           <AppLock />
-          <ConditionalLayout>
-            {children}
-          </ConditionalLayout>
+          {/* Wrapper hidden pre-paint by the inline script (html.app-locked) so
+              app content never flashes before the PIN gate. Toasts/confirm/gate
+              live OUTSIDE it so the lock screen + its forgot-PIN dialog show. */}
+          <div id="app-shell">
+            <ConditionalLayout>
+              {children}
+            </ConditionalLayout>
+          </div>
         </AuthProvider>
       </body>
     </html>

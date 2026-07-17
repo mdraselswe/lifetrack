@@ -66,6 +66,11 @@
 .lang-bn { --font-sans: var(--font-bengali); }
 .lang-en { --font-sans: var(--font-en); }
 
+/* App-lock no-flash: the pre-paint script adds .app-locked to <html> when a PIN
+   is set and the session isn't unlocked. Hide the app content wrapper until the
+   React PIN gate takes over (the gate + toasts/confirm live outside #app-shell). */
+html.app-locked #app-shell { visibility: hidden; }
+
 @layer base {
   html {
     min-height: 100%;
