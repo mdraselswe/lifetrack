@@ -399,15 +399,11 @@ html.app-locked #app-shell { visibility: hidden; }
   }
 
   /* Sticky section headers — stay visible below the app bar while scrolling */
+  /* Section header label — NOT sticky. Sticking a sub-header under the (taller,
+     translucent) AppBar made the text overlap/merge with it; a plain label that
+     scrolls with its section is cleaner and avoids all of that. */
   .section-sticky {
-    position: sticky;
-    top: calc(3.5rem + env(safe-area-inset-top));
-    z-index: 10;
-    padding: 0.3rem 0.35rem;
-    border-radius: 0.5rem;
-    background: color-mix(in srgb, var(--bg) 86%, transparent);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+    padding-bottom: 0.15rem;
   }
 
   /* Overdue pulsing dot */
