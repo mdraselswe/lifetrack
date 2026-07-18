@@ -140,7 +140,7 @@ export const debts: Dict = {
   'debts.promiseClearMsg': { bn: 'এই ফলো-আপ রিমাইন্ডারটি মুছে ফেলা হবে।', en: 'This follow-up reminder will be removed.' },
   'debts.promiseCleared': { bn: 'মনে করানোর তারিখ মুছে ফেলা হয়েছে', en: 'Reminder date cleared' },
   'debts.promiseReminderTitle': { bn: '{name} এর প্রতিশ্রুতির দিন', en: "{name}'s promised day" },
-  'debts.promiseReminderDesc': { bn: '{name} আজ ৳{amount} দেওয়ার কথা', en: '{name} promised to pay ৳{amount} today' },
+  'debts.promiseReminderDesc': { bn: '{name}-এর ৳{amount} দেওয়ার কথা', en: '{name} is due to pay ৳{amount}' },
   'debts.promiseReminderDescGeneric': { bn: '{name}-এর সাথে প্রতিশ্রুতি অনুযায়ী যোগাযোগ করুন — কিস্তি অনুযায়ী পরিশোধ চলছে', en: "Follow up with {name} per their promise — repayment is via the installment plan" },
 
   // WhatsApp তাগাদা
