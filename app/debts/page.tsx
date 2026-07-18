@@ -21,6 +21,7 @@ import { MoneyIllustration, NoResultsIllustration } from '@/components/Illustrat
 import { avatarColor } from '@/lib/avatar'
 import { celebrate } from '@/lib/celebrate'
 import { haptic } from '@/lib/haptics'
+import { personKey } from '@/lib/person-key'
 
 const bn = (n: number) => fmtNum(n)
 const bnDate = (v: string) => fmtDate(v)
@@ -1319,16 +1320,18 @@ export default function DebtsPage() {
     (showActiveSection ? filteredActive.length : 0) + (showSettledSection ? filteredReturned.length : 0)
 
   // By-person grouping (active debts only), sorted by total due desc.
+  // Grouped case/whitespace-insensitively ("Test" and "test" are the same
+  // person) — the display name is whichever casing was entered first.
   const personGroups = (() => {
-    const map = new Map<string, Debt[]>()
+    const map = new Map<string, { name: string; entries: Debt[] }>()
     for (const d of filteredActive) {
-      const key = d.personName.trim()
-      const arr = map.get(key)
-      if (arr) arr.push(d)
-      else map.set(key, [d])
+      const key = personKey(d.personName)
+      const g = map.get(key)
+      if (g) g.entries.push(d)
+      else map.set(key, { name: d.personName.trim(), entries: [d] })
     }
-    return Array.from(map.entries())
-      .map(([name, entries]) => ({
+    return Array.from(map.values())
+      .map(({ name, entries }) => ({
         name,
         entries,
         totalDue: round2(entries.reduce((s, d) => s + calculateRemaining(d), 0)),

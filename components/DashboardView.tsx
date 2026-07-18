@@ -15,6 +15,7 @@ import Modal, { ActionButton } from '@/components/Modal'
 import { MoneyIllustration } from '@/components/Illustrations'
 import Wordmark from '@/components/Wordmark'
 import { avatarColor } from '@/lib/avatar'
+import { personKey } from '@/lib/person-key'
 import { LEAD_OPTIONS, dueReminderTime, type LeadKey } from '@/lib/reminder-lead'
 import { celebrate } from '@/lib/celebrate'
 import { haptic } from '@/lib/haptics'
@@ -477,7 +478,14 @@ export default function Dashboard() {
 
   // ---- Global search (people + reminders) ----
   const gq = searchQ.trim().toLowerCase()
-  const allPersons = Array.from(new Set([...debts, ...loans].map((x) => x.personName).filter(Boolean)))
+  // Dedupe case/whitespace-insensitively so "Test" and "test" show as one result.
+  const allPersons = Array.from(
+    [...debts, ...loans]
+      .map((x) => x.personName)
+      .filter(Boolean)
+      .reduce((m, n) => (m.has(personKey(n)) ? m : m.set(personKey(n), n.trim())), new Map<string, string>())
+      .values()
+  )
   const searchPersons = gq ? allPersons.filter((n) => n.toLowerCase().includes(gq)).slice(0, 8) : []
   const searchReminders = gq
     ? reminders.filter((r) => !r.dismissed && r.title.toLowerCase().includes(gq)).slice(0, 8)

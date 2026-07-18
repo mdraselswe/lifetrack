@@ -1,5 +1,6 @@
 import { getDebts, getLoans, getExpenses } from './storage'
 import { round2 } from './format'
+import { personKey } from './person-key'
 import type { Debt, Loan, Expense, ExpenseCategory } from './types'
 
 // A statement summarises money movement over a custom date range, grouped by
@@ -80,10 +81,13 @@ const makeRangeTest = (from: string, to: string) => {
 // Accumulator keyed by person name.
 type Acc = Record<string, PersonStatement>
 
+// Keyed case/whitespace-insensitively ("Test" and "test" are the same person),
+// displayed under whichever casing was entered first.
 const ensure = (acc: Acc, name: string): PersonStatement => {
-  const key = name || '—'
+  const display = name.trim() || '—'
+  const key = personKey(display)
   if (!acc[key]) {
-    acc[key] = { person: key, lent: 0, received: 0, borrowed: 0, repaid: 0, net: 0, events: [] }
+    acc[key] = { person: display, lent: 0, received: 0, borrowed: 0, repaid: 0, net: 0, events: [] }
   }
   return acc[key]
 }

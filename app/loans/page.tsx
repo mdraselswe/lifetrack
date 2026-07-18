@@ -21,6 +21,7 @@ import { MoneyIllustration, NoResultsIllustration } from '@/components/Illustrat
 import { avatarColor } from '@/lib/avatar'
 import { celebrate } from '@/lib/celebrate'
 import { haptic } from '@/lib/haptics'
+import { personKey } from '@/lib/person-key'
 
 type LoanSortKey = 'recent' | 'oldest' | 'amountHigh' | 'amountLow' | 'nameAz'
 type LoanFilterKey = 'all' | 'active' | 'settled' | 'overdue'
@@ -1306,13 +1307,13 @@ export default function LoansPage() {
   const displayActive = showActiveSection ? sortLoans(filteredActive) : []
   const displayReturned = showReturnedSection ? sortLoans(returnedLoans.filter(matchesSearch)) : []
 
-  // By-person grouping (active loans only), sorted by total due desc
+  // By-person grouping (active loans only), sorted by total due desc.
+  // Grouped case/whitespace-insensitively ("Test" and "test" are the same
+  // person) — matches the debts page.
   const personGroups = Object.values(
     displayActive.reduce((acc, l) => {
-      // Key on the trimmed name so "Rahim" and "Rahim " merge into one group
-      // (matches the debts page).
-      const key = l.personName.trim()
-      if (!acc[key]) acc[key] = { name: key, loans: [], total: 0 }
+      const key = personKey(l.personName)
+      if (!acc[key]) acc[key] = { name: l.personName.trim(), loans: [], total: 0 }
       acc[key].loans.push(l)
       acc[key].total = round2(acc[key].total + calculateRemaining(l))
       return acc

@@ -12,6 +12,7 @@ import AppBar from '@/components/AppBar'
 import { ListSkeleton } from '@/components/SkeletonLoader'
 import { NoResultsIllustration } from '@/components/Illustrations'
 import { avatarColor } from '@/lib/avatar'
+import { personKey } from '@/lib/person-key'
 import {
   ArrowUpRightIcon, ArrowDownLeftIcon, RotateIcon, PlusCircleIcon,
   ScaleIcon, ClockIcon, HistoryIcon, ChevronDownIcon,
@@ -66,23 +67,31 @@ export default function PersonView({ personName }: { personName: string }) {
       return
     }
     setDataLoading(true)
+    // Match case/whitespace-insensitively so /person/test and /person/Test are
+    // the same page (URL casing may not match how the name was actually typed).
+    const key = personKey(personName)
     const seen = new Set<string>()
-    const arrived = (key: string) => {
-      seen.add(key)
+    const arrived = (k: string) => {
+      seen.add(k)
       if (seen.has('d') && seen.has('l')) setDataLoading(false)
     }
     const unsubs = [
       subscribeToDebts(user.uid, (data) => {
-        setDebts(data.filter((d) => d.personName === personName && !d.deletedAt))
+        setDebts(data.filter((d) => personKey(d.personName) === key && !d.deletedAt))
         arrived('d')
       }),
       subscribeToLoans(user.uid, (data) => {
-        setLoans(data.filter((l) => l.personName === personName && !l.deletedAt))
+        setLoans(data.filter((l) => personKey(l.personName) === key && !l.deletedAt))
         arrived('l')
       }),
     ]
     return () => unsubs.forEach((u) => u())
   }, [user, loading, router, personName])
+
+  // Display name: whichever casing was actually entered on a record, so the
+  // page doesn't just echo back the URL's casing. Falls back to the URL value
+  // before data loads (or if — edge case — no records match).
+  const displayName = (debts[0]?.personName || loans[0]?.personName || personName).trim()
 
   // Nothing below this guard runs during static prerender, so date math on
   // loaded data is safe (mirrors the mounted-state pattern on other pages).
@@ -99,7 +108,7 @@ export default function PersonView({ personName }: { personName: string }) {
 
   // ---- Contact actions ----
   const phone = [...debts, ...loans].find((x) => x.personPhone)?.personPhone
-  const waMsg = t('person.waTemplate', { name: personName, amount: bn(theyOwe) })
+  const waMsg = t('person.waTemplate', { name: displayName, amount: bn(theyOwe) })
 
   // ---- Repayment behavior ----
   // For each debt with a due date that got fully settled, the delay is the gap
@@ -200,11 +209,11 @@ export default function PersonView({ personName }: { personName: string }) {
   const toneText = { pos: 'text-positive', neg: 'text-negative', warn: 'text-caution' } as const
   const toneTint = { pos: 'tint-pos', neg: 'tint-neg', warn: 'tint-warn' } as const
 
-  const avatar = avatarColor(personName)
+  const avatar = avatarColor(displayName)
 
   return (
     <div className="min-h-full">
-      <AppBar title={personName} subtitle={t('person.subtitle')} back />
+      <AppBar title={displayName} subtitle={t('person.subtitle')} back />
 
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4 fade-in">
         {dataLoading ? (
@@ -223,7 +232,7 @@ export default function PersonView({ personName }: { personName: string }) {
                   className="w-11 h-11 rounded-full flex items-center justify-center text-base font-semibold flex-shrink-0"
                   style={{ backgroundColor: avatar.bg, color: avatar.fg }}
                 >
-                  {(personName.trim().charAt(0) || '?').toUpperCase()}
+                  {(displayName.charAt(0) || '?').toUpperCase()}
                 </span>
                 <div className="min-w-0">
                   <p className="text-sm text-muted flex items-center gap-1.5">
